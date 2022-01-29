@@ -1,3 +1,10 @@
+---
+layout: default
+title: Changes
+nav_order: 9
+description: "Domino Start Script Change History"
+has_children: false
+---
 
 # Domino Start Script Change History
 

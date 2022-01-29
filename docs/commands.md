@@ -1,3 +1,11 @@
+---
+layout: default
+title: Commands
+nav_order: 2
+description: "Domino Start Script Commands"
+has_children: false
+---
+
 # Domino Start Script Commands
 
 Start Script commands provide the functionality of the start script.  

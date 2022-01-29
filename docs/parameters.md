@@ -1,3 +1,11 @@
+---
+layout: default
+title: Configuration Parameters 
+nav_order: 3 
+description: "Start Script Configuration Parameters"
+has_children: false
+---
+
 # Configuration Parameters
 
 Parameters are specified in the configuration file `/etc/sysconfig/rc_domino_config`.  

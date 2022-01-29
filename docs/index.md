@@ -1,3 +1,10 @@
+---
+layout: default
+title: Domino Start Script 
+nav_order: 1
+description: "Start Script for HCL Domino on Linux and AIX"
+has_children: false
+---
 
 # Introduction
 

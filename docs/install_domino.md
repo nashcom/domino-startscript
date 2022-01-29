@@ -1,3 +1,11 @@
+---
+layout: default
+title: Domino Installation 
+nav_order: 4
+description: "Domino V12 Installation on Linux"
+has_children: false
+---
+
 # Domino V12 Installation
 
 The following short instruction helps you to install HCL Domino V12 on your Linux box.  
