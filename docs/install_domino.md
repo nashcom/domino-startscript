@@ -1,8 +1,8 @@
 ---
 layout: default
-title: Domino Installation 
+title: Domino One-Touch Installer 
 nav_order: 3
-description: "Domino V12 Installation on Linux"
+description: "Domino V12 automated Installation on Linux"
 has_children: false
 ---
 

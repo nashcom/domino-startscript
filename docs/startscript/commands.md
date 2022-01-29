@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Commands
-nav_order: 1
+nav_order: 2
 description: "Domino Start Script Commands"
 parent: "Domino Start Script"
 has_children: false

@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Components of the Script
-nav_order: 3
+nav_order: 4
 description: "Details about the components of the script"
 parent: "Domino Start Script"
 has_children: false

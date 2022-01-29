@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Known Issues
-nav_order: 5
+nav_order: 6
 description: "Known Issues"
 parent: "Domino Start Script"
 has_children: false

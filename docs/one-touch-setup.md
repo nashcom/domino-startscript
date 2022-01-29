@@ -1,12 +1,12 @@
 ---
 layout: default
-title: One-touch Domino setup support
+title: One-touch Domino Setup
 nav_order: 4
 description: "One-touch Domino setup support for automated setup"
 has_children: false
 ---
 
-# One-touch Domino setup support
+# One-touch Domino Setup Support
 
 Use the `domino setup` command to setup variables for a first server before you start your server.
 

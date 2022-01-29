@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Systemd configuration
-nav_order: 4
+nav_order: 5
 description: "Special systemd configuration"
 parent: "Domino Start Script"
 has_children: false

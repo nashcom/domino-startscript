@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Configuration Parameters 
-nav_order: 2 
+nav_order: 3 
 description: "Start Script Configuration Parameters"
 parent: "Domino Start Script"
 has_children: false
