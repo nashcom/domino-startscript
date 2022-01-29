@@ -1,8 +1,8 @@
 ---
 layout: default
-title: One-touch Domino Setup
+title: One-Touch Domino Setup
 nav_order: 4
-description: "One-touch Domino setup support for automated setup"
+description: "One-Touch Domino setup support for automated setup"
 has_children: false
 ---
 
