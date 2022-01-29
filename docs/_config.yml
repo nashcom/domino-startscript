@@ -4,7 +4,7 @@ remote_theme: pmarsceill/just-the-docs
 title: "Domino Start Script"
 description: Domino Start Script for Linux and AIX 
 version: 1.0
-logo: "/assets/images/svg/Domino.svg"
+logo: "/assets/images/gif/nashcom.gif"
 git_url: "https://github.com/nashcom/domino-startscript"
 baseurl: "/domino-startscript"
 permalink: pretty
