@@ -24,16 +24,6 @@ It is already configured for the default user "notes" user and group (notes:note
 Binary are assumed to be in`/opt/hcl/domino`, the data directory is assumed in `/local/notesdata`.
 Settings are configured in `/etc/sysconfig/rc_domino_config`.
 
-## Systemd
-
-Linux `systemd` is used on all current Linux distributions to start services.
-
-Systemd requires root permissions for start/stop.
-One way to accomplish this is to grant `sudo` permissions for the "rc_domino" script.
-See the "Enable Startup with sudo" section for details.
-
-Refrence: http://en.wikipedia.org/wiki/System)
-
 # Standard installation and configuration
 
 If you configure your Domino environment with the standard path names
@@ -75,12 +65,14 @@ tar -xvf start_script.tar
 ./install_script
 ```
 
+Enable service and start the server
+
 ```
 domino service on
 domino start
 ```
 
-## Other useful commands
+Check status and systemd status
 
 ```
 domino status
@@ -88,9 +80,22 @@ domino statusd
 domino console
 ```
 
-All details about configuration and commands are documented below.
+Launch the Domino server live console
 
-# Enable Startup with sudo
+```
+domino console
+```
+
+See the [commands section](https://nashcom.github.io/domino-startscript/startscript/commands) for a full list of commands.
+
+## Systemd
+
+[systemd](https://systemd.io/) is used on all current Linux distributions to start services.
+
+Systemd requires root permissions for start/stop.
+One way to accomplish this is to grant `sudo` permissions for the "rc_domino" script.
+
+## Enable Startup with sudo
 
 If you never looked into sudo, here is a simple configuration that allow you to run the start script with root permissions.
 Basically this allows the notes user to run the /etc/init.d/rc_domino as root.
