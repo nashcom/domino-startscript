@@ -29,7 +29,7 @@ PIDFile=/tmp/domino.pid
 ExecStart=/opt/nashcom/startscript/rc_domino_script start
 ExecStop=/opt/nashcom/startscript/rc_domino_script stop
 Type=forking
-LimitNOFILE=65535
+LimitNOFILE=80000
 LimitNPROC=8000
 TasksMax=8000
 

@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Domino Installation 
-nav_order: 4
+nav_order: 3
 description: "Domino V12 Installation on Linux"
 has_children: false
 ---
