@@ -6,6 +6,11 @@ description: "Start Script for HCL Domino on Linux and AIX"
 has_children: true
 ---
 
+[Quickstart]({{ site.baseurl }}{% link docs/startscript/quickstart.md %}){: .btn }
+[View it on GitHub](https://github.com/nashcom/domino-startscript){: .btn }
+
+---
+
 # Introduction
 
 [The Domino cross platform start/stop and diagnostic script](https://github.com/nashcom/domino-startscript)
