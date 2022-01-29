@@ -1,5 +1,5 @@
 # Site settings
-theme: "just-the-docs"
+theme: jekyll-theme-minimal
 remote_theme: pmarsceill/just-the-docs
 title: "Domino Start Script"
 description: Domino Start Script for Linux and AIX 
