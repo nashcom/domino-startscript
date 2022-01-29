@@ -8,17 +8,16 @@ has_children: true
 
 # Introduction
 
-The Domino cross platform start/stop and diagnostic script has been written
-to unify and simplify running Domino on Linux and UNIX. The start script
-is designed to be "one-stop shopping" for all kind of operations done on the
-Linux/UNIX prompt. The script can start and stop the server, provides an interactive
-console and run NSD in different flavors.
+[The Domino cross platform start/stop and diagnostic script](https://github.com/nashcom/domino-startscript)
+has been designed to unify and simplify running Domino on Linux and UNIX.
+The start script is designed to be "one-stop shopping" for all kind of operations performed on the Linux/UNIX prompt. 
+The script can start and stop the server, provides an interactive console and run NSD in different flavors.
 It ensures that the environment is always setup correct and supports multiple partitions.
 
 This script is designed to run with a dedicated user for each partition.
-Out of the box the script is configured to use the "notes" user/group and the standard
-directories for binaries (`/opt/hcl/domino`) and the data directory (`/local/notesdata`).
-You should setup all settings in the script configuration file (`/etc/sysconfig/rc_domino_config`).
+It is already configured for the default user "notes" user and group (notes:notes).
+Binary are assumed to be in`/opt/hcl/domino`, the data directory is assumed in `/local/notesdata`.
+Settings are configured in `/etc/sysconfig/rc_domino_config`.
 
 ## Systemd
 
