@@ -51,33 +51,59 @@ And you could also use the following directory structure for the other directori
 
 Each of the directories could be a separate file-system/disk.
 
-If you have the standard environemnt you just have to untar the start-script files and start the install_script.
+If you have the standard environment you just have to untar the start-script files and start the install_script.
 It copies all the scripts and configuration and after installation you can use the "domino" command for everything.
-The script is pre-configured and will work for older versions with init.d and also with the newer systemd.
 
 - The first command untars the files
 - The install_scripts writes all required files into the right locations with the right owner and permissions.
 - The next command enables the service (works for init.d and systemd)
 - And finally the server is started
 
+
+## Download the start script tar file
+
+Check the [Release Page](https://github.com/nashcom/domino-startscript/releases) for the current version.  
+You can either download the start script tar file manually or leverage for example curl for automated downloads.
+
+Example to download the file directly to a Linux machine:
+
 ```
-tar -xvf start_script.tar
+curl -LO https://github.com/nashcom/domino-startscript/releases/download/v3.7.0/domino-startscript_v3.7.0.tar
+```
+
+## Extract the tar file
+
+
+```
+tar -xf domino-startscript_v3.7.0.tar
+```
+
+Tip: You can download the latest version using a special curl command:
+
+```
+curl -L $(curl -sL https://raw.githubusercontent.com/nashcom/domino-startscript/main/latest.txt) -o domino-startscript_latest.tar
+```
+
+## Use install script for automated installation
+
+The Domino Start Script comes with an installation script, which installs automatically using the most common defaults.
+
+Switch to the start script directory and run the `install script`.  
+Note: The install script can also be used to update existing scripts.
+
+```
+cd domino-startscript
 ./install_script
 ```
 
-Enable service and start the server
+The Domino service is automatically enabled by the start script installer.  
+Once successfully completed, the `domino` command is available for all operations for your Domino server.
 
 ```
-domino service on
 domino start
-```
-
-Check status and systemd status
-
-```
+domino stop
 domino status
 domino statusd
-domino console
 ```
 
 Launch the Domino server live console
@@ -115,7 +141,7 @@ This allows you to to run the start script in the following way from your notes 
 sudo /etc/init.d/rc_domino ..
 ```
 
-# Quick manual Configuration
+# Manual Configuration
 
 ## 1. Copy Script Files
 
