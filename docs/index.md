@@ -40,25 +40,25 @@ The standard configuration is highly recommended. This will make your life easie
 You can change the data directory in the rc_domino_config file.
 But the binary location and the notes:notes user and group should stay the same.
 
-You should stay with the standard `/local/notesdata`. This could be a separate mount-point.
-And you could also use the following directory structure for the other directories.
+You should stay with the standard **/local/notesdata**.
+At least the **/local** directory should be a separate mount point.
+In larger environments you might want to use separate mount points for different parts of the server.
+
+The following directory outline is used in our Docker Community project as well and is a best practice nameing convention.
+For smaller servers a single **/local** mount point is perfectly OK.  
+Obviously **backup** should always be a separate mount point.
 
 ```
-/local/translog
-/local/nif
-/local/daos
+/
+├── local
+    ├── notesdata
+    ├── translog
+    ├── daos
+    ├── nif
+    ├── ft
+    ├── restore
+    └── backup
 ```
-
-Each of the directories could be a separate file-system/disk.
-
-If you have the standard environment you just have to untar the start-script files and start the install_script.
-It copies all the scripts and configuration and after installation you can use the "domino" command for everything.
-
-- The first command untars the files
-- The install_scripts writes all required files into the right locations with the right owner and permissions.
-- The next command enables the service (works for init.d and systemd)
-- And finally the server is started
-
 
 ## Download the start script tar file
 
@@ -84,7 +84,7 @@ Tip: You can download the latest version using a special curl command:
 curl -L $(curl -sL https://raw.githubusercontent.com/nashcom/domino-startscript/main/latest.txt) -o domino-startscript_latest.tar
 ```
 
-## Use install script for automated installation
+## Use install_script for automated installation
 
 The Domino Start Script comes with an installation script, which installs automatically using the most common defaults.
 
