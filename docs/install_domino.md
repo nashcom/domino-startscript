@@ -21,7 +21,7 @@ The following describes all the manual steps the installation script would perfo
 A very fast way to install your Domino server would be the following installation script, which is now part of the start script repository.
 
 ```
-curl -sL https://github.com/IBM/domino-docker/raw/develop/start_script/install_domino.sh | bash -
+curl -sL https://raw.githubusercontent.com/nashcom/domino-startscript/main/install_domino.sh | bash -
 ```
 
 ## Update Linux
@@ -55,7 +55,7 @@ yum -y install gdb perl-libs tar
 
 ## Install Extra Packages for Enterprise Linux repository
 
-Some additonal software is not available in the standard package repository.  
+Some additonal software is not available in the standard package repository of RedHat Linux.  
 To be able to install additional software, you have to first install the `Extra Packages for Enterprise Linux repository` (EPEL).
 
 ```
@@ -177,7 +177,7 @@ Depending on your server server, the installation can take a couple of minutes.
 ## Set security limits
 
 Domino is usually started leveraging a `systemd` services which sets security limits for the Domino server as part of the systemd script configuration.  
-The security limits below are used for manual operations when starting the server processes on command line (e.g. off-line maintenence with DBMT).
+The security limits below are used for manual operations when starting the server processes on command line (e.g. off-line maintenance with DBMT).
 
 Increase the number of open files for your Domino server to at least `80000` adding the following lines to your `/etc/security/limits.conf` file:
 
@@ -199,19 +199,21 @@ Switch back to the software directory
 cd /local/software
 ```
 
-The Domino Docker Community project always contains the latest version of the Nash!Com start script.  
-Curl is a very conventient way to download software.  
-You can also download the software and transfer it to the software directory.
+Download the latest version of the Domino Start script from the offical GitHub repository [release page](https://github.com/nashcom/domino-startscript/releases).
+
+If you want to download the software directly to your Linux machine, Curl is a very conventient way to download software.
+
+Example for Version 3.7.0
 
 ```
-curl -sLO https://github.com/IBM/domino-docker/raw/master/dockerfiles/domino/install_dir/start_script.tar
+curl -sLO https://github.com/nashcom/domino-startscript/releases/download/v3.7.0/domino-startscript_v3.7.0.tar
 ```
 
 Extact the downloaded tar file
 
 ```
-tar -xvf start_script.tar
-cd start_script
+tar -xf domino-startscript_3.7.0.tar
+cd domino-startscript
 ```
 
 Run the start script installation script
@@ -232,7 +234,7 @@ Instead of just specifying the port with it's port number, you can add a XML fil
 The start script already contains the XML file in the `extra` directory, which can be copied to your firewalld configuration.
 
 ```
-cp /local/software/start_script/extra/firewalld/nrpc.xml /etc/firewalld/services/
+cp /local/software/domino-startscript/extra/firewalld/nrpc.xml /etc/firewalld/services/
 ```
 
 ### Open ports NRPC, HTTP, HTTPS and SMTP
@@ -254,5 +256,3 @@ Check your current configuration
 ```
 firewall-cmd --list-services
 ```
-
-
