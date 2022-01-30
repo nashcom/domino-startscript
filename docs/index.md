@@ -48,17 +48,19 @@ The following directory outline is used in our Docker Community project as well 
 For smaller servers a single **/local** mount point is perfectly OK.  
 Obviously **backup** should always be a separate mount point.
 
+{: .lh-0 }
 ```
 /
 ├── local
-    ├── notesdata
-    ├── translog
-    ├── daos
-    ├── nif
-    ├── ft
-    ├── restore
-    └── backup
+    ├── notesdata
+    ├── translog
+    ├── daos
+    ├── nif
+    ├── ft
+    ├── restore
+    └── backup
 ```
+{: .fh-default }
 
 ## Download the start script tar file
 
