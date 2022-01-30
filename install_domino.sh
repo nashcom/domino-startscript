@@ -28,10 +28,10 @@ else
 fi
 
 if [ -z "$START_SCRIPT_VER" ]; then
-  START_SCRIPT_VER=3.7.0
+  #START_SCRIPT_VER=3.7.0
+  START_SCRIPT_VER=
 fi
 
-DOMINO_DOCKER_GIT_URL=https://github.com/IBM/domino-docker/raw/master
 START_SCRIPT_GIT_URL=https://github.com/nashcom/domino-startscript
 
 # In any case set a software directory -- also when downloading
@@ -46,7 +46,7 @@ fi
 
 PROD_NAME=domino
 
-VERSION_FILE_NAME_URL=$DOMINO_DOCKER_GIT_URL/software/current_version.txt
+VERSION_FILE_NAME_URL=$START_SCRIPT_GIT_URL/current_version.txt
 SOFTWARE_FILE=$SOFTWARE_DIR/software.txt
 VERSION_FILE=$SOFTWARE_DIR/current_version.txt
 LOTUS=/opt/hcl/domino
@@ -710,19 +710,34 @@ set_sh_shell()
 
 install_start_script()
 {
-  START_SCRIPT_FILE=domino-startscript_v${START_SCRIPT_VER}.tar
-  START_SCRIPT_URL=${START_SCRIPT_GIT_URL}/releases/download/v${START_SCRIPT_VER}/${START_SCRIPT_FILE}
-  START_SCRIPT_DIR=domino-startscript
-
   header "Install Nash!Com Domino start script"
+
+  START_SCRIPT_LATEST_LINK=https://raw.githubusercontent.com/nashcom/domino-startscript/main/latest.txt
 
   cd $SOFTWARE_DIR
 
-  # Download start script if it does not exist
-  if [ ! -e "$START_SCRIPT_FILE" ]; then
-    echo "Downloading start script from $START_SCRIPT_URL"
-    $CURL_CMD $START_SCRIPT_URL -o $START_SCRIPT_FILE
+  if [ -z "$START_SCRIPT_VER" ]; then
+
+     START_SCRIPT_FILE=domino-startscript_latest.tar
+
+     #Download latest version from GitHub
+     if [ ! -e "$START_SCRIPT_FILE" ]; then
+       curl -L $(curl -sL $START_SCRIPT_LATEST_LINK) -o "$START_SCRIPT_FILE"
+     fi
+  
+  else
+
+    START_SCRIPT_FILE=domino-startscript_v${START_SCRIPT_VER}.tar
+    START_SCRIPT_URL=${START_SCRIPT_GIT_URL}/releases/download/v${START_SCRIPT_VER}/${START_SCRIPT_FILE}
+
+    # Download start script if it does not exist
+    if [ ! -e "$START_SCRIPT_FILE" ]; then
+      echo "Downloading start script from $START_SCRIPT_URL"
+      $CURL_CMD $START_SCRIPT_URL -o $START_SCRIPT_FILE
+    fi
   fi
+
+  START_SCRIPT_DIR=domino-startscript
 
   # First remove old directory if present
   remove_directory "$START_SCRIPT_DIR"
@@ -834,7 +849,7 @@ install_domino()
 
   # Gets download name stored in GitHub repo 
 
-  download_file_ifpresent "$DOMINO_DOCKER_GIT_URL/software" software.txt "$SOFTWARE_DIR"
+  download_file_ifpresent "$START_SCRIPT_GIT_URL" software.txt "$SOFTWARE_DIR"
 
   get_download_name $PROD_NAME $PROD_VER
 
