@@ -1,11 +1,11 @@
 #!/bin/bash
 
 ############################################################################
-# Copyright Nash!Com, Daniel Nashed 2021 - APACHE 2.0 see LICENSE
+# Copyright Nash!Com, Daniel Nashed 2022 - APACHE 2.0 see LICENSE
 ############################################################################
 
 # Domino on Linux installation script
-# Version 1.0.1 06.11.2021
+# Version 1.0.2 01.02.2022
 
 # - Installs required software
 # - Adds notes:notes user and group
@@ -27,6 +27,14 @@ else
   echo "Installing software from default location [$SOFTWARE_DIR]"
 fi
 
+if [ -z "$START_SCRIPT_VER" ]; then
+  #START_SCRIPT_VER=3.7.0
+  START_SCRIPT_VER=
+fi
+
+START_SCRIPT_GIT_URL=https://github.com/nashcom/domino-startscript
+START_SCRIPT_GIT_RAW_URL=https://raw.githubusercontent.com/nashcom/domino-startscript/main
+
 # In any case set a software directory -- also when downloading
 if [ -z "$SOFTWARE_DIR" ]; then
   SOFTWARE_DIR=/local/software
@@ -39,9 +47,7 @@ fi
 
 PROD_NAME=domino
 
-DOMINO_DOCKER_GIT_URL=https://github.com/IBM/domino-docker/raw/master
-START_SCRIPT_URL=$DOMINO_DOCKER_GIT_URL/dockerfiles/domino/install_dir/start_script.tar
-VERSION_FILE_NAME_URL=$DOMINO_DOCKER_GIT_URL/software/current_version.txt
+VERSION_FILE_NAME_URL=$START_SCRIPT_GIT_RAW_URL/current_version.txt
 SOFTWARE_FILE=$SOFTWARE_DIR/software.txt
 VERSION_FILE=$SOFTWARE_DIR/current_version.txt
 LOTUS=/opt/hcl/domino
@@ -440,10 +446,19 @@ config_firewall()
     return 0
   fi
 
-  # add well known NRPC port
-  cp $SOFTWARE_DIR/start_script/extra/firewalld/nrpc.xml /etc/firewalld/services/ 
+  if [ -z "$START_SCRIPT_DIR" ]; then
+    echo "No start script directory found"
+  fi
 
-  # reload just in case to let firewalld notice the change
+  if [ ! -e "$SOFTWARE_DIR/$START_SCRIPT_DIR" ]; then
+    echo "Start Script install directory not found!"
+    return 0
+  fi
+
+  # Add well known NRPC port
+  cp "$SOFTWARE_DIR/$START_SCRIPT_DIR/extra/firewalld/nrpc.xml" /etc/firewalld/services/ 
+
+  # Reload just in case to let firewalld notice the change
   firewall-cmd --reload
 
   # enable NRPC, HTTP, HTTPS and SMTP in firewall
@@ -568,6 +583,8 @@ install_software()
   # linux_update
 
   # adds epel repository for additional software packages on RHEL/CentOS/Fedora platforms
+
+  header "Installing required Linux packages"
 
   case "$LINUX_ID_LIKE" in
 
@@ -695,25 +712,53 @@ set_sh_shell()
 install_start_script()
 {
   header "Install Nash!Com Domino start script"
+
+  START_SCRIPT_LATEST_LINK=https://raw.githubusercontent.com/nashcom/domino-startscript/main/latest.txt
+
+  cd $SOFTWARE_DIR
+
+  if [ -z "$START_SCRIPT_VER" ]; then
+
+     START_SCRIPT_FILE=domino-startscript_latest.tar
+
+     #Download latest version from GitHub
+     if [ ! -e "$START_SCRIPT_FILE" ]; then
+       curl -L $(curl -sL $START_SCRIPT_LATEST_LINK) -o "$START_SCRIPT_FILE"
+     fi
   
-  # Downloads and installs the latest Domino start script from the Domino Docker Community image GitHub repo
+  else
 
-  cd $SOFTWARE_DIR 
-  $CURL_CMD -sL $START_SCRIPT_URL -o start_script.tar
+    START_SCRIPT_FILE=domino-startscript_v${START_SCRIPT_VER}.tar
+    START_SCRIPT_URL=${START_SCRIPT_GIT_URL}/releases/download/v${START_SCRIPT_VER}/${START_SCRIPT_FILE}
 
-  if [ -e start_script ]; then
-    rm -rf start_script
+    # Download start script if it does not exist
+    if [ ! -e "$START_SCRIPT_FILE" ]; then
+      echo "Downloading start script from $START_SCRIPT_URL"
+      $CURL_CMD $START_SCRIPT_URL -o $START_SCRIPT_FILE
+    fi
   fi
 
-  tar -xf start_script.tar
-  start_script/install_script
-  rm -rf start_script.tar
+  START_SCRIPT_DIR=domino-startscript
 
+  # First remove old directory if present
+  remove_directory "$START_SCRIPT_DIR"
+
+  # Extract new start script, install and remove dir & tar
+  tar -xf "$START_SCRIPT_FILE"
+
+  if [ ! -e "$START_SCRIPT_DIR/install_script" ]; then
+    echo "Start Script ${START_SCRIPT_VER} installer not found!"
+    return 1
+  fi
+ 
+  "$START_SCRIPT_DIR/install_script"
 }
 
 cleanup_install_data ()
 {
-  remove_directory $SOFTWARE_DIR/start_script
+  if [ -n "$START_SCRIPT_DIR" ]; then
+    remove_directory "$START_SCRIPT_DIR"
+  fi
 }
 
 get_notes_ini_var()
@@ -776,6 +821,11 @@ install_domino()
     get_current_version $PROD_NAME 
   fi
 
+  if [ -z "$PROD_VER" ]; then
+    log_error "No Domino version to install specified!"
+    return 1
+  fi
+
   if [ -e "$LOTUS/bin/server" ]; then
 
     # If Domino was installed by this routine, there is a version file
@@ -805,7 +855,7 @@ install_domino()
 
   # Gets download name stored in GitHub repo 
 
-  download_file_ifpresent "$DOMINO_DOCKER_GIT_URL/software" software.txt "$SOFTWARE_DIR"
+  download_file_ifpresent "$START_SCRIPT_GIT_RAW_URL" software.txt "$SOFTWARE_DIR"
 
   get_download_name $PROD_NAME $PROD_VER
 
@@ -852,7 +902,7 @@ install_domino()
   fi
 
   cd $SOFTWARE_DIR 
-  rm -rf linux64
+  remove_directory linux64
 
   echo $PROD_VER > $PROD_VER_FILE
 
