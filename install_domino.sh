@@ -33,6 +33,7 @@ if [ -z "$START_SCRIPT_VER" ]; then
 fi
 
 START_SCRIPT_GIT_URL=https://github.com/nashcom/domino-startscript
+START_SCRIPT_GIT_RAW_URL=https://raw.githubusercontent.com/nashcom/domino-startscript/main
 
 # In any case set a software directory -- also when downloading
 if [ -z "$SOFTWARE_DIR" ]; then
@@ -46,7 +47,7 @@ fi
 
 PROD_NAME=domino
 
-VERSION_FILE_NAME_URL=$START_SCRIPT_GIT_URL/current_version.txt
+VERSION_FILE_NAME_URL=$START_SCRIPT_GIT_RAW_URL/current_version.txt
 SOFTWARE_FILE=$SOFTWARE_DIR/software.txt
 VERSION_FILE=$SOFTWARE_DIR/current_version.txt
 LOTUS=/opt/hcl/domino
@@ -820,6 +821,11 @@ install_domino()
     get_current_version $PROD_NAME 
   fi
 
+  if [ -z "$PROD_VER" ]; then
+    log_error "No Domino version to install specified!"
+    return 1
+  fi
+
   if [ -e "$LOTUS/bin/server" ]; then
 
     # If Domino was installed by this routine, there is a version file
@@ -849,7 +855,7 @@ install_domino()
 
   # Gets download name stored in GitHub repo 
 
-  download_file_ifpresent "$START_SCRIPT_GIT_URL" software.txt "$SOFTWARE_DIR"
+  download_file_ifpresent "$START_SCRIPT_GIT_RAW_URL" software.txt "$SOFTWARE_DIR"
 
   get_download_name $PROD_NAME $PROD_VER
 
