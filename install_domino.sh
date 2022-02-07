@@ -714,7 +714,7 @@ install_start_script()
 
   if [ -z "$STARTSCRIPT_VER" ]; then
 
-     STARTSCRIPT_FILE=domino-startscript_latest.tar
+     STARTSCRIPT_FILE=domino-startscript_latest.taz
 
      #Download latest version from GitHub
      if [ ! -e "$STARTSCRIPT_FILE" ]; then
@@ -723,7 +723,7 @@ install_start_script()
   
   else
 
-    STARTSCRIPT_FILE=domino-startscript_v${STARTSCRIPT_VER}.tar
+    STARTSCRIPT_FILE=domino-startscript_v${STARTSCRIPT_VER}.taz
     STARTSCRIPT_URL=${STARTSCRIPT_GIT_URL}/releases/download/v${STARTSCRIPT_VER}/${STARTSCRIPT_FILE}
 
     # Download start script if it does not exist
