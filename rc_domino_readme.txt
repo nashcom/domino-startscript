@@ -1751,10 +1751,10 @@ It is highly recommended to use 8 chars or less for all user-names on Linux/UNIX
 
 
 
-Domino SIGHUB Issue
+Domino SIGHUP Issue
 -------------------
 
-The Domino JVM has a known limitation when handling the SIGHUB signal on some platforms.
+The Domino JVM has a known limitation when handling the SIGHUP signal on some platforms.
 Normally the Domino Server does ignore this signal. But the JVM might crash
 when receiving the signal. Starting the server via nohub does not solve the issue.
 The only two known working configurations are:
@@ -1764,7 +1764,7 @@ a.) Invoke the bash before starting the server
 b.) - Ensure that your login shell is /bin/ksh
     - Start server always with "su - " (switch user) even if you are already
       running with the right user. The su command will start the server in
-      it's own process tree and the SIGHUB signal is not send to the Domino
+      it's own process tree and the SIGHUP signal is not send to the Domino
       processes.
 
       Note: The start-script does always switch to the Domino server user
@@ -2567,7 +2567,7 @@ V1.5 22.05.2006
 V1.4 02.04.2006
 ---------------
 
-- Added code in rc_domino to handle a Solaris SIGHUB issue when started manually in the shell
+- Added code in rc_domino to handle a Solaris SIGHUP issue when started manually in the shell
 
 - Added code in rc_domino to optional determine the UNIX user from RC script name (link)
 

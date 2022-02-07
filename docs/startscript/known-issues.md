@@ -72,16 +72,16 @@ Some other commands like ipcs start truncating user-names in display after 10 ch
 
 It is highly recommended to use 8 chars or less for all user-names on Linux/UNIX!
 
-## Domino SIGHUB Issue
+## Domino SIGHUP Issue
 
-The Domino JVM has a known limitation when handling the SIGHUB signal on some platforms.  
+The Domino JVM has a known limitation when handling the SIGHUP signal on some platforms.  
 Normally the Domino Server does ignore this signal. But the JVM might crash when receiving the signal. Starting the server via nohub does not solve the issue.
 
 The only two known working configurations are:
 
 - Invoke the bash before starting the server
 
-- Start server always with "su - " (switch user) even if you are already  running with the right user. The su command will start the server in it's own process tree and the SIGHUB signal is not send to the Domino processes.
+- Start server always with "su - " (switch user) even if you are already  running with the right user. The su command will start the server in it's own process tree and the SIGHUP signal is not send to the Domino processes.
 
   Note: The start-script does always switch to the Domino server user for the "start" and "restart" commands.  
   For other commands no "su -" is needed to enforce the environment.  
