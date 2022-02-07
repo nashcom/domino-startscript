@@ -27,13 +27,8 @@ else
   echo "Installing software from default location [$SOFTWARE_DIR]"
 fi
 
-if [ -z "$START_SCRIPT_VER" ]; then
-  #START_SCRIPT_VER=3.7.0
-  START_SCRIPT_VER=
-fi
-
-START_SCRIPT_GIT_URL=https://github.com/nashcom/domino-startscript
-START_SCRIPT_GIT_RAW_URL=https://raw.githubusercontent.com/nashcom/domino-startscript/main
+STARTSCRIPT_GIT_URL=https://github.com/nashcom/domino-startscript
+STARTSCRIPT_GIT_RAW_URL=https://raw.githubusercontent.com/nashcom/domino-startscript/main
 
 # In any case set a software directory -- also when downloading
 if [ -z "$SOFTWARE_DIR" ]; then
@@ -47,7 +42,7 @@ fi
 
 PROD_NAME=domino
 
-VERSION_FILE_NAME_URL=$START_SCRIPT_GIT_RAW_URL/current_version.txt
+VERSION_FILE_NAME_URL=$STARTSCRIPT_GIT_RAW_URL/current_version.txt
 SOFTWARE_FILE=$SOFTWARE_DIR/software.txt
 VERSION_FILE=$SOFTWARE_DIR/current_version.txt
 LOTUS=/opt/hcl/domino
@@ -446,17 +441,17 @@ config_firewall()
     return 0
   fi
 
-  if [ -z "$START_SCRIPT_DIR" ]; then
+  if [ -z "$STARTSCRIPT_DIR" ]; then
     echo "No start script directory found"
   fi
 
-  if [ ! -e "$SOFTWARE_DIR/$START_SCRIPT_DIR" ]; then
+  if [ ! -e "$SOFTWARE_DIR/$STARTSCRIPT_DIR" ]; then
     echo "Start Script install directory not found!"
     return 0
   fi
 
   # Add well known NRPC port
-  cp "$SOFTWARE_DIR/$START_SCRIPT_DIR/extra/firewalld/nrpc.xml" /etc/firewalld/services/ 
+  cp "$SOFTWARE_DIR/$STARTSCRIPT_DIR/extra/firewalld/nrpc.xml" /etc/firewalld/services/ 
 
   # Reload just in case to let firewalld notice the change
   firewall-cmd --reload
@@ -713,51 +708,51 @@ install_start_script()
 {
   header "Install Nash!Com Domino start script"
 
-  START_SCRIPT_LATEST_LINK=https://raw.githubusercontent.com/nashcom/domino-startscript/main/latest.txt
+  STARTSCRIPT_LATEST_LINK=https://raw.githubusercontent.com/nashcom/domino-startscript/main/latest.txt
 
   cd $SOFTWARE_DIR
 
-  if [ -z "$START_SCRIPT_VER" ]; then
+  if [ -z "$STARTSCRIPT_VER" ]; then
 
-     START_SCRIPT_FILE=domino-startscript_latest.tar
+     STARTSCRIPT_FILE=domino-startscript_latest.tar
 
      #Download latest version from GitHub
-     if [ ! -e "$START_SCRIPT_FILE" ]; then
-       curl -L $(curl -sL $START_SCRIPT_LATEST_LINK) -o "$START_SCRIPT_FILE"
+     if [ ! -e "$STARTSCRIPT_FILE" ]; then
+       curl -L $(curl -sL $STARTSCRIPT_LATEST_LINK) -o "$STARTSCRIPT_FILE"
      fi
   
   else
 
-    START_SCRIPT_FILE=domino-startscript_v${START_SCRIPT_VER}.tar
-    START_SCRIPT_URL=${START_SCRIPT_GIT_URL}/releases/download/v${START_SCRIPT_VER}/${START_SCRIPT_FILE}
+    STARTSCRIPT_FILE=domino-startscript_v${STARTSCRIPT_VER}.tar
+    STARTSCRIPT_URL=${STARTSCRIPT_GIT_URL}/releases/download/v${STARTSCRIPT_VER}/${STARTSCRIPT_FILE}
 
     # Download start script if it does not exist
-    if [ ! -e "$START_SCRIPT_FILE" ]; then
-      echo "Downloading start script from $START_SCRIPT_URL"
-      $CURL_CMD $START_SCRIPT_URL -o $START_SCRIPT_FILE
+    if [ ! -e "$STARTSCRIPT_FILE" ]; then
+      echo "Downloading start script from $STARTSCRIPT_URL"
+      $CURL_CMD $STARTSCRIPT_URL -o $STARTSCRIPT_FILE
     fi
   fi
 
-  START_SCRIPT_DIR=domino-startscript
+  STARTSCRIPT_DIR=domino-startscript
 
   # First remove old directory if present
-  remove_directory "$START_SCRIPT_DIR"
+  remove_directory "$STARTSCRIPT_DIR"
 
   # Extract new start script, install and remove dir & tar
-  tar -xf "$START_SCRIPT_FILE"
+  tar -xf "$STARTSCRIPT_FILE"
 
-  if [ ! -e "$START_SCRIPT_DIR/install_script" ]; then
-    echo "Start Script ${START_SCRIPT_VER} installer not found!"
+  if [ ! -e "$STARTSCRIPT_DIR/install_script" ]; then
+    echo "Start Script ${STARTSCRIPT_VER} installer not found!"
     return 1
   fi
  
-  "$START_SCRIPT_DIR/install_script"
+  "$STARTSCRIPT_DIR/install_script"
 }
 
 cleanup_install_data ()
 {
-  if [ -n "$START_SCRIPT_DIR" ]; then
-    remove_directory "$START_SCRIPT_DIR"
+  if [ -n "$STARTSCRIPT_DIR" ]; then
+    remove_directory "$STARTSCRIPT_DIR"
   fi
 }
 
@@ -855,7 +850,7 @@ install_domino()
 
   # Gets download name stored in GitHub repo 
 
-  download_file_ifpresent "$START_SCRIPT_GIT_RAW_URL" software.txt "$SOFTWARE_DIR"
+  download_file_ifpresent "$STARTSCRIPT_GIT_RAW_URL" software.txt "$SOFTWARE_DIR"
 
   get_download_name $PROD_NAME $PROD_VER
 
