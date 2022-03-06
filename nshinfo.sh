@@ -84,6 +84,12 @@ print_infos()
     fi
   fi
 
+  if [ -n "$(which nerdctl 2> /dev/null)" ]; then
+      CONTAINER_STR=$(nerdctl -v | head -1)
+      DOCKER_RUNTIME_VERSION=$(echo $CONTAINER_STR | awk -F'version ' '{print $2 }'|cut -d"," -f1)
+      printf "Nerdctl       :      $DOCKER_RUNTIME_VERSION\n"
+  fi
+
   printf "\n"
 
   printf "CPU Model     :      $CPU_MODEL\n"

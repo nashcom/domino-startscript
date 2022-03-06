@@ -226,11 +226,24 @@ check_container_environment()
       # Podman environment detected
       CONTAINER_CMD=podman
       CONTAINER_ENV_NAME=Podman
-      local CONTAINER_RUNTIME_VERSION_STR=$(podman -v | head -1)
+      CONTAINER_RUNTIME_VERSION_STR=$(podman -v | head -1)
       CONTAINER_RUNTIME_VERSION=$(echo $CONTAINER_RUNTIME_VERSION_STR | awk -F'version ' '{print $2 }')
       check_version "$CONTAINER_RUNTIME_VERSION" "$PODMAN_MINIMUM_VERSION" "$CONTAINER_CMD"
     fi
   fi
+
+  if [ -z "$CONTAINER_CMD" ]; then
+    if [ -n "$(which nerdctl 2> /dev/null)" ]; then
+      CONTAINER_CMD=nerdctl
+      CONTAINER_ENV_NAME=nerdctl
+      CONTAINER_RUNTIME_VERSION_STR=$(nerdctl -v | head -1)
+      CONTAINER_RUNTIME_VERSION=$(echo $CONTAINER_RUNTIME_VERSION_STR | awk -F'version ' '{print $2 }')
+
+      # Nerdctl needs no additional config
+      return 0
+    fi
+  fi
+
 
   if [ -z "$CONTAINER_CMD" ]; then
     if [ -x "/usr/bin/docker" ]; then
@@ -250,7 +263,7 @@ check_container_environment()
       return 0
     fi
   fi  
-  
+
   if [ -z "$CONTAINER_CMD" ]; then
     if [ ! "$1" = "install" ]; then
       log_and_exit "No container environment detected! Tip: use 'install' option to install Podman"
@@ -267,7 +280,7 @@ check_container_environment()
   PODMAN_OPTIONS="--cgroups=no-conmon --conmon-pidfile $CONTAINER_PID --cidfile $CONTAINER_CID"
 
   if [ -z "$CONTAINER_HEALTH_CHECK" ]; then
-    CONTAINER_HEALTH_CHECK="--health-cmd=/domino_docker_healthcheck.sh --health-interval=60s --health-retries=4 --health-start-period=120s"
+    CONTAINER_HEALTH_CHECK="--health-cmd=/healthcheck.sh --health-interval=60s --health-retries=4 --health-start-period=120s"
   fi
 
   return 0

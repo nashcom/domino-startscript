@@ -28,7 +28,7 @@ SCRIPT_DIR=`dirname $SCRIPT_REAL`
 DOMINO_INSTALL_CONFIG_FILE=$SCRIPT_DIR/sysconfig/rc_domino_config
 DOMINO_INSTALL_CONFIG_TARGET=/etc/sysconfig/rc_domino_config
 
-DOMINO_DOCKER_SCRIPT=domino_docker_entrypoint.sh
+DOMINO_DOCKER_SCRIPT=entrypoint.sh
 DONT_TOUCH_THIS_NASHCOM_PATH=/opt/nashcom/startscript
 DONT_TOUCH_THIS_STANDARD_USER=notes
 

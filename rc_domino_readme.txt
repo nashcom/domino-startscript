@@ -333,7 +333,7 @@ For Domino on Docker a separate entry point is needed to start the server.
 Images derived from CentOS 7.4 and higher are supported.
 
 A Docker image doesn't have a full systemd implementation and start/stop cannot be implemented leveraging systemd.
-Therefore the start script comes with a separate Docker entry point script "domino_docker_entrypoint.sh"
+Therefore the start script comes with a separate Docker entry point script "entrypoint.sh"
 The script can be used in your Docker build script and you can include the start script into your own Docker images.
 
 The entry point script takes care of start and stop of the server by invoking the rc_domino_start script directly.
@@ -466,7 +466,7 @@ Components of the Script
   Each Domino partition needs a separate service file.
   See configuration details in section "Domino Start Script systemd Support"
 
-5.) domino_docker_entrypoint.sh Docker entry point script
+5.) entrypoint.sh Docker entry point script
 
   This script can be used as the standard entry point for your Domino Docker container.
   It takes care of your Domino Server start/stop operations.
