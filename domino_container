@@ -226,7 +226,7 @@ check_container_environment()
       # Podman environment detected
       CONTAINER_CMD=podman
       CONTAINER_ENV_NAME=Podman
-      local CONTAINER_RUNTIME_VERSION_STR=$(podman version)
+      local CONTAINER_RUNTIME_VERSION_STR=$(podman -v | head -1)
       CONTAINER_RUNTIME_VERSION=$(echo $CONTAINER_RUNTIME_VERSION_STR | cut -d" " -f2)
       check_version "$CONTAINER_RUNTIME_VERSION" "$PODMAN_MINIMUM_VERSION" "$CONTAINER_CMD"
     fi
@@ -240,7 +240,7 @@ check_container_environment()
       CONTAINER_ENV_NAME=Docker
 
       # Check container environment
-      CONTAINER_RUNTIME_VERSION_STR=$(docker -v)
+      CONTAINER_RUNTIME_VERSION_STR=$(docker -v | head -1)
       CONTAINER_RUNTIME_VERSION=$(echo $CONTAINER_RUNTIME_VERSION_STR | cut -d" " -f3|cut -d"," -f1)
 
       check_version "$CONTAINER_RUNTIME_VERSION" "$DOCKER_MINIMUM_VERSION" "$CONTAINER_CMD"

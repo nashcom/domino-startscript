@@ -1,8 +1,8 @@
 ###########################################################################
 # Configuration - Start/Stop Script for Domino on xLinux/zLinux/AIX       #
-# Version 3.6.2 04.12.2021                                                #
+# Version 3.7.0 02.02.2022                                                #
 #                                                                         #
-# (C) Copyright Daniel Nashed/NashCom 2005-2021                           #
+# (C) Copyright Daniel Nashed/NashCom 2005-2022                           #
 # Feedback domino_unix@nashcom.de                                         #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #
@@ -29,8 +29,6 @@ DOMINO_CONFIGURED="yes"
 # New default is to use what is specified in user profile.
 #DOMINO_LANG=en_US.UTF-8
 #DOMINO_LANG=de_DE.UTF-8
-
-DOMINO_START_SCRIPT_VERSION=332
 
 # -- Optional Environment variable file (particular useful for systemd environments)  --
 #DOMINO_ENV_FILE=/etc/sysconfig/rc_domino_env

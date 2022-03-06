@@ -91,7 +91,7 @@
               "TRANSLOG_UseAll": "0",
 
               "QtaMthd": "1",
-              "DAOSEnable": "1",
+              "DAOSEnable": "0",
               "DAOSBasePath": "/local/daos",
               "DAOSMinObjSize": "256000",
               "DAOS_ENCRYPT_NLO": "0",
