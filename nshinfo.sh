@@ -71,7 +71,7 @@ print_infos()
 
   if [ -x /usr/bin/podman ]; then
     CONTAINER_STR=$(podman -v | head -1)
-    PODMAN_RUNTIME_VERSION=$(echo $CONTAINER_STR | cut -d" " -f2)
+    PODMAN_RUNTIME_VERSION=$(echo $CONTAINER_STR | awk -F'version ' '{print $2 }')
     printf "Podman        :      $PODMAN_RUNTIME_VERSION\n"
   fi
 
@@ -79,7 +79,7 @@ print_infos()
     # only check if docker is a binary and not a podman script
     if [ -n "$(file /usr/bin/docker | grep ELF)" ]; then
       CONTAINER_STR=$(docker -v | head -1)
-      DOCKER_RUNTIME_VERSION=$(echo $CONTAINER_STR | cut -d" " -f3|cut -d"," -f1)
+      DOCKER_RUNTIME_VERSION=$(echo $CONTAINER_STR | awk -F'version ' '{print $2 }'|cut -d"," -f1)
       printf "Docker        :      $DOCKER_RUNTIME_VERSION\n"
     fi
   fi
