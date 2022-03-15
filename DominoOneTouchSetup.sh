@@ -2,9 +2,9 @@
 
 ###########################################################################
 # Domino One-Touch JSON configuration script                              #
-# Version 1.0.0 30.12.2021                                                #
+# Version 1.1.0 14.03.2022                                                #
 #                                                                         #
-# (C) Copyright Daniel Nashed/NashCom 2021                                #
+# (C) Copyright Daniel Nashed/NashCom 2021-2022                           #
 # Feedback domino_unix@nashcom.de                                         #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #
@@ -28,9 +28,6 @@
 # If variables are already set in your environment, the input prompt will use those variables.
 # The behavior can be customized via domCfgJSON_mode below.
 
-# $1 = JSON template file
-# $2 = JSON result file (overwrites existing files)
-
 # ---------------------------------------------
 
 # Existing variable mode:
@@ -46,7 +43,10 @@
 #domCfgJSON_debug=yes
 
 # Default config environment file
-DOMINO_AUTO_CFG_DEFAULTS_ENV_FILE=/local/notesdata/DominoAutoConfigDefault.env
+
+if [ -z "$DOMINO_AUTO_CFG_DEFAULTS_ENV_FILE" ]; then
+  DOMINO_AUTO_CFG_DEFAULTS_ENV_FILE=/local/notesdata/DominoAutoConfigDefault.env
+fi
 
 # ---------------------------------------------
 
@@ -188,6 +188,9 @@ GetConfig()
 
 ConfigJSON()
 {
+  # $1 = JSON template file
+  # $2 = JSON result file (overwrites existing files)
+
   local JSON_TEMPLATE=$1
   local JSON_CFG=$2
 
@@ -232,12 +235,17 @@ ConfigJSON()
 
 EditOneTouchSetup()
 {
-
-  local DOMINO_AUTO_CONFIG_ENV_FILE=$DOMINO_DATA_PATH/DominoAutoConfig.env
-  local DOMINO_AUTO_CONFIG_JSON_FILE=$DOMINO_DATA_PATH/DominoAutoConfig.json
   local CFG_FILE=
   local CFG_TEMPLATE=
   local TEMPLATE_DIR=/opt/nashcom/startscript/OneTouchSetup
+
+  if [ -z "$DOMINO_AUTO_CONFIG_ENV_FILE" ]; then
+     DOMINO_AUTO_CONFIG_ENV_FILE=$DOMINO_DATA_PATH/DominoAutoConfig.env
+  fi
+
+  if [ -z "$DOMINO_AUTO_CONFIG_JSON_FILE" ]; then
+    DOMINO_AUTO_CONFIG_JSON_FILE=$DOMINO_DATA_PATH/DominoAutoConfig.json
+  fi
 
   if [ "$1" = "log" ]; then
 

@@ -11,7 +11,21 @@ has_children: false
 This file containers the change history for all start script components.  
 Refere to the documentation for details. 
 
+
+
 # Change History
+
+## V3.7.1 12.03.2022
+
+### Problems solved
+
+- domino_container script install nshinfo script issues fixed
+- renamed Docker entrypoint.sh
+- fixed issues detecting podman version and added nerdctrl version check
+
+### Changes
+
+- Disabled DAOS by default. the settings remain in OnTouch configuration
 
 ## V3.7.0 09.01.2022
 

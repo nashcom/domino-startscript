@@ -185,6 +185,16 @@ install_file_noupdate()
   install_file "$1" "$2" "$3" "$4" "$5" 
 }
 
+copy_one_touch_templates()
+{
+  local TARGET_DIR=$DOMINO_START_SCRIPT_DIR/OneTouchSetup
+  local SOURCE_DIR=$SCRIPT_DIR/OneTouchSetup
+  mkdir -p -m 755 $TARGET_DIR
+  cp -f $SOURCE_DIR/* $TARGET_DIR
+  chown -R "$DOMINO_USER":"$DOMINO_GROUP" $TARGET_DIR
+  chmod -R 644 $TARGET_DIR/*
+  return 0
+}
 
 header "Installing Domino Container Script & Config"
 
@@ -199,29 +209,33 @@ if [ ! -e "/etc/sysconfig" ]; then
   mkdir -m 755 /etc/sysconfig
 fi
 
-install_file $START_SCRIPT_DIR/domino_container $DOMINO_START_SCRIPT_DIR/domino_container $ROOT_USER $ROOT_GROUP 755
-install_file $START_SCRIPT_DIR/software.txt $DOMINO_START_SCRIPT_DIR/software.txt $ROOT_USER $ROOT_GROUP 755
+install_file "$START_SCRIPT_DIR/domino_container" "$DOMINO_START_SCRIPT_DIR/domino_container" $ROOT_USER $ROOT_GROUP 755
 install_file "$START_SCRIPT_DIR/nshinfo.sh" "$DOMINO_START_SCRIPT_DIR/nshinfo.sh" $ROOT_USER $ROOT_GROUP 755
+install_file "$START_SCRIPT_DIR/DominoOneTouchSetup.sh" "$DOMINO_START_SCRIPT_DIR/DominoOneTouchSetup.sh" $ROOT_USER $ROOT_GROUP 755
+install_file "$START_SCRIPT_DIR/nshcfg.sh" "$DOMINO_START_SCRIPT_DIR/nshcfg.sh" $ROOT_USER $ROOT_GROUP 755
+
 
 if [ ! -e /usr/bin/domino_container ]; then
-  ln -s $DOMINO_START_SCRIPT_DIR/domino_container /usr/bin/domino_container
+  ln -s "$DOMINO_START_SCRIPT_DIR/domino_container" /usr/bin/domino_container
 fi
 
 cp -r $START_SCRIPT_DIR/build_image $DOMINO_START_SCRIPT_DIR
 find $DOMINO_START_SCRIPT_DIR -name "*.sh" -exec chmod 755 {}  \;
 
 if [ "$PARAM1" = "upd" ]; then
-  install_file $START_SCRIPT_DIR/sysconfig/domino_container "$CONTAINER_INSTALL_CONFIG_FILEPATH" "$ROOT_USER" "$ROOT_GROUP" 644
-  install_file $START_SCRIPT_DIR/sysconfig/env_container_domino11 "/etc/sysconfig/env_container_domino11" "$ROOT_USER" "$ROOT_GROUP" 644
-  install_file $START_SCRIPT_DIR/sysconfig/env_container_domino12 "/etc/sysconfig/env_container_domino12" "$ROOT_USER" "$ROOT_GROUP" 644
+  install_file "$START_SCRIPT_DIR/sysconfig/domino_container" "$CONTAINER_INSTALL_CONFIG_FILEPATH" "$ROOT_USER" "$ROOT_GROUP" 644
+  install_file "$START_SCRIPT_DIR/sysconfig/env_container_domino12" "/etc/sysconfig/env_container_domino12" "$ROOT_USER" "$ROOT_GROUP" 644
+  install_file "$START_SCRIPT_DIR/domino.cfg" "/etc/sysconfig/domino.cfg" "$DOMINO_USER" "$DOMINO_GROUP" 644
 else
-  install_file_noupdate $START_SCRIPT_DIR/sysconfig/domino_container "$CONTAINER_INSTALL_CONFIG_FILEPATH" "$ROOT_USER" "$ROOT_GROUP" 644
-  install_file_noupdate $START_SCRIPT_DIR/sysconfig/env_container_domino11 "/etc/sysconfig/env_container_domino11" "$ROOT_USER" "$ROOT_GROUP" 644
-  install_file_noupdate $START_SCRIPT_DIR/sysconfig/env_container_domino12 "/etc/sysconfig/env_container_domino12" "$ROOT_USER" "$ROOT_GROUP" 644
+  install_file_noupdate "$START_SCRIPT_DIR/sysconfig/domino_container" "$CONTAINER_INSTALL_CONFIG_FILEPATH" "$ROOT_USER" "$ROOT_GROUP" 644
+  install_file_noupdate "$START_SCRIPT_DIR/sysconfig/env_container_domino12" "/etc/sysconfig/env_container_domino12" "$ROOT_USER" "$ROOT_GROUP" 644
+  install_file_noupdate "$START_SCRIPT_DIR/domino.cfg" "/etc/sysconfig/domino.cfg" "$DOMINO_USER" "$DOMINO_GROUP" 644
 fi
 
+copy_one_touch_templates
+
 if [ -x /usr/bin/podman ]; then
-  install_file_noupdate $START_SCRIPT_DIR/domino_container.service /etc/systemd/system/$CONTAINER_SYSTEMD_NAME $ROOT_USER $ROOT_GROUP 644
+  install_file_noupdate "$START_SCRIPT_DIR/domino_container.service" "/etc/systemd/system/$CONTAINER_SYSTEMD_NAME" $ROOT_USER $ROOT_GROUP 644
 fi
 
 if [ $? -eq 2 ]; then

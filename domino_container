@@ -27,8 +27,7 @@ else
   FULL_SCRIPT_NAME=/opt/nashcom/start_script
 fi
 
-SCRIPT_DIR_NAME=$(dirname $SCRIPT_NAME)
-FULL_SCRIPT_DIR_NAME=$(dirname $FULL_SCRIPT_NAME)
+SCRIPT_DIR_NAME=$(dirname $FULL_SCRIPT_NAME)
 NAME_PREFIX="container_"
 PARAM1=$1
 PARAM2=$2
@@ -134,6 +133,11 @@ SOFTWARE_PORT=7777
 SOFTWARE_CONTAINER=hclsoftware
 
 SYSTEMCTL_CMD="systemctl"
+
+# OneTouch configuration file
+if [ -z "$DOMINO_AUTO_CONFIG_JSON_FILE" ]; then
+  DOMINO_AUTO_CONFIG_JSON_FILE=/etc/sysconfig/DominoContainerAutoConfig.json
+fi
 
 log_space ()
 {
@@ -1102,6 +1106,23 @@ container_run ()
 
   $CONTAINER_CMD run $CONTAINER_IT $CONTAINER_PORTS --hostname=$CONTAINER_HOSTNAME --name $CONTAINER_NAME $CONTAINER_NETWORK $CONTAINER_ENV_FILE_OPTION $CONTAINER_VOLUMES --stop-timeout=$DOMINO_SHUTDOWN_TIMEOUT $FUSE_OPTIONS --cap-add=SYS_PTRACE --cap-add=NET_BIND_SERVICE $PODMAN_OPTIONS $CONTAINER_SPECIAL_OPTIONS $CONTAINER_NOTES_UID_OPTION $CONTAINER_HEALTH_CHECK $CONTAINER_RESTART_OPTIONS $CONTAINER_IMAGE
 
+
+  # If one touch configuration present, copy into container directly after start
+  if [ -z "$DOMINO_AUTO_CONFIG_JSON_FILE" ]; then
+    return 0
+  fi
+
+  if [ ! -e "$DOMINO_AUTO_CONFIG_JSON_FILE" ]; then
+     return 0
+  fi
+
+  echo "Copying OneTouch configuration into container"
+
+  $CONTAINER_CMD cp "$DOMINO_AUTO_CONFIG_JSON_FILE" $CONTAINER_NAME:/local/notesdata/DominoAutoConfig.json
+
+  # Remove config file, because it might contain sensitive data
+  #rm -f "$DOMINO_AUTO_CONFIG_JSON_FILE"
+
   return 0
 }
 
@@ -1443,7 +1464,7 @@ copy_config_file()
     fi
   fi
 
-  CONFIG_TEMPLATE_FILE=$FULL_SCRIPT_DIR_NAME/config_$(basename $SCRIPT_NAME | awk -F "$NAME_PREFIX" '{print $2}')
+  CONFIG_TEMPLATE_FILE=$SCRIPT_DIR_NAME/config_$(basename $SCRIPT_NAME | awk -F "$NAME_PREFIX" '{print $2}')
 
   if [ -e "$CONFIG_TEMPLATE_FILE" ]; then
     log_space "New config file [$CONFIG_TEMPLATE_FILE] -> [$NEW_CONFIG_FILE]"
@@ -1454,7 +1475,7 @@ copy_config_file()
   else
     log_space "Configuration template [$CONFIG_TEMPLATE_FILE] not found - Using default config -> [$NEW_CONFIG_FILE]"
     mkdir -p "$DOMINO_CFG_DIR"
-    CONFIG_TEMPLATE_FILE=$FULL_SCRIPT_DIR_NAME/config_domino
+    CONFIG_TEMPLATE_FILE=$SCRIPT_DIR_NAME/config_domino
     cp "$CONFIG_TEMPLATE_FILE" "$NEW_CONFIG_FILE" 
   fi
 }
@@ -1477,7 +1498,7 @@ copy_env_file()
     fi
   fi
 
-  ENV_TEMPLATE_FILE=$FULL_SCRIPT_DIR_NAME/$CONTAINER_ENV_FILE
+  ENV_TEMPLATE_FILE=$SCRIPT_DIR_NAME/$CONTAINER_ENV_FILE
 
   if [ -e "$ENV_TEMPLATE_FILE" ]; then
     log_space "New config file $ENV_TEMPLATE_FILE -> [$NEW_ENV_FILE]"
@@ -1488,7 +1509,7 @@ copy_env_file()
   else
     log_space "Configuration template [$ENV_TEMPLATE_FILE] not found - Using default config -> [$NEW_ENV_FILE]"
     mkdir -p "$DOMINO_CFG_DIR"
-    ENV_TEMPLATE_FILE=$FULL_SCRIPT_DIR_NAME/env_domino
+    ENV_TEMPLATE_FILE=$SCRIPT_DIR_NAME/env_domino
     cp "$ENV_TEMPLATE_FILE" "$NEW_ENV_FILE"
   fi
 }
@@ -1740,16 +1761,34 @@ case "$PARAM1" in
 
   about)
 
-    if [ -x $FULL_SCRIPT_DIR_NAME/nshinfo.sh ]; then
-      $FULL_SCRIPT_DIR_NAME/nshinfo.sh
+    if [ -x $SCRIPT_DIR_NAME/nshinfo.sh ]; then
+      $SCRIPT_DIR_NAME/nshinfo.sh
     fi
     ;;
 
   About|about+)
 
-    if [ -x $FULL_SCRIPT_DIR_NAME/nshinfo.sh ]; then
-      $FULL_SCRIPT_DIR_NAME/nshinfo.sh ipinfo
+    if [ -x $SCRIPT_DIR_NAME/nshinfo.sh ]; then
+      $SCRIPT_DIR_NAME/nshinfo.sh ipinfo
     fi
+    ;;
+
+   setup)
+
+    # setup On Touch Setup
+    echo
+
+    if [ -e "$SCRIPT_DIR_NAME/DominoOneTouchSetup.sh" ]; then
+
+      export SCRIPT_DIR_NAME
+      export DOMINO_AUTO_CONFIG_JSON_FILE
+
+      . "$SCRIPT_DIR_NAME/DominoOneTouchSetup.sh" "$PARAM2" "$PARAM3" "$PARAM4" "$PARAM5"
+    else
+      echo "Domino One-Touch Setup not available!"
+    fi
+    echo
+    exit 0
     ;;
 
   *)
