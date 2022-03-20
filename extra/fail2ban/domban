@@ -1,1 +1,316 @@
-<HTML><HEAD><TITLE>Unable to Process Request</TITLE></HEAD><BODY><P>Http Status Code: 404</P><P>Reason: File not found or unable to read file</P></BODY></HTML>
+#!/bin/bash
+
+
+print_delim ()
+{
+  echo "--------------------------------------------------------------------------------"
+}
+
+log_err()
+{
+  echo
+  echo $@
+  echo
+}
+
+fail2ban()
+{
+
+  if [ "$EUID" = "0" ]; then
+    SUDO=
+  else
+    SUDO=sudo
+    echo "Info: Not the root user, trying sudo"
+  fi
+  
+  # Get configuration first
+  DOMINO_CONFIG_FILE=/etc/sysconfig/rc_domino_config
+  . $DOMINO_CONFIG_FILE 
+
+  if [ -z "$EDIT_COMMAND" ]; then
+    EDIT_COMMAND=vi
+  fi
+
+  if [ -z "$DOMINO_DATA_PATH" ]; then
+    DOMINO_DATA_PATH=/local/notesdata
+  fi
+
+  if [ -z "$DOMINO_LOG_DIR" ]; then
+    DOMINO_LOG_DIR=$DOMINO_DATA_PATH
+  fi
+
+  if [ -z "$DOMINO_OUTPUT_LOG" ]; then
+    DOMINO_OUTPUT_LOG=$DOMINO_LOG_DIR/notes.log
+  fi
+
+  if [ "$1" = "help" ]; then
+    echo
+    echo "Domino Fail2Ban"
+    echo "---------------"
+    echo
+    echo "Syntax: domban"
+    echo
+    echo "ssh              Shows status of SSH jail"
+    echo "unblock <IP>     Unblocks IP from Domino and SSH jail"
+    echo "cfg              Configures fail2ban jail.local. Default editor: vi. Use e.g. export EDIT_COMMAND=nano"
+    echo "restart          Restarts fail2ban service"
+    echo "systemd <cmd>    Pass commands to systemd"
+    echo "install [upd]    Installs fail2ban and 'domban' script - 'upd' overwrites existing 'jail.local'"
+    echo "test <logfile>   Test Domino fail2ban filter against log - if no log file specified use configured log file"
+    echo "-                No parameter shows Domino jail status"
+    echo
+    echo "selinux          Shows SELinux status" 
+    echo "selinux logset   Lables start script log file with fail2ban access" 
+    echo "selinux logdel   Removes label for start script log" 
+    echo "selinux relable  Relables log files" 
+    echo
+   
+    return 0
+  fi
+
+  if [ "$1" = "install" ]; then
+
+    if [ "$EUID" != "0" ]; then
+      log_err "Please swith to 'root' user for installation!"
+      return 1
+    fi
+
+    # Install fail2box
+    yum install epel-release 
+    yum install fail2ban
+
+    cp domino.conf /etc/fail2ban/filter.d/domino.conf
+
+    if [ -e /etc/fail2ban/jail.local ]; then
+
+      if [ "$2" = "upd" ]; then
+        cp jail.local /etc/fail2ban/jail.local
+      else
+        log_err "Please review '/etc/fail2ban/jail.local' or use 'install upd' to overwrite existing config!"
+      fi  
+    else
+      cp jail.local /etc/fail2ban/jail.local
+    fi
+
+    cp -f domban /usr/bin/domban
+    chmod 755 /usr/bin/domban
+
+    systemctl enable fail2ban
+    systemctl restart fail2ban
+
+    if [ -x /usr/sbin/getenforce ]; then
+      SELINUX_STATUS=$(getenforce)
+      if [ "$SELINUX_STATUS" = "Enforcing" ]; then
+        echo "Info: SELinux is set to enforced!"
+        echo "Ensure fail2ban can read the Domino log file!"
+      fi
+    fi
+
+    return 0
+  fi
+
+  # Check if installed
+  if [ ! -x /usr/bin/fail2ban-client ]; then
+    log_err "fail2ban is not installed!"
+    return 1
+  fi
+
+  # Without parameters show current status of Domino jail
+  if [ -z "$1" ]; then
+    echo
+    print_delim
+    $SUDO fail2ban-client status domino
+    print_delim
+    echo
+    return 0
+  fi
+
+  if [ "$1" = "cfg" ]; then
+    $SUDO $EDIT_COMMAND /etc/fail2ban/jail.local
+    return 0
+  fi
+
+  # Show sshd status
+  if [ "$1" = "restart" ]; then
+    $SUDO systemctl restart fail2ban 
+    return 0
+  fi
+
+  # Show sshd status
+  if [ "$1" = "ssh" ]; then
+    echo
+    print_delim
+    $SUDO fail2ban-client status sshd
+    print_delim
+    echo
+    return 0
+  fi
+
+  # Unblock specified IP
+  if [ "$1" = "unblock" ]; then
+
+    if [ -z "$2" ]; then
+      log_err "No IP to unblock specified!"
+      return 1
+    fi
+
+    $SUDO fail2ban-client set domino unbanip $2
+    $SUDO fail2ban-client set sshd unbanip $2
+    return 0
+  fi
+
+  # systemd status 
+  if [ "$1" = "systemd" ]; then
+
+    if [ -z "$2" ]; then
+      echo
+      print_delim
+      $SUDO systemctl status fail2ban  
+      print_delim
+      echo
+      return 0
+    fi
+
+    # Passthru systemd commands
+    case "$2" in
+      start|stop|status|restart|enable|disable)
+        $SUDO systemctl $2 fail2ban
+        return 0
+        ;;
+    esac
+
+    log_err "Unkown systemd option: $2"
+    return 1 
+  fi
+
+
+  # Test Domino filter against log 
+  if [ "$1" = "test" ]; then
+
+    if [ -z "$2" ]; then
+      TEST_LOG="$DOMINO_OUTPUT_LOG"
+    else
+      TEST_LOG="$2"
+    fi
+
+    if [ ! -r "$TEST_LOG" ]; then
+      log_err "Cannot read test log file: $TEST_LOG"
+      return 1
+    fi
+
+    echo
+    print_delim
+    echo "Testing $TEST_LOG"
+    print_delim
+
+    fail2ban-regex "$TEST_LOG" /etc/fail2ban/filter.d/domino.conf
+
+    print_delim
+    echo
+    return 0
+  fi
+
+  # SELinux configurtion 
+  if [ "$1" = "selinux" ]; then
+
+    if [ ! -x /usr/sbin/getenforce ]; then
+      echo "No SELinux tools installed. Try to install package 'selinux-utils'"
+      return 1
+    fi
+
+    SELINUX_STATUS=$(getenforce)
+
+    if [ -z "$DOMINO_OUTPUT_LOG" ]; then
+      LOG_STATUS="not defined"
+
+    elif [ ! -e "$DOMINO_OUTPUT_LOG" ]; then
+      LOG_STATUS="not existing"
+
+    elif [ ! -r "$DOMINO_OUTPUT_LOG" ]; then
+      LOG_STATUS="cannot read"
+
+    else
+
+      SELINUX_DIR=$(dirname "$DOMINO_OUTPUT_LOG")
+
+      if [ -e "$SELINUX_DIR/names.nsf" ]; then
+        echo
+        print_delim
+        echo "Unsupported Domino Fail2Ban log configuration for SELinux!"
+        print_delim
+        echo
+
+        echo "Please configure Start Script log directory to different directory then data directory."
+        echo "SELinux lables files automatically based on the directory in which the files are created."
+        echo "The standard location /local/notesdata/notes.log, would require the Domino data directory would be fail2ban accessible."
+        echo "Therefore the log directory should be stored outside the data directory."        
+        echo
+        echo "- Run 'domino cfg' and specify a different directory for 'DOMINO_LOG_DIR and DOMINO_LOG_BACKUP'" 
+        echo "- Run 'domino restart' to restart your server to use the new log file location"
+        echo
+        echo "Example:"
+        echo "  DOMINO_LOG_DIR=/local/log/current"
+        echo "  DOMINO_LOG_BACKUP_DIR=/local/log/archive"
+        echo 
+        return 1 
+      fi
+
+      case "$2" in
+
+        "")
+          ;;
+
+        relable)
+          echo "SELinux - Relabeling $SELINUX_DIR"
+          restorecon -R -v "$SELINUX_DIR" 
+          ;;
+
+        logdel)
+          echo "SELinux - Deleting fail2ban_log_t attribute for $SELINUX_DIR"
+          semanage fcontext -d "$SELINUX_DIR(/.*)?"
+          echo "SELinux - Relabeling $SELINUX_DIR"
+          restorecon -R -v "$SELINUX_DIR" 
+          ;;
+
+        logset)
+          echo "SELinux - Setting fail2ban_log_t attribute for $SELINUX_DIR"
+          semanage fcontext -a -t fail2ban_log_t "$SELINUX_DIR(/.*)?"
+          echo "SELinux - Relabeling $SELINUX_DIR"
+          restorecon -R -v "$SELINUX_DIR" 
+          ;;
+
+        *)
+          log_err "Unknown selinux option: $2"
+          return 1
+           ;;
+        esac
+ 
+      SELINUX_FILE=$(ls -Z "$DOMINO_OUTPUT_LOG")
+
+      if [ -z "$(echo $SELINUX_FILE | grep fail2ban_log_t)" ]; then
+        LOG_STATUS="fail2ban permission missing"
+      else
+        LOG_STATUS="OK"
+      fi
+    fi
+
+    echo
+    print_delim
+    echo "Domino Fail2Ban SELinux Status"
+    print_delim
+    echo
+    echo "SELinux Status   :  $SELINUX_STATUS"
+    echo "Domino log file  :  $DOMINO_OUTPUT_LOG"
+    echo "Log Status       :  $LOG_STATUS"
+    echo
+
+    return 0
+  fi
+
+  log_err "Unknown option: '$1'"
+  return 1
+}
+
+fail2ban $@
+
+
