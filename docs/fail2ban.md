@@ -110,6 +110,7 @@ Once installed all operations can be performed invoking the `domban` management 
 
 ## Exampl Output: Status Domino jail
 
+{: .lh-0 }
 ```
 --------------------------------------------------------------------------------
 Status for the jail: domino
@@ -123,6 +124,7 @@ Status for the jail: domino
    `- Banned IP list:   192.168.007.42
 ---------------------------------------------------
 ```
+{: .fh-default }
 
 ## Help Output
 
@@ -148,3 +150,4 @@ selinux logset   Lable start script log file with fail2ban access
 selinux logdel   Remove label for start script log
 selinux relable  Relable log files
 
+```
