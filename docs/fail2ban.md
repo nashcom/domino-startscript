@@ -107,9 +107,24 @@ Once installed all operations can be performed invoking the `domban` management 
 - **test <logfile>**  
   Test Domino fail2ban filter against log - if no log file specified use configured log file
 
-## Example Output
 
+## Exampl Output: Status Domino jail
 
+```
+--------------------------------------------------------------------------------
+Status for the jail: domino
+|- Filter
+|  |- Currently failed: 1
+|  |- Total failed:     18
+|  `- File list:        /local/log/notes.log
+`- Actions
+   |- Currently banned: 1
+   |- Total banned:     2
+   `- Banned IP list:   192.168.007.42
+---------------------------------------------------
+```
+
+## Help Output
 
 ```
 Domino Fail2Ban
@@ -117,20 +132,19 @@ Domino Fail2Ban
 
 Syntax: domban
 
-ssh              Show status of SSH jail (no parameter = show Domino jail)
+ssh              Show status of SSH jail (No parameter = show Domino jail)
 unblock <IP>     Unblock IP from Domino and SSH jail
-cfg              Configure fail2ban jail.local. Default editor: vi. Use e.g. export EDIT_COMMAND=nano
+cfg              Configure fail2ban jail.local. Editor: vi. Use e.g. export EDIT_COMMAND=nano
 log <lines>      List fail2ban log (default: last 100 lines)
 status           Show systemd fail2ban status
 restart          Restart fail2ban service
 systemd <cmd>    Pass commands to systemd
 install [upd]    Install fail2ban and 'domban' script - 'upd' overwrites existing 'jail.local'
-test <logfile>   Test Domino fail2ban filter against log - if no log file specified use configured log file
+test <logfile>   Test filter against log e
 -                No parameter shows Domino jail status
 
 selinux          Show SELinux status
 selinux logset   Lable start script log file with fail2ban access
 selinux logdel   Remove label for start script log
 selinux relable  Relable log files
-```
 

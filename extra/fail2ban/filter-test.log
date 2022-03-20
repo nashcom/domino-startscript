@@ -1,0 +1,4 @@
+
+[007577:000017-00007F621246D700] 20.03.2022 07:36:42   http: info@acme.net [1.2.3.4] authentication failure using internet password
+[007577:000017-00007F621246D700] 20.03.2022 07:36:43   http: IP Address [1.2.3.4] authentication failure using internet password: User is locked out
+[007577:000017-00007F621246D700] blablab
