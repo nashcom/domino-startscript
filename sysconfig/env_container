@@ -1,0 +1,7 @@
+
+# The default configuration changes to JSON OneTouch configuration
+# Use "domino_container setup" to setup your server
+
+# You can also updates this configuration or specify a different configuration
+# env_container_domino12 is still availble
+

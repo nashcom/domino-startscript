@@ -16,15 +16,14 @@ DOMINO_SHUTDOWN_TIMEOUT=180
 CONTAINER_NETWORK_NAME=host
 #CONTAINER_PORTS="-p 1352:1352 -p 80:80 -p 443:443"
 
-CONTAINER_VOLUMES="-v notesdata_domino:/local/notesdata"
+CONTAINER_VOLUMES="-v domino_local:/local"
 
 # Environment file is used for first container start (run) to pass setup parameters
+# The new configuration uses a JSON OneTouch automation setup. Just run domino_container setup
+CONTAINER_ENV_FILE=env_container
 
 # Domino V12 One Touch Configufation
-CONTAINER_ENV_FILE=env_container_domino12
-
-# Domino V11 configuration with community image setup
-#CONTAINER_ENV_FILE=env_container_domino11
+#CONTAINER_ENV_FILE=env_container_domino12
 
 # Docker Restart policy
 CONTAINER_RESTART_POLICY=unless-stopped

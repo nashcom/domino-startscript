@@ -1121,7 +1121,7 @@ container_run ()
   $CONTAINER_CMD cp "$DOMINO_AUTO_CONFIG_JSON_FILE" $CONTAINER_NAME:/local/notesdata/DominoAutoConfig.json
 
   # Remove config file, because it might contain sensitive data
-  #rm -f "$DOMINO_AUTO_CONFIG_JSON_FILE"
+  rm -f "$DOMINO_AUTO_CONFIG_JSON_FILE"
 
   return 0
 }
@@ -1385,7 +1385,7 @@ usage ()
   echo
   echo "       start  | stop | restart | status | statusd | inspect | console | config | env"
   echo "       domino | bash | update  | attach | remove  | cleanup | rmi     | port"
-  echo "       build  | load | pull    | restartpolicy    | install"
+  echo "       build  | load | pull    | restartpolicy    | setup   | install"
   echo "       about  | help | version"
 
   return 0
@@ -1423,7 +1423,8 @@ help ()
   echo "env             edit environment file"
   echo "version         shows script version information"
   echo "about|about+    show machine info. With 'About' or 'about+' also show info from https://ipinfo.io/"
-
+  echo "setup           create JSON configuration for container auto configuraiton"
+  echo
   echo "help            you already figured out what help does ;-)"
 
   return 0
