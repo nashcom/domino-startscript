@@ -1,0 +1,1 @@
+https://github.com/nashcom/domino-startscript/releases/download/v3.7.0/domino-startscript_v3.7.0.taz
