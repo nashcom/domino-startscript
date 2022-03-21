@@ -1,8 +1,6 @@
 #!/bin/bash
 
 
-
-
 check_file_busy()
 {
   if [ ! -e "$1" ]; then
@@ -155,12 +153,12 @@ fail2ban()
     echo "ssh              Show status of SSH jail (No parameter = show Domino jail)"
     echo "unblock <IP>     Unblock IP from Domino and SSH jail"
     echo "cfg              Configure fail2ban jail.local. Editor: vi. Use e.g. export EDIT_COMMAND=nano"
-    echo "log <lines>      List fail2ban log (default: last 100 lines)"
+    echo "log [lines]      List fail2ban log (default: last 100 lines)"
     echo "status           Show systemd fail2ban status"
     echo "restart          Restart fail2ban service"
-    echo "systemd <cmd>    Pass commands to systemd"
+    echo "systemd [cmd]    Pass commands to systemd"
     echo "install [upd]    Install fail2ban and 'domban' script - 'upd' overwrites existing 'jail.local'"
-    echo "test <logfile>   Test filter against log e"
+    echo "test [logfile]   Test filter against log e"
     echo "-                No parameter shows Domino jail status"
     echo
     echo "selinux          Show SELinux status"

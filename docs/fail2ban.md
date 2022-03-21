@@ -83,13 +83,13 @@ Once installed all operations can be performed invoking the `domban` management 
 - **ssh**  
   Show status of SSH jail
 
-- **unblock <IP>**  
+- **unblock IP**  
   Unblock specified IP from Domino and SSH jail
 
 - **cfg**  
   Configure fail2ban jail.local. Default editor: vi. Use e.g. export `EDIT_COMMAND=nano`
 
-- **log <lines>**  
+- **log [lines]**  
   List fail2ban log (default: last 100 lines)
 
 - **status**  
@@ -98,13 +98,13 @@ Once installed all operations can be performed invoking the `domban` management 
 - **restart**  
   Restart fail2ban service
 
-- **systemd <cmd>**  
+- **systemd [cmd]**  
   Pass commands to systemd
 
 - **install [upd]**  
   Install fail2ban and 'domban' script - `upd` overwrites existing `jail.local`
 
-- **test <logfile>**  
+- **test [logfile]**  
   Test Domino fail2ban filter against log - if no log file specified use configured log file
 
 
@@ -137,12 +137,12 @@ Syntax: domban
 ssh              Show status of SSH jail (No parameter = show Domino jail)
 unblock <IP>     Unblock IP from Domino and SSH jail
 cfg              Configure fail2ban jail.local. Editor: vi. Use e.g. export EDIT_COMMAND=nano
-log <lines>      List fail2ban log (default: last 100 lines)
+log [lines]      List fail2ban log (default: last 100 lines)
 status           Show systemd fail2ban status
 restart          Restart fail2ban service
-systemd <cmd>    Pass commands to systemd
+systemd [cmd]    Pass commands to systemd
 install [upd]    Install fail2ban and 'domban' script - 'upd' overwrites existing 'jail.local'
-test <logfile>   Test filter against log e
+test [logfile]   Test filter against log e
 -                No parameter shows Domino jail status
 
 selinux          Show SELinux status
