@@ -942,7 +942,7 @@ container_build ()
 docker_deamon()
 {
 
-  if [ -z "$(uname -r|grep microsoft)" ]; then
+  if [ -z "$(uname -r|grep -i microsoft)" ]; then
     echo "Docker deamon command only available on WSL"
     return 0
   fi
@@ -1118,7 +1118,16 @@ container_run ()
 
   echo "Copying OneTouch configuration into container"
 
-  $CONTAINER_CMD cp "$DOMINO_AUTO_CONFIG_JSON_FILE" $CONTAINER_NAME:/local/notesdata/DominoAutoConfig.json
+  count=10
+  while [ $count -gt 0 ]; do
+    sleep 1
+    $CONTAINER_CMD cp "$DOMINO_AUTO_CONFIG_JSON_FILE" $CONTAINER_NAME:/local/notesdata/DominoAutoConfig.json
+    if [ "$?" = "0" ];then
+      count=0
+    else
+      count=$(expr $count - 1)
+    fi
+  done
 
   # Remove config file, because it might contain sensitive data
   rm -f "$DOMINO_AUTO_CONFIG_JSON_FILE"
