@@ -104,8 +104,8 @@ install_package()
  elif [ -x /usr/bin/yum ]; then
    yum install -y "$@"
 
- elif [ -x /usr/bin/apt ]; then
-   apt install -y "$@"
+ elif [ -x /usr/bin/apt-get ]; then
+   apt-get install -y "$@"
 
  else
   echo "No package manager found!"
@@ -125,8 +125,8 @@ remove_package()
  elif [ -x /usr/bin/yum ]; then
    yum remove -y "$@"
 
- elif [ -x /usr/bin/apt ]; then
-   apt remove -y "$@"
+ elif [ -x /usr/bin/apt-get ]; then
+   apt-get remove -y "$@"
 
  fi
 }
@@ -149,9 +149,9 @@ linux_update()
     header "Updating Linux via yum"
     yum update -y
 
-  elif [ -x /usr/bin/apt ]; then
+  elif [ -x /usr/bin/apt-get ]; then
 
-    header "Updating Linux via apt"
+    header "Updating Linux via apt-get"
     apt-get update -y
     apt-get upgrade -y
 
@@ -609,7 +609,7 @@ install_software()
     # Photon OS packages
     install_package bindutils
 
-  elif [ -x /usr/bin/apt ]; then
+  elif [ -x /usr/bin/apt-get ]; then
     # Ubuntu needs different packages and doesn't provide some others
     install_package bind9-utils
 
