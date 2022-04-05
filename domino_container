@@ -59,7 +59,7 @@ if [ -z "$DOMINO_CFG_DIR" ]; then
   DOMINO_CFG_DIR=/etc/sysconfig
 fi
 
-CONTAINER_SCRIPT_VERSION=1.0.3
+CONTAINER_SCRIPT_VERSION=1.0.4
 
 # Get configuration from config file
 
@@ -136,11 +136,11 @@ SYSTEMCTL_CMD="systemctl"
 
 # OneTouch configuration file
 if [ -z "$DOMINO_AUTO_CONFIG_JSON_FILE" ]; then
-  export DOMINO_AUTO_CONFIG_JSON_FILE=/etc/sysconfig/DominoContainerAutoConfig.json
+  export DOMINO_AUTO_CONFIG_JSON_FILE=$DOMINO_CFG_DIR/DominoContainerAutoConfig.json
 fi
 
 if [ -z "$DOMINO_AUTO_CFG_DEFAULTS_ENV_FILE" ]; then
-  export DOMINO_AUTO_CFG_DEFAULTS_ENV_FILE=/local/notesdata/DominoAutoConfigDefault.env
+  export DOMINO_AUTO_CFG_DEFAULTS_ENV_FILE=$DOMINO_CFG_DIR/DominoAutoConfigDefault.env
 fi
 
 log_space ()
@@ -1133,8 +1133,9 @@ container_run ()
     fi
   done
 
-  # Remove config file, because it might contain sensitive data
-  rm -f "$DOMINO_AUTO_CONFIG_JSON_FILE"
+  # Remove config files after run, because they might contain sensitive data
+  remove_file "$DOMINO_AUTO_CONFIG_JSON_FILE"
+  remove_file "$DOMINO_AUTO_CFG_DEFAULTS_ENV_FILE"
 
   return 0
 }
