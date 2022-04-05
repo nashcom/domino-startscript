@@ -57,7 +57,11 @@
 
 
 # Default config environment file
-DOMINO_AUTO_CFG_DEFAULTS_ENV_FILE=/local/notesdata/DominoAutoConfigDefault.env
+
+if [ -z "$DOMINO_AUTO_CFG_DEFAULTS_ENV_FILE" ]; then
+  DOMINO_AUTO_CFG_DEFAULTS_ENV_FILE=/local/notesdata/DominoAutoConfigDefault.env
+fi
+
 
 DebugText()
 {
