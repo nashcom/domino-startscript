@@ -140,37 +140,6 @@
                 "67"
                 ]
             }
-          },
-
-          {
-            "action": "create",
-            "computeWithForm": true,
-            "items": {
-              "Form": "ServerConfig",
-              "UseAsDefault": "1",
-              "ServerName": "*",
-
-              "ILEnforce": "1",
-              "ILLockIP": "0",
-              "ILCountAgainstIP": "0",
-              "ILLogLockouts": "1",
-              "ILLogFailures": "1",
-              "ILMaxTries": 7,
-              "ILExpMinutes": 10,
-              "ILExpNum": 10,
-              "ILTimeFormat": ",minutes",
-              "ILClearNum": 10,
-              "ILClearMinutes": 10,
-              "ILTimeFormat2": ",minutes",
-              "PwdCheckInVault": "2",
-
-              "DCLoc": "CN=HCL Notes/O=Domino Fault Reports",
-              "DCMsgSize": 50,
-              "DCNSDSize": 40,
-              "DCDO": 10000,
-              "FAEnabled": "1",
-              "FADBs": "1"
-            }
           }
         ]
       },

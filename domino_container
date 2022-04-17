@@ -875,6 +875,8 @@ container_build ()
     BUILDAH_FORMAT=docker
   fi
 
+  export BUILDAH_FORMAT
+
   if [ -z "$CONTAINER_FILE" ]; then
 
     if [ -r "Containerfile" ]; then

@@ -19,7 +19,5 @@ RUN /tmp/install_dir/install.sh && \
 
 EXPOSE 1352 80 110 143 389 443 636 993 995 63148 63149 
 
-# ENTRYPOINT ["/domino_docker_entrypoint.sh"]
-
 USER notes
 
