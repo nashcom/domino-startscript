@@ -22,8 +22,7 @@
 
 SCRIPT_NAME=$0
 PARAM1=$1
-SCRIPT_REAL=`realpath $0`
-SCRIPT_DIR=`dirname $SCRIPT_REAL`
+START_SCRIPT_DIR=$(dirname $0)
 
 CONTAINER_SYSTEMD_NAME=domino_container.service
 CONTAINER_INSTALL_CONFIG_FILE=domino_container
@@ -36,11 +35,9 @@ if [ -z "$DOMINO_START_SCRIPT_DIR" ]; then
 fi
 
 ROOT_USER=root
-ROOT_GROUP=root
+ROOT_GROUP=$(id -g -n root)
 
 #DOMINO_DEBUG_MODE="yes"
-
-START_SCRIPT_DIR=`dirname $0`
 
 if [ "$START_SCRIPT_DIR" = "/" ]; then
   START_SCRIPT_DIR=""
@@ -188,7 +185,7 @@ install_file_noupdate()
 copy_one_touch_templates()
 {
   local TARGET_DIR=$DOMINO_START_SCRIPT_DIR/OneTouchSetup
-  local SOURCE_DIR=$SCRIPT_DIR/OneTouchSetup
+  local SOURCE_DIR=$START_SCRIPT_DIR/OneTouchSetup
   mkdir -p -m 755 $TARGET_DIR
   cp -f $SOURCE_DIR/* $TARGET_DIR
   chown -R "$DOMINO_USER":"$DOMINO_GROUP" $TARGET_DIR
@@ -216,7 +213,7 @@ install_file "$START_SCRIPT_DIR/nshcfg.sh" "$DOMINO_START_SCRIPT_DIR/nshcfg.sh" 
 
 
 if [ ! -e /usr/bin/domino_container ]; then
-  ln -s "$DOMINO_START_SCRIPT_DIR/domino_container" /usr/bin/domino_container
+  ln -s "$DOMINO_START_SCRIPT_DIR/domino_container" /usr/local/bin/domino_container
 fi
 
 cp -r $START_SCRIPT_DIR/build_image $DOMINO_START_SCRIPT_DIR

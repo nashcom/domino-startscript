@@ -59,7 +59,7 @@ if [ -z "$DOMINO_CFG_DIR" ]; then
   DOMINO_CFG_DIR=/etc/sysconfig
 fi
 
-CONTAINER_SCRIPT_VERSION=1.0.4
+CONTAINER_SCRIPT_VERSION=1.0.5
 
 # Get configuration from config file
 
@@ -254,7 +254,7 @@ check_container_environment()
 
 
   if [ -z "$CONTAINER_CMD" ]; then
-    if [ -x "/usr/bin/docker" ]; then
+    if [ -x "/usr/bin/docker" ] || [ -x "/usr/local/bin/docker" ]; then
       CONTAINER_CMD=docker
       # Docker doesn't uses systemd 
       CONTAINER_SYSTEMD_NAME=
