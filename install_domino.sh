@@ -92,7 +92,6 @@ header ()
   echo
 }
 
-
 install_package()
 {
  if [ -x /usr/bin/zypper ]; then
@@ -114,6 +113,14 @@ install_package()
  fi
 }
 
+install_packages()
+{
+  local PACKAGE=
+  for PACKAGE in $*; do
+    install_package $PACKAGE
+  done
+}
+
 remove_package()
 {
  if [ -x /usr/bin/zypper ]; then
@@ -130,6 +137,37 @@ remove_package()
 
  fi
 }
+
+remove_packages()
+{
+  local PACKAGE=
+  for PACKAGE in $*; do
+    remove_package $PACKAGE
+  done
+}
+
+install_if_missing()
+{
+  if [ -z "$1" ]; then
+    return 0
+  fi
+
+  if [ -x  "/usr/bin/$1" ]; then
+    echo "already exists: $1"
+    return 0
+  fi
+
+  if [ -x "/usr/local/bin/$1" ]; then
+    return 0
+  fi
+
+  if [ -z "$2" ]; then
+    install_package "$1"
+  else
+    install_package "$2"
+  fi
+}
+
 
 linux_update()
 {
@@ -153,6 +191,12 @@ linux_update()
 
     header "Updating Linux via apt-get"
     apt-get update -y
+
+    # Needed by Astra Linux, Ubuntu and Debian. Should be installed before updating Linux but after updating the repo!
+    if [ -x /usr/bin/apt-get ]; then
+      install_package apt-utils
+    fi
+
     apt-get upgrade -y
 
   fi
@@ -479,32 +523,6 @@ add_notes_user()
   useradd $DOMINO_USER -g $DOMINO_GROUP -m
 }
 
-glibc_lang_update7()
-{
-  # on CentOS/RHEL 7 the locale is not containing all langauges
-  # removing override_install_langs from /etc/yum.conf and reinstalling glibc-common
-  # reinstall does only work if package is up to date
-
-  local STR="override_install_langs="
-  local FILE="/etc/yum.conf"
-
-  FOUND=$(grep "$STR" "$FILE")
-
-  if [ -z "$FOUND" ]; then
-    return 0
-  fi
-
-  grep -v -i "$STR" "$FILE" > "$FILE.updated"
-  mv "$FILE.updated" "$FILE"
-
-  echo
-  echo Updating glibc locale ...
-  echo
-
-  yum reinstall -y glibc-common
-
-  return 0
-}
 
 glibc_lang_add()
 {
@@ -562,20 +580,16 @@ glibc_lang_add()
     return 0
   fi
 
-  if [ "$LINUX_VERSION" = "7" ]; then
-      yum_glibc_lang_update7
-  else
-    yum install -y glibc-langpack-$INSTALL_LOCALE
-  fi
+  yum install -y glibc-langpack-$INSTALL_LOCALE
 
   return 0
 }
 
+
 install_software()
 {
   # updates Linux
-  # don't run automatic update
-  # linux_update
+  linux_update
 
   # adds epel repository for additional software packages on RHEL/CentOS/Fedora platforms
 
@@ -601,7 +615,7 @@ install_software()
   esac
 
   # install required and useful packages
-  install_package gdb hostname tar sysstat net-tools jq gettext
+  install_packages gdb hostname tar sysstat net-tools jq gettext cpio
 
   # additional packages by platform
 
@@ -618,7 +632,7 @@ install_software()
     # RHEL/CentOS/Fedora
     case "$LINUX_ID_LIKE" in
       *fedora*|*rhel*)
-        install_package procps-ng which bind-utils
+        install_packages procps-ng which bind-utils
       ;;
     esac
   fi
@@ -958,17 +972,10 @@ fi
 header "Nash!Com Domino Installer for $LINUX_PRETTY_NAME $LINUX_VM_INFO"
 
 must_be_root
+install_software
 add_notes_user
 create_directories
-install_software
-
-# Add locales
-if [ -z "$DOMINO_LANG" ]; then
-  glibc_lang_add en_US.UTF-8
-  glibc_lang_add de_DE.UTF-8
-else
-  glibc_lang_add
-fi
+glibc_lang_add
 
 # Set posix locale for installing Domino to ensure the right res/C link
 export LANG=C
