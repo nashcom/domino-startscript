@@ -130,7 +130,7 @@ Ensure the your Domino application user `notes` is the owner of all directories 
 chown -R notes:notes /local
 ```
 
-## Donwload the Domino web kit from Flexnet
+## Download the Domino web kit from Flexnet
 
 Domino as a commercial software package is currently only available via the HCL Flexnet software portal.  
 An account and an active subscription is required to download current Domino software.  
