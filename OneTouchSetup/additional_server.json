@@ -43,7 +43,7 @@
       "COMPRESS_LZ1_CREATE": "1",
       "CREATE_NIFNSF_DATABASES": "1",
       "NIFNSFENABLE": "1",
-      "NIFBASEPATH": "/local/nif"
+      "NIFBASEPATH": "/local/nif",
       "FTBASEPATH": "/local/ft",
       "DAOS_ENCRYPT_NLO": "0",
       "DAOS_MAX_FILES_PER_SUBCONTAINER": "10000",
