@@ -1,9 +1,11 @@
 #!/bin/bash
 ###########################################################################
+# dominoctl                                                               #
+# ---------                                                               #
 # Nash!Com Domino Container Management Script                             #
-# Version 1.0.3 10.12.2021                                                #
+# Version 1.1.0 04.06.2022                                                #
 #                                                                         #
-# (C) Copyright Daniel Nashed/NashCom 2021                                #
+# (C) Copyright Daniel Nashed/NashCom 2021-2022                           #
 # Feedback domino_unix@nashcom.de                                         #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #
@@ -59,7 +61,7 @@ if [ -z "$DOMINO_CFG_DIR" ]; then
   DOMINO_CFG_DIR=/etc/sysconfig
 fi
 
-CONTAINER_SCRIPT_VERSION=1.0.5
+CONTAINER_SCRIPT_VERSION=1.1.0
 
 # Get configuration from config file
 
@@ -1388,7 +1390,9 @@ container_bash ()
 show_version ()
 {
   echo
-  echo "Nash!Com Container Script Version $CONTAINER_SCRIPT_VERSION"
+  echo dominoctl
+  echo ---------
+  echo "Nash!Com Domino Container Script Version $CONTAINER_SCRIPT_VERSION"
   echo "(Running on $CONTAINER_ENV_NAME Version $CONTAINER_RUNTIME_VERSION)" 
   echo
   return 0

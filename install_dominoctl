@@ -212,9 +212,14 @@ install_file "$START_SCRIPT_DIR/DominoOneTouchSetup.sh" "$DOMINO_START_SCRIPT_DI
 install_file "$START_SCRIPT_DIR/nshcfg.sh" "$DOMINO_START_SCRIPT_DIR/nshcfg.sh" $ROOT_USER $ROOT_GROUP 755
 
 
-if [ ! -e /usr/bin/domino_container ]; then
+if [ ! -e /usr/local/bin/domino_container ]; then
   ln -s "$DOMINO_START_SCRIPT_DIR/domino_container" /usr/local/bin/domino_container
 fi
+
+if [ ! -e /usr/local/bin/dominoctl ]; then
+  ln -s "$DOMINO_START_SCRIPT_DIR/domino_container" /usr/local/bin/dominoctl
+fi
+
 
 cp -r $START_SCRIPT_DIR/build_image $DOMINO_START_SCRIPT_DIR
 find $DOMINO_START_SCRIPT_DIR -name "*.sh" -exec chmod 755 {}  \;
