@@ -491,7 +491,7 @@ inspect_image_native ()
 
 inspect_image ()
 {
-  if [ ! -e /bin/jq ]; then
+  if [ ! -e /bin/usr/jq ]; then
     inspect_image_native "$@"
     return 0
   fi
