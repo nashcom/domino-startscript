@@ -34,6 +34,29 @@ Example:
 
 A Domino log filter with a jail configuration for Domino can feed login failures directly into fail2ban.
 
+# Block TLS/SSL errors
+
+Usually TLS connection errors are also an indication of an attack.
+Therefore the filter string has been updated to also detect TLS/SSL errors.
+
+
+```
+[003546:000013-00007F12A17E5700] 28.05.2022 00:47:11   TLS/SSL connection 1.2.3.4(50332) -> 111.222.333.444(443) failed with rejected SSLv3 connection
+[003546:000013-00007F12A17E5700] 28.05.2022 00:47:20   TLS/SSL connection 1.2.3.4(57820) -> 111.222.333.444(443) failed with no supported ciphers
+[003546:000013-00007F12A17E5700] 28.05.2022 00:47:33   TLS/SSL connection 1.2.3.4(40082) -> 111.222.333.444(443) failed with rejected unknown record type
+
+```
+
+## Security scanners might be blocked as well
+
+With this protection enabled, you can't use remote scans to check your server TLS configuration.  
+There is a project to scan local servers, which also work for servers which are not exposed externally at all: 
+
+https://github.com/drwetter/testssl.sh
+
+In case you don't want TLS/SSL errors to cause the block count to increase, you can comment out the additional filter line.
+
+
 ## Components
 
 The implementation is based on the following two components
@@ -142,7 +165,7 @@ status           Show systemd fail2ban status
 restart          Restart fail2ban service
 systemd [cmd]    Pass commands to systemd
 install [upd]    Install fail2ban and 'domban' script - 'upd' overwrites existing 'jail.local'
-test [logfile]   Test filter against log e
+test [logfile]   Test filter against logfile
 -                No parameter shows Domino jail status
 
 selinux          Show SELinux status
