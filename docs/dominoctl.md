@@ -6,7 +6,7 @@ description: "Domino container control (dominoctl)"
 has_children: false
 ---
 
-# Domino container control (domctl)
+# Domino container control (dominoctl)
 
 **dominoctl** provides commands and operations for Domino on Docker and Podman.
 For running a single Domino instance on a Docker or Podman host, this script is one-stop shopping for all operations.
