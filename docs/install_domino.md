@@ -206,13 +206,13 @@ If you want to download the software directly to your Linux machine, Curl is a v
 Example for Version 3.7.0
 
 ```
-curl -sLO https://github.com/nashcom/domino-startscript/releases/download/v3.7.0/domino-startscript_v3.7.0.tar
+curl -sLO https://github.com/nashcom/domino-startscript/releases/download/v3.7.0/domino-startscript_v3.7.0.taz
 ```
 
 Extact the downloaded tar file
 
 ```
-tar -xf domino-startscript_3.7.0.tar
+tar -xf domino-startscript_v3.7.0.taz
 cd domino-startscript
 ```
 
