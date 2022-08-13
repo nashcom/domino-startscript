@@ -1,4 +1,4 @@
-#!/bin/bash
+:set list#!/bin/bash
 ###########################################################################
 # dominoctl                                                               #
 # ---------                                                               #
@@ -34,6 +34,11 @@ NAME_PREFIX="container_"
 PARAM1=$1
 PARAM2=$2
 PARAM3=$3
+PARAM4=$4
+PARAM5=$5
+PARAM6=$6
+PARAM7=$7
+PARAM8=$8
 
 # Default Configuration parameters overwritten by config file if available in same directory
 
@@ -56,12 +61,24 @@ DOMINO_SHUTDOWN_TIMEOUT=120
 DOWNLOAD_LINK_FLEXNET="https://hclsoftware.flexnetoperations.com/flexnet/operationsportal/DownloadSearchPage.action?search="
 DOWNLOAD_LINK_FLEXNET_OPTIONS="+&resultType=Files&sortBy=eff_date&listButton=Search"
 
+
+CONTAINER_SCRIPT_VERSION=1.2.0
+
 # Default config directory. Can be overwritten by environment 
 if [ -z "$DOMINO_CFG_DIR" ]; then
-  DOMINO_CFG_DIR=/etc/sysconfig
-fi
 
-CONTAINER_SCRIPT_VERSION=1.1.0
+  # Check current directory for config
+  # If not present check home dir
+  # Else use standard config dir (default: /etc/sysconfig)
+
+  if [ -e .dominoctl ]; then
+    DOMINO_CFG_DIR=.dominoctl
+  elif [ -e ~/.dominoctl ]; then
+    DOMINO_CFG_DIR=~/.dominoctl
+  else
+    DOMINO_CFG_DIR=/etc/sysconfig
+  fi
+fi
 
 # Get configuration from config file
 
@@ -71,31 +88,25 @@ if [ -z "$CFG_PREFIX" ]; then
 
   CONFIG_FILE=$DOMINO_CFG_DIR/domino_container
 
-  if [ -e "$CONFIG_FILE" ]; then
-    echo "(Using config file $CONFIG_FILE)"
-  else
+  if [ ! -e "$CONFIG_FILE" ]; then
     echo
     echo "Configuration not found at [$CONFIG_FILE]"
     exit 1
   fi
 
 else
+
   CONFIG_FILE=$DOMINO_CFG_DIR/config_$CFG_PREFIX
-  if [ -e "$CONFIG_FILE" ]; then
-    echo "(Using config file $CONFIG_FILE)"
-  else
+  if [ ! -e "$CONFIG_FILE" ]; then
     CONFIG_FILE=$SCRIPT_DIR_NAME/config_$CFG_PREFIX
 
-    if [ -e "$CONFIG_FILE" ]; then
-      echo "(Using config file $CONFIG_FILE)"  
-    else
+    if [ ! -e "$CONFIG_FILE" ]; then
       CONFIG_FILE=
     fi
 
-    if [ -z "$" ]; then
+    if [ -z "$CONFIG_FILE" ]; then
       echo
       echo "No configuration found!"
-      echo
       exit 1
     fi
   fi
@@ -106,22 +117,64 @@ fi
 if [ -e "$CONFIG_FILE" ]; then
    . $CONFIG_FILE
 else
+  echo
   echo "No configuration found"
   exit 1
 fi
 
+# Check specified environment file or check if the default file exists in config directory
+
 CONTAINER_FULL_ENV_FILE=
 if [ -n "$CONTAINER_ENV_FILE" ]; then
-  if [ -r "$DOMINO_CFG_DIR/$CONTAINER_ENV_FILE" ]; then
+
+  if [ -r "$CONTAINER_ENV_FILE" ]; then
+     CONTAINER_FULL_ENV_FILE="$CONTAINER_ENV_FILE"
+  elif [ -r "$DOMINO_CFG_DIR/$CONTAINER_ENV_FILE" ]; then
     CONTAINER_FULL_ENV_FILE="$DOMINO_CFG_DIR/$CONTAINER_ENV_FILE"
+  else
+    echo "Info: Cannot read configured environment file [$CONTAINER_ENV_FILE]!"
   fi
+
+else
+
+  if [ -r "$DOMINO_CFG_DIR/.env" ]; then
+    CONTAINER_FULL_ENV_FILE="$DOMINO_CFG_DIR/.env"
+  fi
+
 fi
+
+# Check specified docker compose file or check if the default file exists in config directory
+
+if [ -n "$CONTAINER_COMPOSE_FILE" ]; then
+  if [ ! -r "$CONTAINER_COMPOSE_FILE" ]; then
+    echo
+    echo "Info: Cannot read configured compose file [$CONTAINER_COMPOSE_FILE]!"
+  fi
+
+else
+
+  if [ -r "$DOMINO_CFG_DIR/docker-compose.yml" ]; then
+    CONTAINER_COMPOSE_FILE="$DOMINO_CFG_DIR/docker-compose.yml"
+  fi
+
+fi
+
+echo
+echo "-----------------------------------------"
+echo "$CONFIG_FILE"
+if [ -n "$CONTAINER_FULL_ENV_FILE" ]; then
+  echo "$CONTAINER_FULL_ENV_FILE"
+fi
+
+if [ -n "$CONTAINER_COMPOSE_FILE" ]; then
+  echo "$CONTAINER_COMPOSE_FILE"
+fi
+echo
 
 IMAGE_BUILD_VERSION=$IMAGE_VERSION
 
 # Special configuration
 
-CONTAINER_SCRIPT_USE_SUDO=yes
 BUILDTIME=$(date +"%d.%m.%Y %H:%M:%S")
 
 if [ -z "$EDIT_COMMAND" ]; then
@@ -270,6 +323,24 @@ check_container_environment()
 
       TAG_CONTAINER_ID=".Id"
       # For Docker we are done here
+
+      # In case a Docker compose file is specified, we need docker_compose
+
+      if [ -n "$CONTAINER_COMPOSE_FILE" ]; then
+
+         if [ -e /usr/local/bin/docker-compose ]; then
+           CONTAINER_COMPOSE_CMD=/usr/local/bin/docker-compose
+           return 0
+         fi
+
+         if [ -e /usr/local/bin/docker-compose ]; then
+           CONTAINER_COMPOSE_CMD=/usr/local/bin/docker-compose
+           return 0
+         fi
+
+         log_and_exit "Docker Compose is not installed!"
+      fi
+
       return 0
     fi
   fi  
@@ -298,7 +369,9 @@ check_container_environment()
 
 check_root_permissions ()
 {
-  # Use sudo for su for container command if not root
+  # Use sudo for su for container command if not root if specified
+  # Today Docker can run with standard user if user is in 'docker' group.
+  # You can still enable sudo. systemctl is always invoked with sudo if not root user.
 
   if [ "$EUID" = "0" ]; then
     return 0 # root does works for all commands -- no sudo needed
@@ -306,11 +379,10 @@ check_root_permissions ()
 
   if [ "$CONTAINER_SCRIPT_USE_SUDO" = "yes" ]; then
     CONTAINER_CMD="sudo $CONTAINER_CMD"
-    SYSTEMCTL_CMD="sudo systemctl"
     return 0
   fi
 
-  log_and_exit "$CONTAINER_ENV_NAME needs root permissions on Linux!"
+  SYSTEMCTL_CMD="sudo systemctl"
 }
 
 print_runtime ()
@@ -981,7 +1053,7 @@ docker_deamon()
         if [ "0" = "$(id -u)" ]; then
           dockerd > /dev/null 2>&1 &
         else
-          su - -c "dockerd > /dev/null 2>&1 &"
+          sudo "dockerd > /dev/null 2>&1 &"
         fi
 
         disown
@@ -1000,7 +1072,7 @@ docker_deamon()
         if [ "0" = "$(id -u)" ]; then
           pkill dockerd
         else
-          su - -c "pkill dockerd"
+          sudo "pkill dockerd"
         fi
 
         seconds=0
@@ -1021,7 +1093,7 @@ docker_deamon()
             if [ "0" = "$(id -u)" ]; then
               pkill -9 dockerd
             else
-              su - -c "pkill -9 dockerd"
+              sudo "pkill -9 dockerd"
             fi
 
             echo ""
@@ -1043,8 +1115,60 @@ docker_deamon()
   esac
 }
 
+container_compose_exports ()
+{
+  export CONTAINER_IMAGE
+  export CONTAINER_NAME
+  export CONTAINER_HOSTNAME
+}
+
+
+container_copy_one_touch()
+{
+  local RET=
+  local count=0
+
+
+  if [ -z "$DOMINO_AUTO_CONFIG_JSON_FILE" ]; then
+    return 0
+  fi
+
+  if [ ! -e "$DOMINO_AUTO_CONFIG_JSON_FILE" ]; then
+    return 0
+  fi
+
+  while [ -z "$RET" ]; do
+    sleep 1
+
+    $CONTAINER_CMD cp "$DOMINO_AUTO_CONFIG_JSON_FILE" $CONTAINER_NAME:/local/notesdata/DominoAutoConfig.json > /dev/null 2>&1
+
+    if [ "$?" = "0" ];then
+      RET=1
+    fi
+
+    count=$(expr $count + 1)
+    if [ $count -gt 10 ]; then
+      RET=2
+    fi
+  done
+
+  if [ "$RET" = "1" ]; then
+    echo "OneTouch JSON copied into container after $count seconds"
+  else
+    echo "Warning: Cannot copy OneTouch JSON file into container"
+  fi
+
+  # Remove config files after run, because they might contain sensitive data
+  remove_file "$DOMINO_AUTO_CONFIG_JSON_FILE"
+  remove_file "$DOMINO_AUTO_CFG_DEFAULTS_ENV_FILE"
+
+}
+
+
 container_run ()
 {
+  local DOCKER_RC=
+
   if [ ! -z "$CONTAINER_STATUS" ]; then log_space "Container [$CONTAINER_NAME] already exists [status: $CONTAINER_STATUS]"; return 1; fi
 
   if [ -z "$IMAGE_ID" ]; then
@@ -1112,34 +1236,24 @@ container_run ()
     CONTAINER_RESTART_OPTIONS=
   fi 
 
-  $CONTAINER_CMD run $CONTAINER_IT $CONTAINER_PORTS --hostname=$CONTAINER_HOSTNAME --name $CONTAINER_NAME $CONTAINER_NETWORK $CONTAINER_ENV_FILE_OPTION $CONTAINER_VOLUMES --stop-timeout=$DOMINO_SHUTDOWN_TIMEOUT $FUSE_OPTIONS --cap-add=SYS_PTRACE --cap-add=NET_BIND_SERVICE $PODMAN_OPTIONS $CONTAINER_SPECIAL_OPTIONS $CONTAINER_NOTES_UID_OPTION $CONTAINER_HEALTH_CHECK $CONTAINER_RESTART_OPTIONS $CONTAINER_IMAGE
 
+  if [ -n "$CONTAINER_COMPOSE_FILE" ]; then
 
-  # If one touch configuration present, copy into container directly after start
-  if [ -z "$DOMINO_AUTO_CONFIG_JSON_FILE" ]; then
+    container_compose_exports
+    echo
+    $CONTAINER_COMPOSE_CMD -f "$CONTAINER_COMPOSE_FILE" up -d
+    echo
+
+    # If one touch configuration present, copy into container directly after start
+    container_copy_one_touch
+
     return 0
   fi
 
-  if [ ! -e "$DOMINO_AUTO_CONFIG_JSON_FILE" ]; then
-     return 0
-  fi
+  $CONTAINER_CMD run $CONTAINER_IT $CONTAINER_PORTS --hostname=$CONTAINER_HOSTNAME --name $CONTAINER_NAME $CONTAINER_NETWORK $CONTAINER_ENV_FILE_OPTION $CONTAINER_VOLUMES --stop-timeout=$DOMINO_SHUTDOWN_TIMEOUT $FUSE_OPTIONS --cap-add=SYS_PTRACE --cap-add=NET_BIND_SERVICE $PODMAN_OPTIONS $CONTAINER_SPECIAL_OPTIONS $CONTAINER_NOTES_UID_OPTION $CONTAINER_HEALTH_CHECK $CONTAINER_RESTART_OPTIONS $CONTAINER_IMAGE
 
-  echo "Copying OneTouch configuration into container"
-
-  count=10
-  while [ $count -gt 0 ]; do
-    sleep 1
-    $CONTAINER_CMD cp "$DOMINO_AUTO_CONFIG_JSON_FILE" $CONTAINER_NAME:/local/notesdata/DominoAutoConfig.json
-    if [ "$?" = "0" ];then
-      count=0
-    else
-      count=$(expr $count - 1)
-    fi
-  done
-
-  # Remove config files after run, because they might contain sensitive data
-  remove_file "$DOMINO_AUTO_CONFIG_JSON_FILE"
-  remove_file "$DOMINO_AUTO_CFG_DEFAULTS_ENV_FILE"
+  # If one touch configuration present, copy into container directly after start
+  container_copy_one_touch
 
   return 0
 }
@@ -1155,6 +1269,15 @@ container_start ()
     CONTAINER_IT="-ia"
   else
     CONTAINER_IT=""
+  fi
+
+  if [ -n "$CONTAINER_COMPOSE_FILE" ]; then
+
+    container_compose_exports
+    echo
+    $CONTAINER_COMPOSE_CMD -f "$CONTAINER_COMPOSE_FILE" up -d
+    echo
+    return 0
   fi
 
   if [ ! -z "$CONTAINER_IT" ]; then
@@ -1173,6 +1296,15 @@ container_stop ()
 
   if [ "$PARAM2" = "live" ]; then
     $CONTAINER_CMD attach $CONTAINER_NAME --no-stdin &
+  fi
+
+  if [ -n "$CONTAINER_COMPOSE_FILE" ]; then
+
+    container_compose_exports
+    echo
+    $CONTAINER_COMPOSE_CMD -f "$CONTAINER_COMPOSE_FILE" down
+    echo
+    return 0
   fi
 
   $CONTAINER_CMD stop --time=$DOMINO_SHUTDOWN_TIMEOUT $CONTAINER_NAME
@@ -1204,8 +1336,29 @@ container_remove ()
     fi
   fi
 
+  if [ -n "$CONTAINER_COMPOSE_FILE" ]; then
+
+    container_compose_exports
+    echo
+    $CONTAINER_COMPOSE_CMD -f "$CONTAINER_COMPOSE_FILE" rm
+    echo
+    return 0
+  fi
+
   $CONTAINER_CMD rm $CONTAINER_NAME
   return 0
+}
+
+container_ps ()
+{
+  if [ -n "$CONTAINER_COMPOSE_FILE" ]; then
+
+    container_compose_exports
+    echo
+    $CONTAINER_COMPOSE_CMD -f "$CONTAINER_COMPOSE_FILE" ps
+    echo
+    return 0
+  fi
 }
 
 container_restart_policy ()
@@ -1607,6 +1760,86 @@ check_hostname()
   CONTAINER_HOSTNAME=$(hostname -f 2>/dev/null)
 }
 
+init_project ()
+{
+  local a=
+  local p=
+  local CFG_DIR=
+  local COMPOSE_FILE=
+  local ENV_FILE=
+  local CFG_FILE=domino_container
+
+  for a in $@; do
+
+    p=$(echo "$a" | awk '{print tolower($0)}')
+
+    case "$p" in
+      -home|-h|home)
+        if [ -n "$CFG_DIR" ]; then
+          log_and_exit "Error: More than one target specified!"
+        fi
+
+        CFG_DIR=~
+        ;;
+
+      -local|-l|local)
+        if [ -n "$CFG_DIR" ]; then
+          log_and_exit "Error: More than one target specified!"
+        fi
+
+        CFG_DIR=.
+        ;;
+
+     -env|-e|env)
+        ENV_FILE=.env
+        ;;
+
+      -compose|-c|compose)
+        COMPOSE_FILE=docker-compose.yml
+        ;;
+
+     *)
+        log_and_exit "Invalid parameter [$a]"
+        ;;
+    esac
+  done
+
+  if [ -z "$CFG_DIR" ]; then
+    log_and_exit "No target defined (specify -home or -local)"
+  fi
+
+  CFG_DIR=$CFG_DIR/.dominoctl
+
+  if [ ! -e "$CFG_DIR" ]; then
+    mkdir "$CFG_DIR"
+  fi
+
+  if [ ! -e "$CFG_DIR/$CFG_FILE" ]; then
+    cp /opt/nashcom/startscript/domino_container_template.cfg "$CFG_DIR/$CFG_FILE"
+  else
+    echo "Info: '$CFG_DIR/$CFG_FILE config file already exists!"
+  fi
+
+  if [ -n "$COMPOSE_FILE" ]; then
+    if [ ! -e "$CFG_DIR/$COMPOSE_FILE" ]; then
+      cp /opt/nashcom/startscript/docker-compose_template.yml "$CFG_DIR/$COMPOSE_FILE"
+    else
+      echo "Info: '$CFG_DIR/$COMPOSE_FILE' already exists!"
+    fi
+  fi
+
+
+  if [ -n "$ENV_FILE" ]; then
+    if [ -e "$CFG_DIR/$ENV_FILE" ]; then
+      echo "Info: '$CFG_DIR/$ENV_FILE' config file already exists!"
+    else
+        touch $CFG_DIR/$ENV_FILE
+        echo "Info: Created empty file '$CFG_DIR/$ENV_FILE'"
+    fi
+  fi
+
+}
+
 
 check_container_environment "$PARAM1"
 check_root_permissions
@@ -1646,8 +1879,12 @@ case "$PARAM1" in
     container_build
     ;;
 
-  start|run)
+  start|run|up)
     domino_start
+    ;;
+
+  ps)
+    container_ps
     ;;
 
   restart)
@@ -1677,7 +1914,7 @@ case "$PARAM1" in
     systemd_stop
     ;;
 
-  stop)
+  stop|down)
     domino_stop
     ;;
 
@@ -1738,7 +1975,7 @@ case "$PARAM1" in
 
   env)
     if [ -z "$CONTAINER_FULL_ENV_FILE" ]; then
-   
+
       if [ -z "$CONTAINER_ENV_FILE" ]; then
         echo "No environment file configured!"
       else
@@ -1747,9 +1984,20 @@ case "$PARAM1" in
         $EDIT_COMMAND "$DOMINO_CFG_DIR/$CONTAINER_ENV_FILE"
       fi
     else
-      echo "Using environment file $CONTAINER_FULL_ENV_FILE"
       $EDIT_COMMAND "$CONTAINER_FULL_ENV_FILE"
     fi
+    ;;
+
+  compose)
+    if [ -z "$CONTAINER_COMPOSE_FILE" ]; then
+      echo "No compose file configured"
+    else
+      $EDIT_COMMAND "$CONTAINER_COMPOSE_FILE"
+    fi
+    ;;
+
+ init)
+    init_project "$PARAM2" "$PARAM3" "$PARAM4" "$PARAM5"
     ;;
 
   dockerfile|containerfile)

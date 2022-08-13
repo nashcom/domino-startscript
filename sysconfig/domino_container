@@ -20,10 +20,8 @@ CONTAINER_VOLUMES="-v domino_local:/local"
 
 # Environment file is used for first container start (run) to pass setup parameters
 # The new configuration uses a JSON OneTouch automation setup. Just run domino_container setup
-CONTAINER_ENV_FILE=env_container
 
-# Domino V12 One Touch Configufation
-#CONTAINER_ENV_FILE=env_container_domino12
+#CONTAINER_ENV_FILE=env_container
 
 # Docker Restart policy
 CONTAINER_RESTART_POLICY=unless-stopped
@@ -32,6 +30,11 @@ CONTAINER_RESTART_POLICY=on-failure:3
 # Domino V12 Borg Backup support (enables FUSE device)
 #BORG_BACKUP=yes
 
+# Specify a Docker compose file to use docker-compose to define the server (useful if you have other services to add)
+#CONTAINER_COMPOSE_FILE=/etc/sysconfig/domino/domino_compose.yml
+
 # Editor Command
 #EDIT_COMMAND=nano
 
+# User sudo if running with standard user
+#CONTAINER_SCRIPT_USE_SUDO=yes

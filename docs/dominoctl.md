@@ -296,3 +296,62 @@ The configuration option allows switching to a different editor.
 EDIT_COMMAND=nano
 ```
 
+# Docker Compose Support
+
+**dominoctl** is a very flexible tool to run your Domino containers on Dock and Podman.
+In some scenarios for lab environments using docker-compose with multiple containers are helpful.
+To enable Docker compose support, add a `docker-compose.yml` to the configuration directory.
+
+# Multiple Domino Container Support
+
+By default, the configuration is located in `/etc/sysconfig`.
+In addition, two additional configuration locations can be used:
+
+- Home Directory
+- Current work directory
+
+## Run Docker with a non-privileged user
+
+`dominoctl` runs with any user. Podman is daemon-less and allows to run with any user by default. Podman even separates containers and images between users.
+ For Docker the user needs to be added to the `docker` group to allow running Docker commands.
+
+## .dominoctl Directory
+
+The directory name for configurations is `.dominoctl`
+This directory is either located in your home directory or the local work directory.
+
+### Search Order
+
+- Current directory
+- Home Directory
+- /etc/sysconfig
+
+### Configuration Files
+
+The directory can contain the following files:
+
+- **domino_container**  
+  configuration file (required)
+
+- **docker-compose.yml**  
+  Docker compose file. If this file is present, Docker compose is used
+
+- **.env**  
+  Environment file specifying environment variables for Docker container.
+
+## Initialize a Configuration
+
+- .**dominoctl home**  
+  writes a new configuration into the current user's home directory
+
+- .**dominoctl local**  
+  writes a new configuration into the current directory
+
+### Additional Init Options
+
+- **env**  
+  writes an empty **.env** file
+
+- **compose**  
+  copies a default **docker-compose.yml**
+
