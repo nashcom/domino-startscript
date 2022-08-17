@@ -63,6 +63,7 @@ DebugText()
 check_json_file()
 {
   local ONE_TOUCH_JSON_SCHEMA=dominoOneTouchSetup.schema.json
+  local ONE_TOUCH_JSON_SCHEMA_FULL=
   local VALIDJSON_BIN=
 
   if [ -z "$1" ]; then
@@ -111,6 +112,12 @@ check_json_file()
     VALIDJSON_BIN=
   fi
 
+  if [ -x "/usr/bin/checkjson" ]; then
+    CHECKJSON_BIN="/usr/bin/checkjson"
+  fi
+
+  echo "[$VALIDJSON_BIN]"
+
   if [ -n "$VALIDJSON_BIN" ]; then
     # Save existing lib path
     local SAVED_LD_LIBRARY_PATH="$LD_LIBRARY_PATH"
@@ -119,7 +126,10 @@ check_json_file()
     export LD_LIBRARY_PATH="$Notes_ExecDirectory"
 
     # For now copy the schema to data diretory, because validjson expects it in the current directoy
-    cp -f "$Notes_ExecDirectory/$ONE_TOUCH_JSON_SCHEMA" "$DOMINO_DATA_PATH"
+
+    if [ -e "$Notes_ExecDirectory/$ONE_TOUCH_JSON_SCHEMA" ]; then
+      cp -f "$Notes_ExecDirectory/$ONE_TOUCH_JSON_SCHEMA" "$DOMINO_DATA_PATH"
+    fi
 
     local SAVED_PWD="$(pwd)"
     cd "$DOMINO_DATA_PATH"
@@ -143,6 +153,24 @@ check_json_file()
     # Restore existing env
     cd "$SAVED_PWD"
     export LD_LIBRARY_PATH="$SAVED_LD_LIBRARY_PATH"
+
+  elif [ -n "$CHECKJSON_BIN" ]; then
+
+    echo
+    print_delim
+    echo "One-Touch Domino Validation (via checkjson)"
+    print_delim
+    echo
+
+    if [ -e "/opt/hcl/domino/notes/latest/linux/$ONE_TOUCH_JSON_SCHEMA" ]; then
+      ONE_TOUCH_JSON_SCHEMA_FULL=/opt/hcl/domino/notes/latest/linux/$ONE_TOUCH_JSON_SCHEMA
+
+    elif [ -e "/opt/nashcom/startscript/OneTouchSetup/$ONE_TOUCH_JSON_SCHEMA" ]; then
+      ONE_TOUCH_JSON_SCHEMA_FULL=/opt/nashcom/startscript/OneTouchSetup/$ONE_TOUCH_JSON_SCHEMA
+    fi
+
+    $CHECKJSON_BIN "$1" "$ONE_TOUCH_JSON_SCHEMA_FULL"
+
   fi
 
   return 0
@@ -468,6 +496,12 @@ fi
 # Ensure Domino binary path is set
 if [ -z "$LOTUS" ]; then
   export LOTUS="/opt/hcl/domino"
+  export Notes_ExecDirectory="$LOTUS/notes/latest/linux"
+fi
+
+# Ensure Domino user is set
+if [ -z "$DOMINO_USER" ]; then
+  export DOMINO_USER=notes
 fi
 
 EditOneTouchSetup "$@"
