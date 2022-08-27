@@ -284,31 +284,49 @@ check_container_environment()
   CONTAINER_ENV_NAME=
   CONTAINER_RUNTIME_VERSION=
 
-  if [ -x /usr/bin/podman ]; then
+  # Auto detect container environment
+
+  if [ -z "$CONTAINER_CMD" ] || [ "$CONTAINER_CMD_FORCE" = "podman" ]; then
+    if [ -x /usr/bin/podman ]; then
+      if [ -z "$USE_DOCKER" ]; then
+        # Podman environment detected
+        CONTAINER_CMD=podman
+        CONTAINER_ENV_NAME=Podman
+        CONTAINER_RUNTIME_VERSION_STR=$(podman -v | head -1)
+        CONTAINER_RUNTIME_VERSION=$(echo $CONTAINER_RUNTIME_VERSION_STR | awk -F'version ' '{print $2 }')
+        check_version "$CONTAINER_RUNTIME_VERSION" "$PODMAN_MINIMUM_VERSION" "$CONTAINER_CMD"
+
+        if [ "$DOMINO_NO_SYSTEMD" != "yes" ]; then
+          DOMINO_SYSTEMD_NAME=
+        else
+          if [ -z "$DOMINO_SYSTEMD_NAME" ]; then
+             DOMINO_SYSTEMD_NAME=domino_container.service
+          fi
+        fi
+
+      fi
+    fi
+  fi
+
+  if [ -z "$CONTAINER_CMD" ] || [ "$CONTAINER_CMD_FORCE" = "nerdctl" ]; then
     if [ -z "$USE_DOCKER" ]; then
-      # Podman environment detected
-      CONTAINER_CMD=podman
-      CONTAINER_ENV_NAME=Podman
-      CONTAINER_RUNTIME_VERSION_STR=$(podman -v | head -1)
-      CONTAINER_RUNTIME_VERSION=$(echo $CONTAINER_RUNTIME_VERSION_STR | awk -F'version ' '{print $2 }')
-      check_version "$CONTAINER_RUNTIME_VERSION" "$PODMAN_MINIMUM_VERSION" "$CONTAINER_CMD"
+      if [ -n "$(which nerdctl 2> /dev/null)" ]; then
+
+        # nerdctl environment detected
+        CONTAINER_CMD=nerdctl
+        # nerdctl doesn't uses systemd
+        CONTAINER_SYSTEMD_NAME=
+        CONTAINER_ENV_NAME=nerdctl
+        CONTAINER_RUNTIME_VERSION_STR=$(nerdctl -v | head -1)
+        CONTAINER_RUNTIME_VERSION=$(echo $CONTAINER_RUNTIME_VERSION_STR | awk -F'version ' '{print $2 }')
+
+        # Nerdctl needs no additional config
+        return 0
+      fi
     fi
   fi
 
-  if [ -z "$CONTAINER_CMD" ]; then
-    if [ -n "$(which nerdctl 2> /dev/null)" ]; then
-      CONTAINER_CMD=nerdctl
-      CONTAINER_ENV_NAME=nerdctl
-      CONTAINER_RUNTIME_VERSION_STR=$(nerdctl -v | head -1)
-      CONTAINER_RUNTIME_VERSION=$(echo $CONTAINER_RUNTIME_VERSION_STR | awk -F'version ' '{print $2 }')
-
-      # Nerdctl needs no additional config
-      return 0
-    fi
-  fi
-
-
-  if [ -z "$CONTAINER_CMD" ]; then
+  if [ -z "$CONTAINER_CMD" ] || [ "$CONTAINER_CMD_FORCE" = "docker" ]; then
     if [ -x "/usr/bin/docker" ] || [ -x "/usr/local/bin/docker" ]; then
       CONTAINER_CMD=docker
       # Docker doesn't uses systemd 
@@ -333,8 +351,8 @@ check_container_environment()
            return 0
          fi
 
-         if [ -e /usr/local/bin/docker-compose ]; then
-           CONTAINER_COMPOSE_CMD=/usr/local/bin/docker-compose
+         if [ -e /usr/bin/docker-compose ]; then
+           CONTAINER_COMPOSE_CMD=/usr/bin/docker-compose
            return 0
          fi
 
@@ -351,14 +369,12 @@ check_container_environment()
     fi
   fi
 
-  if [ -z "$DOMINO_SYSTEMD_NAME" ]; then
-    DOMINO_SYSTEMD_NAME=domino_container.service
+  if [ -n "$DOMINO_SYSTEMD_NAME" ]; then
+    CONTAINER_PID=/tmp/$DOMINO_SYSTEMD_NAME.pid
+    CONTAINER_CID=/tmp/$DOMINO_SYSTEMD_NAME.cid
+    TAG_CONTAINER_ID=".Id"
+    PODMAN_OPTIONS="--cgroups=no-conmon --conmon-pidfile $CONTAINER_PID --cidfile $CONTAINER_CID"
   fi
-
-  CONTAINER_PID=/tmp/$DOMINO_SYSTEMD_NAME.pid
-  CONTAINER_CID=/tmp/$DOMINO_SYSTEMD_NAME.cid
-  TAG_CONTAINER_ID=".Id"
-  PODMAN_OPTIONS="--cgroups=no-conmon --conmon-pidfile $CONTAINER_PID --cidfile $CONTAINER_CID"
 
   if [ -z "$CONTAINER_HEALTH_CHECK" ]; then
     CONTAINER_HEALTH_CHECK="--health-cmd=/healthcheck.sh --health-interval=60s --health-retries=4 --health-start-period=120s"
@@ -420,6 +436,13 @@ pull_image ()
 
 upload_image ()
 {
+  # Load image if a .tgz file is specified and skip searching for the image
+  case "$1" in
+    *.tgz)
+      $CONTAINER_CMD load --input $1
+      return 0
+      ;;
+  esac
 
   if [ -z "$SOFTWARE_FILE" ]; then
     SOFTWARE_FILE=/opt/nashcom/startscript/software.txt
@@ -454,7 +477,7 @@ upload_image ()
   # Try current dir first
   DOMINO_IMAGE_FILE_PATH=$(find . -name "$DOMINO_IMAGE_FILE_NAME")
 
-  # Than try /local
+  # Then try /local
   if [ -z "$DOMINO_IMAGE_FILE_PATH" ]; then
     DOMINO_IMAGE_FILE_PATH=$(find /local -name "$DOMINO_IMAGE_FILE_NAME" 2>/dev/null |  head -1)
   fi
