@@ -8,7 +8,7 @@
 # You may use and distribute the unmodified version of this script.
 # Use at your own risk. No implied or specific warranties are given.
 # You may change it for your own usage only
-# Version 3.7.1 12.03.2022
+# Version 3.7.2 30.08.2022
 ###########################################################################
 # chkconfig: 345 66 19
 # description: HCL Domino Server (notes)
@@ -21,7 +21,7 @@
 # Default-Stop:   0 1 2 6
 # Short-Description: HCL Domino Server (notes)
 # Description:       HCL Domino Server (notes)
-#       Start/Stop Script V3.7.1 for xLinux/zLinux/AIX
+#       Start/Stop Script V3.7.2 for xLinux/zLinux/AIX
 #       2005-2022 Copyright by Daniel Nashed (domino_unix@nashcom.de)
 ### END INIT INFO
 
@@ -53,67 +53,35 @@ if [ `uname` = AIX ]; then
   PLATFORM_NAME=AIX
 elif [ `uname` = Linux ]; then
   LARCH=linux
-  UNAME=`uname -m`
-  if [ $UNAME = s390 ]; then
-    PLATFORM_NAME=zLinux
-  elif [ $UNAME = s390x ]; then
-    PLATFORM_NAME=zLinux
-  else
-    PLATFORM_NAME=xLinux
-  fi
-
-  # Query linux distribution
-  if [ ${LARCH} = "linux" ]; then
-    if [ -e /etc/SuSE-release ]; then
-      LINUX_DISTRIBUTION=suse
-    elif [ -e /etc/redhat-release ]; then
-      LINUX_DISTRIBUTION=redhat
-    else
-      LINUX_DISTRIBUTION=unknown
-    fi
-  fi
+  PLATFORM_NAME=xLinux
 fi
 
 if [ ${LARCH} = "linux" ]; then
   # Determine script name. for symbolic link check real name
-  DOMINO_SERVICE_NAME=`readlink $0`
+  DOMINO_SERVICE_NAME=$(readlink $0)
   if [ -z "$DOMINO_SERVICE_NAME" ]; then
     DOMINO_SERVICE_NAME=$0
   fi
-  DOMINO_SERVICE_NAME=`basename $DOMINO_SERVICE_NAME`
+  DOMINO_SERVICE_NAME=$(basename $DOMINO_SERVICE_NAME)
 fi
 
-# Docker Operations
-
-# check if running inside a container
-if [ -e "/.dockerenv" ]; then
-  DOCKER_ENV=yes
-fi
-
-# Podman has it's own name
-if [ -e "/run/.containerenv" ]; then
-  DOCKER_ENV=yes
-fi
-
-# K8s environment
-if [ -n "$KUBERNETES_SERVICE_HOST" ]; then
-  DOCKER_ENV=yes
-fi
-
-if [ "$DOCKER_ENV" = "yes" ]; then
-
-  # in Docker environments check LOGNAME first. If not present use whoami, which could also fail
-  # some environments use --user to map a name, which isn't listed in the container
-  # in that case use the UID
-
-  LOGNAME=`whoami 2>/dev/null`
+if [ -z "$LOGNAME" ]; then
+  LOGNAME=$(whoami 2>/dev/null)
 
   if [ -z "$LOGNAME" ]; then
-    LOGNAME=`id -u`
+    LOGNAME=$(id -u)
   fi
 
   export LOGNAME
+fi
+
+if [ -z "$DOMINO_USER" ]; then
   export DOMINO_USER=$LOGNAME
+fi
+
+# If no systemd is running start server directy (Docker, Podman, K8s, WSL)
+
+if [ -z "$( ps -p 1 -o cmd= | grep systemd)" ]; then
 
   if [ "$LOGNAME" = "$DOMINO_USER" ]; then
     $DOMINO_START_SCRIPT "$1" "$2" "$3" "$4" "$5" "$6"
@@ -122,25 +90,6 @@ if [ "$DOCKER_ENV" = "yes" ]; then
   fi
 
   exit 0
-
-elif [ -n "$(uname -r|grep microsoft)" ]; then
-
-  # WSL does not support systemd -> Start the server directly
-
-  if [ "$LOGNAME" = "$DOMINO_USER" ]; then
-    $DOMINO_START_SCRIPT "$1" "$2" "$3" "$4" "$5" "$6"
-  else
-    su - $DOMINO_USER -c "$DOMINO_START_SCRIPT '$1' '$2' '$3' '$4' '$5' '$6'"
-  fi
-
-  exit 0
-
-else
-
-  # normal operations
-  if [ -z "$LOGNAME" ]; then
-    export LOGNAME=`whoami`
-  fi
 fi
 
 # systemd operations for start/stop
@@ -165,7 +114,7 @@ if [ -e /etc/systemd/system ]; then
 
     elif [ "$1" = "stop" ]; then
       echo
-      echo Stopping systemd "$DOMINO_RC_NAMEDOMINO_RC_NAMEDOMINO_RC_NAMEDOMINO_SYSTEMD_NAME"
+      echo Stopping systemd "$DOMINO_SYSTEMD_NAME"
       echo
  
       if [ "$2" = "live" ]; then
@@ -276,9 +225,6 @@ if [ -e /etc/systemd/system ]; then
   fi
 fi
 
-
-# -- Legacy before systemd operations --
-
 SWITCH_USER=0
 
 # Starting a server always needs a switch to the right run-time environment
@@ -302,88 +248,6 @@ if [ "$1" = "setenv" ]; then
   exit 1
 fi
 
-# Special handling for CentOS/RedHat start/stop
-if [ "$LINUX_DISTRIBUTION" = "redhat" ]; then 
-
-  if [ "$1" = "start" ]; then
-   start_stop=1
-  elif [ "$1" = "stop" ]; then
-   start_stop=1
-  elif [ "$1" = "restart" ]; then
-   start_stop=1
-  elif [ "$1" = "restartcompact" ]; then
-   start_stop=1
-  elif [ "$1" = "restartfixup" ]; then
-   start_stop=1
-  fi
-
-  if [ "$start_stop" = "1" ]; then
-    if [ ! -w /var/lock/subsys ]; then
-      echo "On CentOS/RedHat you can only start/stop the server with root-permissions"
-      exit 1
-    fi
-  fi
-fi
-
-if [ "$1" = "service" ]; then
-
-  if [ "$LINUX_DISTRIBUTION" = "suse" ]; then 
-  
-    if [ -z "$2" ]; then
-      echo "Status for Service '$DOMINO_SERVICE_NAME'"
-      chkconfig --list "$DOMINO_SERVICE_NAME"
-    elif [ "$2" = "status" ]; then
-      echo "Status for Service '$DOMINO_SERVICE_NAME'"
-      chkconfig --list "$DOMINO_SERVICE_NAME"
-    elif [ "$2" = "on" ]; then
-      echo "Enabling Service '$DOMINO_SERVICE_NAME'"
-      chkconfig --add "$DOMINO_SERVICE_NAME"
-      chkconfig "$DOMINO_SERVICE_NAME" on
-    elif [ "$2" = "off" ]; then
-      echo "Disabling Service '$DOMINO_SERVICE_NAME'"
-      chkconfig "$DOMINO_SERVICE_NAME" off
-    elif [ "$2" = "add" ]; then
-      echo "Installing Service '$DOMINO_SERVICE_NAME'"
-      chkconfig --add "$DOMINO_SERVICE_NAME"
-    elif [ "$2" = "del" ]; then
-      echo "Removing Service '$DOMINO_SERVICE_NAME'"
-      chkconfig --del "$DOMINO_SERVICE_NAME"
-    else
-      echo "Unknown parameter '$1' for 'service'-command"
-    fi
-
-  elif [ "$LINUX_DISTRIBUTION" = "redhat" ]; then
-
-    if [ -z "$2" ]; then
-      echo "Status for Service '$DOMINO_SERVICE_NAME'"
-      chkconfig --list "$DOMINO_SERVICE_NAME"
-    elif [ "$2" = "status" ]; then
-      echo "Status for Service '$DOMINO_SERVICE_NAME'"
-      chkconfig --list "$DOMINO_SERVICE_NAME"
-    elif [ "$2" = "on" ]; then
-      echo "Enabling Service '$DOMINO_SERVICE_NAME'"
-      chkconfig "$DOMINO_SERVICE_NAME" on
-    elif [ "$2" = "off" ]; then
-      echo "Disabling Service '$DOMINO_SERVICE_NAME'"
-      chkconfig "$DOMINO_SERVICE_NAME" off
-    elif [ "$2" = "add" ]; then
-      echo "Installing Service '$DOMINO_SERVICE_NAME'"
-      chkconfig --add "$DOMINO_SERVICE_NAME"
-    elif [ "$2" = "del" ]; then
-      echo "Removing Service '$DOMINO_SERVICE_NAME'"
-      chkconfig --del "$DOMINO_SERVICE_NAME"
-    else
-      echo "Unknown parameter '$1' for 'service'-command"
-    fi
-
-  else
-    echo "Feature only supported on Linux"
-    exit 0
-  fi
-
-  exit 0
-fi
-
 # Run the main startup script
 if [ "$SWITCH_USER" = "0" ]; then
    $DOMINO_START_SCRIPT "$1" "$2" "$3" "$4" "$5" "$6"
@@ -395,29 +259,5 @@ else
 fi
 
 RETVAL=$?
-
-# Special handling for CentOS/RedHat start/stop
-if [ "$LINUX_DISTRIBUTION" = "redhat" ]; then 
-
-  if [ -z "$DOMINO_SYSTEMD_NAME" ]; then
-
-    # Source function library.
-    . /etc/rc.d/init.d/functions
-
-    # Determine script name. for symbolic link check real name
-
-    if [ "$VERBOSE_INFO" = "yes" ]; then
-      echo "Return Code: " $RETVAL
-    fi
-
-    if [ "$1" = "start" ]; then
-      touch /var/lock/subsys/$DOMINO_SERVICE_NAME
-    elif [ "$1" = "restart" ]; then
-      touch /var/lock/subsys/$DOMINO_SERVICE_NAME
-    elif [ "$1" = "stop" ]; then
-      rm -f /var/lock/subsys/$DOMINO_SERVICE_NAME
-    fi
-  fi
-fi
 
 exit $RETVAL

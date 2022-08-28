@@ -2,7 +2,7 @@
 
 ###########################################################################
 # Install Script - Start/Stop Script for Domino on xLinux/zLinux/AIX      #
-# Version 3.7.1 12.03.2022                                                #
+# Version 3.7.2 30.08.2022                                                #
 #                                                                         #
 # (C) Copyright Daniel Nashed/NashCom 2005-2022                           #
 # Feedback domino_unix@nashcom.de                                         #
@@ -32,7 +32,7 @@ DOMINO_DOCKER_SCRIPT=entrypoint.sh
 DONT_TOUCH_THIS_NASHCOM_PATH=/opt/nashcom/startscript
 DONT_TOUCH_THIS_STANDARD_USER=notes
 
-DOMINO_SCRIPT_VERSION=3.7.1
+DOMINO_SCRIPT_VERSION=3.7.2
 
 # if you really really need to, change this and all files will be patched
 
@@ -84,35 +84,14 @@ else
   fi
 fi
 
-INIT_PATH=/etc/init.d
-
 # Determine architecture and platform
 if [ `uname` = AIX ]; then
   LARCH=ibmpow
   PLATFORM_NAME=AIX
-  INIT_PATH=/etc/rc.d
   ROOT_GROUP=system
 elif [ `uname` = Linux ]; then
   LARCH=linux
-  UNAME=`uname -m`
-  if [ $UNAME = s390 ]; then
-    PLATFORM_NAME=zLinux
-  elif [ $UNAME = s390x ]; then
-    PLATFORM_NAME=zLinux
-  else
-    PLATFORM_NAME=xLinux
-  fi
-
-  # Query linux distribution
-  if [ ${LARCH} = "linux" ]; then
-    if [ -e /etc/SuSE-release ]; then
-      LINUX_DISTRIBUTION=suse
-    elif [ -e /etc/redhat-release ]; then
-      LINUX_DISTRIBUTION=redhat
-    else
-      LINUX_DISTRIBUTION=unknown
-    fi
-  fi
+  PLATFORM_NAME=xLinux
 fi
 
 
@@ -310,6 +289,49 @@ copy_one_touch_templates()
   return 0
 }
 
+detect_container_env()
+{
+  # check if running inside a container
+  if [ -e "/.dockerenv" ]; then
+    CONTAINER_ENV=docker
+    return 1
+  fi
+
+  # Podman has it's own name
+  if [ -e "/run/.containerenv" ]; then
+    CONTAINER_ENV=podman
+    return 1
+  fi
+
+  # K8s environment
+  if [ -n "$KUBERNETES_SERVICE_HOST" ]; then
+    CONTAINER_ENV=k8s
+    return 1
+  fi
+
+  # Some container environments define e.g. 'oci'
+  if [ -n "$container" ]; then
+    CONTAINER_ENV=$container
+    return 1
+  fi
+
+  FIRST_PROCESS=$(ps -p 1 -o cmd=)
+
+  case "$FIRST_PROCESS" in
+    *entrypoint.sh)
+      CONTAINER_ENV=other
+      return 1
+      ;;
+
+    /bin/bash*)
+      return 1
+      ;;
+  esac
+
+  return 0
+}
+
+
 # rc script files install
 
 header "Installing StartScript & Config"
@@ -333,19 +355,6 @@ fi
 if [ ! -e "$DOMINO_DATA_PATH" ]; then
   echo "Terminating installation - Domino data directory directory '$DOMINO_DATA_PATH' does not exist"
   exit 1
-fi
-
-# domino script is now /usr/bin. convert link when needed
-
-if [ -L "$DOMINO_SCRIPT_BIN" ]; then
-  echo "Replacing symbolic link [$DOMINO_SCRIPT_BIN] with script file"
-  rm -f "$DOMINO_SCRIPT_BIN"
-
-  # also remove old init.d name and replace with link further down in logic
-  if [ -e "$INIT_PATH/$DOMINO_RC_NAME" ]; then
-    rm -f "$INIT_PATH/$DOMINO_RC_NAME"
-  fi
-
 fi
 
 install_file "$START_SCRIPT_DIR/rc_domino" "$DOMINO_SCRIPT_BIN" $ROOT_USER $ROOT_GROUP 755
@@ -397,38 +406,22 @@ if [ -e "$OLD_RC_DOMINO_SCRIPT_LOCATION" ]; then
   echo link for legacy start script location created [$OLD_RC_DOMINO_SCRIPT_LOCATION]
 fi
 
-# check if running inside a container
-if [ -e "/.dockerenv" ]; then
-  DOCKER_ENV=yes
-fi
-
-# Podman has it's own name
-if [ -e "/run/.containerenv" ]; then
-  DOCKER_ENV=yes
-fi
-
-# K8s environment
-if [ -n "$KUBERNETES_SERVICE_HOST" ]; then
-  DOCKER_ENV=yes
-fi
-
 # set link to include script as 'domino' into path
-if [ "$DOCKER_ENV" = "yes" ]; then
+if [ "$CONTAINER_ENV" = "yes" ]; then
   # for Docker we just link the main script
   create_link "$DOMINO_START_SCRIPT_DIR/rc_domino_script" "$DOMINO_SCRIPT_BIN"
-
-else
-  # create symbolic link in old standard init.d location if OS has init.d
-  if [ -e "$INIT_PATH" ]; then
-    if [ ! -e "$INIT_PATH/$DOMINO_RC_NAME" ]; then
-      create_link "$DOMINO_SCRIPT_BIN" "$INIT_PATH/$DOMINO_RC_NAME"
-    fi
-  fi
 fi
 
-if [ "$DOCKER_ENV" = "yes" ]; then
-  # when running in a Docker environment, don't use systemd/init.d
-  echo "Docker Environment detected!"
+
+detect_container_env
+
+if [ -n "$CONTAINER_ENV" ]; then
+  # when running in a container environment, don't use systemd/init.d
+  if [ "$CONTAINER_ENV" = "other" ]; then
+    header "Container environment detected!"
+  else
+    header "${CONTAINER_ENV^} container environment detected!"
+  fi
   
   if [ "$PARAM1" = "upd" ]; then
     install_file "$START_SCRIPT_DIR/$DOMINO_DOCKER_SCRIPT" "/$DOMINO_DOCKER_SCRIPT" $ROOT_USER $ROOT_GROUP 755
@@ -438,7 +431,7 @@ if [ "$DOCKER_ENV" = "yes" ]; then
 
 elif [ -n "$(uname -r|grep microsoft)" ]; then
   # WSL does not support systemd
-  DebugText "WSL detected"
+  header "WSL detected"
 
 else
 

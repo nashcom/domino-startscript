@@ -29,6 +29,30 @@ format_mem()
   fi
 }
 
+domino_uptime()
+{
+  local LOTUS_BIN_DIR
+  local DOMINO_SERVER_PID
+  local PARTITION_USER
+
+  if [ -z "$DOMINO_USER" ]; then
+    PARTITION_USER=notes
+  else
+    PARTITION_USER=$DOMINO_USER
+  fi
+
+  if [ -z "$Notes_ExecDirectory" ]; then
+    LOTUS_BIN_DIR=/opt/hcl/domino/notes/latest/linux
+  else
+    LOTUS_BIN_DIR=$Notes_ExecDirectory
+  fi
+
+  DOMINO_SERVER_PID=$(ps -ef -fu $PARTITION_USER | grep "$LOTUS_BIN_DIR" | grep "server" | grep -v " -jc" | xargs | cut -d " " -f2)
+  if [ -n $DOMINO_SERVER_PID ]; then
+    DOMINO_UPTIME=$(ps -o etimes= -p $DOMINO_SERVER_PID | awk '{x=$1/86400;y=($1%86400)/3600;z=($1%3600)/60} {printf("%d day, %d hour %d min\n",x,y,z)}' )
+  fi
+}
+
 print_infos()
 {
   if [ -r  /etc/os-release ]; then
@@ -43,6 +67,19 @@ print_infos()
   LINUX_LOAD_AVG=$(awk -F " " '{printf $1 "  " $2 "  " $3}' /proc/loadavg)
 
   LINUX_HOSTNAME=$(cat /proc/sys/kernel/hostname)
+
+  if [ -x /usr/bin/systemd-detect-virt ]; then
+    LINUX_VIRT=$(/usr/bin/systemd-detect-virt -v)
+    CONTAINER_VIRT=$(/usr/bin/systemd-detect-virt -c)
+
+    if [ "$CONTAINER_VIRT" = "none" ]; then
+      CONTAINER_VIRT=
+    else
+      CONTAINER_UPTIME=$(ps -o etimes= -p 1 | awk '{x=$1/86400;y=($1%86400)/3600;z=($1%3600)/60} {printf("%d day, %d hour %d min\n",x,y,z)}' )
+    fi
+  fi
+
+  domino_uptime
 
   get_entry CPU_MODEL /proc/cpuinfo "model name"
   get_entry CPU_MHZ /proc/cpuinfo "cpu MHz"
@@ -66,6 +103,13 @@ print_infos()
   printf "Linux Version :      $LINUX_VERSION\n"
   printf "Kernel        :      $LINUX_KERNEL\n"
 
+  if [ -n "$LINUX_VIRT" ]; then
+    printf "Virt          :      $LINUX_VIRT\n"
+  fi
+
+  if [ -n "$CONTAINER_VIRT" ]; then
+    printf "Container     :      $CONTAINER_VIRT\n"
+  fi
 
   local CONTAINER_STR=
 
@@ -98,7 +142,17 @@ print_infos()
 
   printf "\n"
 
-  printf "Uptime        :      $LINUX_UPTIME\n"
+  if [ -n "$CONTAINER_UPTIME" ]; then
+    printf "Host Uptime   :      $LINUX_UPTIME\n"
+    printf "CTR  Uptime   :      $CONTAINER_UPTIME\n"
+  else
+    printf "Linux Uptime  :      $LINUX_UPTIME\n"
+  fi
+
+  if [ -n "$DOMINO_UPTIME" ]; then
+    printf "Domino Uptime :      $DOMINO_UPTIME\n"
+  fi
+
   printf "Load Average  :      $LINUX_LOAD_AVG\n"
 
   printf "\n"

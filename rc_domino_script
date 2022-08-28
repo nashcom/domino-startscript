@@ -3,7 +3,7 @@
 
 ###########################################################################
 # Main Script Logic - Start/Stop Script for Domino on xLinux/zLinux/AIX   #
-# Version 3.7.1 12.03.2022                                                #
+# Version 3.7.2 30.08.2022                                                #
 #                                                                         #
 # (C) Copyright Daniel Nashed/NashCom 2005-2022                           #
 # Feedback domino_unix@nashcom.de                                         #
@@ -21,7 +21,7 @@
 # limitations under the License.                                          #
 ###########################################################################
 
-DOMINO_SCRIPT_VERSION=3.7.1
+DOMINO_SCRIPT_VERSION=3.7.2
 
 VERBOSE_INFO="yes"
 
@@ -30,44 +30,20 @@ LINUX_VERSION=$(cat /etc/os-release | grep "VERSION_ID="| cut -d= -f2 | xargs)
 LINUX_PRETTY_NAME=$(cat /etc/os-release | grep "PRETTY_NAME="| cut -d= -f2 | xargs)
 LINUX_ID=$(cat /etc/os-release | grep "^ID="| cut -d= -f2 | xargs)
 
-# check if inside docker 
-if [ -e "/.dockerenv" ]; then
-  DOCKER_ENV=yes
-fi
-
-# other container run-time
-if [ -e "/run/.containerenv" ]; then
-  DOCKER_ENV=yes
-fi
-
-# K8s environment
-if [ -n "$KUBERNETES_SERVICE_HOST" ]; then
-  DOCKER_ENV=yes
-fi
 
 if [ -z "$LOGNAME" ]; then
-  if [ "$DOCKER_ENV"="yes" ]; then
+  LOGNAME=`whoami 2>/dev/null`
 
-    # in Docker environments check LOGNAME first. If not present use whoami, which could also fail 
-    # some environments use --user to map a name, which isn't listed in the container
-    # in that case use the UID
-
-    LOGNAME=`whoami 2>/dev/null`
-
-    if [ -z "$LOGNAME" ]; then
-      LOGNAME=`id -u`
-    fi
-
-    export LOGNAME
+  if [ -z "$LOGNAME" ]; then
+    LOGNAME=`id -u`
   fi
+
+  export LOGNAME
 fi
 
-# Determine Notes/OS level user
-DOMINO_USER=$LOGNAME
-
+# If DOMINO_USER is set assume we are the right user (mostly useful for container environments)
 if [ -z "$DOMINO_USER" ]; then
-  echo "Empty login name. Please check your configuration"
-  exit 1
+  DOMINO_USER=$LOGNAME
 fi
 
 # Reading global and specifiy configuration if present
@@ -101,21 +77,10 @@ fi
 
 if [ -z "$DOMINO_CONFIGURED" ]; then
   # Configuraiton is either loaded from external config file /etc/sysconfig/rc_domino_config.
-  # or defined in environment variables (not recommended).yyo
+  # or defined in environment variables (not recommended).
 
   echo "Domino Server for '$DOMINO_USER' not configured"
   exit 1
-fi
-
-if [ "$DOCKER_ENV" = "yes" ]; then
-  # On Docker allow additional configuration file in data directory
-  if [ -r "$DOMINO_DATA_PATH/rc_domino_config" ]; then
-    . $DOMINO_DATA_PATH/rc_domino_config
-
-    if [ "$VERBOSE_INFO" = "yes" ]; then
-      echo "Using Domino config File on Docker [$DOMINO_DATA_PATH/rc_domino_config]"
-    fi
-  fi
 fi
 
 # --- Begin of Special Configuration Parameters ---
@@ -184,13 +149,6 @@ if [ -z "$DOMINO_TIKA_SHUTDOWN_TERM_SECONDS" ]; then
   DOMINO_TIKA_SHUTDOWN_TERM_SECONDS=30
 fi
 
-
-# -- init.d service name used for configuration --
-
-if [ -z "$DOMINO_RC_NAME" ]; then
-  DOMINO_RC_NAME=rc_domino
-fi
-
 # -- systemd service name used for configuration --
 
 if [ -z "$DOMINO_SYSTEMD_NAME" ]; then
@@ -210,26 +168,7 @@ if [ `uname` = AIX ]; then
   PLATFORM_NAME=AIX
 elif [ `uname` = Linux ]; then
   LARCH=linux
-  UNAME=`uname -m`
-  if [ $UNAME = s390 ]; then
-    PLATFORM_NAME=zLinux
-  elif [ $UNAME = s390x ]; then
-    PLATFORM_NAME=zLinux
-  else
-    PLATFORM_NAME=xLinux
-  fi
-
-  # Query linux distribution
-  if [ ${LARCH} = "linux" ]; then
-    if [ -e /etc/SuSE-release ]; then
-      LINUX_DISTRIBUTION=suse
-    elif [ -e /etc/redhat-release ]; then
-      LINUX_DISTRIBUTION=redhat
-    else
-      LINUX_DISTRIBUTION=unknown
-    fi
-  fi
-
+  PLATFORM_NAME=xLinux
 fi
 
 if [ -z "$LARCH" ]; then
@@ -449,47 +388,6 @@ export DOMINO_DOMLOG_DB_BACKUP_DIR
 AMQ_NO_SIGWAIT_SIGTRAP=1
 export AMQ_NO_SIGWAIT_SIGTRAP
 
-# RC routines for older SuSE versions that need rc their routines for init.d and dummy functions for other platforms
-
-if [ "$LINUX_DISTRIBUTION" = "suse" ] && [ -z "$DOMINO_SYSTEMD_NAME" ]; then
-  # init suse rc
-  . /etc/rc.status
-else
-
-  # Dummy functions for non-SuSE platforms and also for SLES with systemd
-
-  rc_status ()
-  {
-    return 0
-  }
-
-  rc_check ()
-  {
-    return 0
-  }
-
-  rc_exit ()
-  {
-    exit $_rc_status_all
-  }
-
-  rc_failed ()
-  {
-    _rc_status_all=$1
-    return 0
-  }
-
-  rc_reset ()
-  {
-    _rc_status_all=0
-    return 0
-  }
-
-fi
-
-# Reset status of this service
-rc_reset
-
 
 # --- Helper functions ---
 
@@ -520,9 +418,7 @@ errmsg ()
 errmsg_and_exit ()
 {
   errmsg "$1"
-   rc_failed 1
-   rc_status -v
-   rc_exit
+  exit 1
 }
 
 print_delim ()
@@ -2758,9 +2654,6 @@ case "$PARAM1" in
     echo "done PID is $DOMINO_PID"
     echo
     
-    # Remember status and be verbose
-    rc_status -v
-
     cleanup_one_touch_setup
 
     post_startup_operations
@@ -2780,8 +2673,6 @@ case "$PARAM1" in
   
     archive_logs "$PARAM2"
       
-    # Remember status and be verbose
-    rc_status -v
     echo
     ;;
 
@@ -2791,8 +2682,6 @@ case "$PARAM1" in
     log_clear_operations "$PARAM2" "$PARAM3"
        
     # Remember status and be verbose
-    echo
-    rc_status -v
     echo
     ;;
 
@@ -2824,9 +2713,6 @@ case "$PARAM1" in
     fi
     
     shutdown_domino_server
-
-    # Remember status and be verbose
-    rc_status -v
 
     if [ "$DOMINO_USE_JAVA_CONTROLLER" = "yes" ]; then
 
@@ -2875,9 +2761,6 @@ case "$PARAM1" in
     
     shutdown_domino_server
 
-    # Remember status and be verbose
-    rc_status -v
-
     check_for_crashed_server
 
     echo "Domino for $PLATFORM_NAME ($DOMINO_SERVER) shutdown completed"
@@ -2916,10 +2799,6 @@ case "$PARAM1" in
     $0 start "$2" "$3"
 
     echo
-
-    # Remember status and be quiet
-    rc_status
-    echo
     ;;
 
   compactnextstart)
@@ -2941,8 +2820,6 @@ case "$PARAM1" in
     compact_log
     $0 start "$2" "$3"
 
-    # Remember status and be quiet
-    rc_status
     echo
     ;;
 
@@ -2962,8 +2839,6 @@ case "$PARAM1" in
     compact_dbs
     compact_log
 
-    # Remember status and be quiet
-    rc_status
     echo
     ;;
 
@@ -2981,8 +2856,6 @@ case "$PARAM1" in
     fixup_dbs
     $0 start "$2" "$3"
 
-    # Remember status and be quiet
-    rc_status
     echo
     ;;
 
@@ -3003,8 +2876,6 @@ case "$PARAM1" in
 
     fixup_dbs
 
-    # Remember status and be quiet
-    rc_status
     echo
     ;;
 
@@ -3223,14 +3094,6 @@ case "$PARAM1" in
     pre_status_operations
     domino_status_check "$PARAM2"
 
-    # Remember status
-    domino_status=$?
-    _rc_status=$domino_status
-
-    if [ ! "$PARAM" = "display" ]; then
-      rc_status -v
-    fi
-
     exit $domino_status
     ;;
 
@@ -3414,5 +3277,3 @@ case "$PARAM1" in
     ;;
 
 esac
-
-rc_exit
