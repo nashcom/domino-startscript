@@ -233,12 +233,10 @@ fi
 
 if [ "$PARAM1" = "upd" ]; then
   install_file "$START_SCRIPT_DIR/sysconfig/domino_container" "$CONTAINER_INSTALL_CONFIG_FILEPATH" "$ROOT_USER" "$ROOT_GROUP" 644
-  install_file "$START_SCRIPT_DIR/sysconfig/env_container_domino12" "/etc/sysconfig/env_container_domino12" "$ROOT_USER" "$ROOT_GROUP" 644
   install_file "$START_SCRIPT_DIR/sysconfig/env_container" "/etc/sysconfig/env_container" "$ROOT_USER" "$ROOT_GROUP" 644
   install_file "$START_SCRIPT_DIR/domino.cfg" "/etc/sysconfig/domino.cfg" "$DOMINO_USER" "$DOMINO_GROUP" 644
 else
   install_file_noupdate "$START_SCRIPT_DIR/sysconfig/domino_container" "$CONTAINER_INSTALL_CONFIG_FILEPATH" "$ROOT_USER" "$ROOT_GROUP" 644
-  install_file_noupdate "$START_SCRIPT_DIR/sysconfig/env_container_domino12" "/etc/sysconfig/env_container_domino12" "$ROOT_USER" "$ROOT_GROUP" 644
   install_file_noupdate "$START_SCRIPT_DIR/sysconfig/env_container" "/etc/sysconfig/env_container" "$ROOT_USER" "$ROOT_GROUP" 644
   install_file_noupdate "$START_SCRIPT_DIR/domino.cfg" "/etc/sysconfig/domino.cfg" "$DOMINO_USER" "$DOMINO_GROUP" 644
 fi

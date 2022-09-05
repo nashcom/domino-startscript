@@ -21,7 +21,7 @@ CONTAINER_VOLUMES="-v domino_local:/local"
 # Environment file is used for first container start (run) to pass setup parameters
 # The new configuration uses a JSON OneTouch automation setup. Just run domino_container setup
 
-#CONTAINER_ENV_FILE=env_container
+CONTAINER_ENV_FILE=env_container
 
 # Docker Restart policy
 CONTAINER_RESTART_POLICY=unless-stopped

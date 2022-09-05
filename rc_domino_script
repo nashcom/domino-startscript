@@ -2351,14 +2351,17 @@ check_one_touch_setup()
     return 0
   fi
 
-  # Check OnTouchSetup files only if not already specified (for example for container setup)
-  if [ -n "$SetupAutoConfigure" ]; then
-    echo "One Touch already set - Skipping auto detect config"  >> $DOMINO_OUTPUT_LOG
-    return 1
-  fi
-
   DOMINO_AUTO_CONFIG_ENV_FILE=$DOMINO_DATA_PATH/DominoAutoConfig.env
   DOMINO_AUTO_CONFIG_JSON_FILE=$DOMINO_DATA_PATH/DominoAutoConfig.json
+  DOMINO_AUTO_CONFIG_TEMPLATE_JSON_FILE=$DOMINO_DATA_PATH/DominoAutoConfigTemplate.json
+
+  # Replace template file variables only if no configuration file present
+  if [ ! -e "$DOMINO_AUTO_CONFIG_JSON_FILE" ]; then
+    if [ -e "$DOMINO_AUTO_CONFIG_TEMPLATE_JSON_FILE" ]; then
+      cat "$DOMINO_AUTO_CONFIG_TEMPLATE_JSON_FILE" | sed 's/{{ /${/g;s/{{/${/g;s/ }}/}/g;s/}}/}/g' | envsubst > "$DOMINO_AUTO_CONFIG_JSON_FILE"
+      echo "Template variables replaced: [$DOMINO_AUTO_CONFIG_TEMPLATE_JSON_FILE] -> [$DOMINO_AUTO_CONFIG_JSON_FILE]"
+    fi
+  fi
 
   if [ -e "$DOMINO_AUTO_CONFIG_JSON_FILE" ]; then
     export SetupAutoConfigureParams=$DOMINO_AUTO_CONFIG_JSON_FILE

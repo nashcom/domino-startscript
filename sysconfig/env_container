@@ -1,6 +1,13 @@
 
-# The default configuration changes to JSON OneTouch configuration
-# Use "domino_container setup" to setup your server
+# Domino OneTouch setup is new the preferred configruation
+# Use "dominoctl setup" to setup your server
 
-# You can also updates this configuration or specify a different configuration
+# Additional parameters can be used to customize the configuration
 
+# Download server.id for additional server setup
+
+#SetupSecureDownloadServerID=
+
+# Download a template JSON file to auto configure server. More useful for K8s flows, but also supported for Docker/Podman
+
+#SetupAutoConfigureTemplateDownload=https://acme.com/DominoAutoConfigTemplate.json

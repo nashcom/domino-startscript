@@ -140,8 +140,26 @@ else
   if [ -r "$DOMINO_CFG_DIR/.env" ]; then
     CONTAINER_FULL_ENV_FILE="$DOMINO_CFG_DIR/.env"
   fi
-
 fi
+
+CONTAINER_FULL_LABEL_FILE=
+if [ -n "$CONTAINER_LABEL_FILE" ]; then
+
+  if [ -r "$CONTAINER_LABEL_FILE" ]; then
+     CONTAINER_FULL_LABEL_FILE="$CONTAINER_LABEL_FILE"
+  elif [ -r "$DOMINO_CFG_DIR/$CONTAINER_LABEL_FILE" ]; then
+    CONTAINER_FULL_LABEL_FILE="$DOMINO_CFG_DIR/$CONTAINER_LABEL_FILE"
+  else
+    echo "Info: Cannot read configured label file [$CONTAINER_LABEL_FILE]!"
+  fi
+
+else
+
+  if [ -r "$DOMINO_CFG_DIR/.label" ]; then
+    CONTAINER_FULL_LABEL_FILE="$DOMINO_CFG_DIR/.label"
+  fi
+fi
+
 
 # Check specified docker compose file or check if the default file exists in config directory
 
@@ -162,13 +180,19 @@ fi
 echo
 echo "-----------------------------------------"
 echo "$CONFIG_FILE"
+
 if [ -n "$CONTAINER_FULL_ENV_FILE" ]; then
   echo "$CONTAINER_FULL_ENV_FILE"
+fi
+
+if [ -n "$CONTAINER_FULL_LABEL_FILE" ]; then
+  echo "$CONTAINER_FULL_LABEL_FILE"
 fi
 
 if [ -n "$CONTAINER_COMPOSE_FILE" ]; then
   echo "$CONTAINER_COMPOSE_FILE"
 fi
+
 echo
 
 IMAGE_BUILD_VERSION=$IMAGE_VERSION
@@ -1244,6 +1268,14 @@ container_run ()
     fi
   fi
 
+  if [ -n "$CONTAINER_FULL_LABEL_FILE" ]; then
+    CONTAINER_LABEL_FILE_OPTION="--label-file $CONTAINER_FULL_LABEL_FILE"
+
+    if [ ! -r "$CONTAINER_FULL_LABEL_FILE" ]; then
+      log_and_error "Error - Cannot read label file [$CONTAINER_FULL_LABEL_FILE]"
+    fi
+  fi
+
   if [ ! -z "$CONTAINER_NOTES_UID" ]; then
     CONTAINER_NOTES_UID_OPTION="--user $CONTAINER_NOTES_UID"
   fi
@@ -1273,7 +1305,7 @@ container_run ()
     return 0
   fi
 
-  $CONTAINER_CMD run $CONTAINER_IT $CONTAINER_PORTS --hostname=$CONTAINER_HOSTNAME --name $CONTAINER_NAME $CONTAINER_NETWORK $CONTAINER_ENV_FILE_OPTION $CONTAINER_VOLUMES --stop-timeout=$DOMINO_SHUTDOWN_TIMEOUT $FUSE_OPTIONS --cap-add=SYS_PTRACE --cap-add=NET_BIND_SERVICE $PODMAN_OPTIONS $CONTAINER_SPECIAL_OPTIONS $CONTAINER_NOTES_UID_OPTION $CONTAINER_HEALTH_CHECK $CONTAINER_RESTART_OPTIONS $CONTAINER_IMAGE
+  $CONTAINER_CMD run $CONTAINER_IT $CONTAINER_PORTS --hostname=$CONTAINER_HOSTNAME --name $CONTAINER_NAME $CONTAINER_NETWORK $CONTAINER_ENV_FILE_OPTION $CONTAINER_LABEL_FILE_OPTION $CONTAINER_VOLUMES --stop-timeout=$DOMINO_SHUTDOWN_TIMEOUT $FUSE_OPTIONS --cap-add=SYS_PTRACE --cap-add=NET_BIND_SERVICE $PODMAN_OPTIONS $CONTAINER_SPECIAL_OPTIONS $CONTAINER_NOTES_UID_OPTION $CONTAINER_HEALTH_CHECK $CONTAINER_RESTART_OPTIONS $CONTAINER_IMAGE
 
   # If one touch configuration present, copy into container directly after start
   container_copy_one_touch
@@ -1817,6 +1849,11 @@ init_project ()
         ENV_FILE=.env
         ;;
 
+     -label|-l|label)
+        LABEL_FILE=.label
+        ;;
+
+
       -compose|-c|compose)
         COMPOSE_FILE=docker-compose.yml
         ;;
@@ -1851,13 +1888,21 @@ init_project ()
     fi
   fi
 
-
   if [ -n "$ENV_FILE" ]; then
     if [ -e "$CFG_DIR/$ENV_FILE" ]; then
       echo "Info: '$CFG_DIR/$ENV_FILE' config file already exists!"
     else
         touch $CFG_DIR/$ENV_FILE
         echo "Info: Created empty file '$CFG_DIR/$ENV_FILE'"
+    fi
+  fi
+
+  if [ -n "$LABEL_FILE" ]; then
+    if [ -e "$CFG_DIR/$LABEL_FILE" ]; then
+      echo "Info: '$CFG_DIR/$LABEL_FILE' config file already exists!"
+    else
+        touch $CFG_DIR/$LABEL_FILE
+        echo "Info: Created empty file '$CFG_DIR/$LABEL_FILE'"
     fi
   fi
 
@@ -1969,7 +2014,7 @@ case "$PARAM1" in
     docker_deamon "$PARAM2" "$PARAM3" "$PARAM4" "$PARAM5"
     ;;
 
-  console)
+  console|c)
     container_domino_cmd domino console "$PARAM2" "$PARAM3" "$PARAM4" "$PARAM5"
     ;;
 
@@ -2008,6 +2053,21 @@ case "$PARAM1" in
       fi
     else
       $EDIT_COMMAND "$CONTAINER_FULL_ENV_FILE"
+    fi
+    ;;
+
+ label)
+    if [ -z "$CONTAINER_FULL_LABEL_FILE" ]; then
+
+      if [ -z "$CONTAINER_LABEL_FILE" ]; then
+        echo "No label file configured!"
+      else
+        echo "Creating new label file [$DOMINO_CFG_DIR/$CONTAINER_LABEL_FILE]"
+        sleep 2
+        $EDIT_COMMAND "$DOMINO_CFG_DIR/$CONTAINER_LABEL_FILE"
+      fi
+    else
+      $EDIT_COMMAND "$CONTAINER_FULL_LABEL_FILE"
     fi
     ;;
 
