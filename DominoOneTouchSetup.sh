@@ -387,7 +387,7 @@ EditOneTouchSetup()
       ;;
 
     github)
-      CFG_URL=https://raw.githubusercontent.com/IBM/domino-docker/master/start_script/domino.cfg
+      CFG_URL=https://raw.githubusercontent.com/nashcom/domino-startscript/main/domino.cfg
       CFG_INDEX=$2
       ;;
 

@@ -301,8 +301,8 @@ check_version ()
 
 check_container_environment()
 {
-  DOCKER_MINIMUM_VERSION="18.09.0"
-  PODMAN_MINIMUM_VERSION="1.7.0"
+  DOCKER_MINIMUM_VERSION="20.10.0"
+  PODMAN_MINIMUM_VERSION="3.3.0"
 
   CONTAINER_CMD=
   CONTAINER_ENV_NAME=
@@ -1042,6 +1042,11 @@ container_build ()
     CONTAINER_TAG_LATEST_CMD="-t $IMAGE_NAME:$IMAGE_LATEST_TAG"
   fi
 
+  # Allow older build variable just in case
+  if [ -z "$LinuxYumUpdate" ]; then
+    LinuxYumUpdate="$LINUX_UPDATE"
+  fi
+
   $CONTAINER_CMD build --no-cache \
     --label "version"="$IMAGE_VERSION" \
     --label "buildtime"="$BUILDTIME" \
@@ -1051,7 +1056,7 @@ container_build ()
     -t $IMAGE_NAMEVERSION $CONTAINER_TAG_LATEST_CMD \
     -f $CONTAINER_FILE \
     --build-arg "DownloadFrom=$DOWNLOAD_FROM" \
-    --build-arg LINUX_UPDATE=$LINUX_UPDATE \
+    --build-arg LinuxYumUpdate=$LinuxYumUpdate \
     --build-arg "SPECIAL_CURL_ARGUMENTS=$SPECIAL_CURL_ARGUMENTS" \
     --build-arg BASE_IMAGE=$BASE_IMAGE .
   echo
@@ -1549,6 +1554,11 @@ container_update ()
 
   if [ "$CONTAINER_IMAGE_ID" = "$IMAGE_ID" ]; then
     echo "Image did not change -- No Update needed"
+    return 0
+  fi
+
+  if [ -z "$IMAGE_ID" ]; then
+    echo "Cannot find new image for [$CONTAINER_IMAGE] -- Skipping update!"
     return 0
   fi
 
