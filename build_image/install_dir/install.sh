@@ -119,7 +119,12 @@ fi
 
 # Copy pre-start configuration
 if [ -e "$INSTALL_DIR/docker_prestart.sh" ]; then
-  install_file "$INSTALL_DIR/docker_prestart.sh" "$DOMDOCK_SCRIPT_DIR/docker_prestart.sh" notes notes 770
+  install_file "$INSTALL_DIR/docker_prestart.sh" "$DOMDOCK_SCRIPT_DIR/docker_prestart.sh" root root 755
+fi
+
+# Copy install data copy
+if [ -e "$INSTALL_DIR/domino_install_data_copy.sh" ]; then
+  install_file "$INSTALL_DIR/domino_install_data_copy.sh" "$DOMDOCK_SCRIPT_DIR/domino_install_data_copy.sh" root root 755
 fi
 
 header "Successfully completed installation!"

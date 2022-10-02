@@ -260,7 +260,7 @@ config_warnings ()
     echo "Warning: It's strongly recommended to use the 'Overlay2' driver!"
   fi
   
-  if [ ! -z "$CONTAINER_IMAGE_ID" ]; then
+  if [ -n "$CONTAINER_IMAGE_ID" ] && [ -n "$IMAGE_ID" ]; then
     if [ ! "$CONTAINER_IMAGE_ID" = "$IMAGE_ID" ]; then
       log_space "Info: New Image Version available!"
     fi

@@ -406,13 +406,6 @@ if [ -e "$OLD_RC_DOMINO_SCRIPT_LOCATION" ]; then
   echo link for legacy start script location created [$OLD_RC_DOMINO_SCRIPT_LOCATION]
 fi
 
-# set link to include script as 'domino' into path
-if [ "$CONTAINER_ENV" = "yes" ]; then
-  # for Docker we just link the main script
-  create_link "$DOMINO_START_SCRIPT_DIR/rc_domino_script" "$DOMINO_SCRIPT_BIN"
-fi
-
-
 detect_container_env
 
 if [ -n "$CONTAINER_ENV" ]; then
