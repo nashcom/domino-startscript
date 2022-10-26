@@ -22,8 +22,8 @@
 
 SCRIPT_NAME=$0
 PARAM1=$1
-SCRIPT_REAL=`realpath $0`
-SCRIPT_DIR=`dirname $SCRIPT_REAL`
+SCRIPT_DIR=$(dirname $SCRIPT_NAME)
+START_SCRIPT_DIR=$SCRIPT_DIR
 
 DOMINO_INSTALL_CONFIG_FILE=$SCRIPT_DIR/sysconfig/rc_domino_config
 DOMINO_INSTALL_CONFIG_TARGET=/etc/sysconfig/rc_domino_config
@@ -58,8 +58,6 @@ fi
 DOMINO_SCRIPT_BIN=/usr/bin/domino
 
 #DOMINO_DEBUG_MODE="yes"
-
-START_SCRIPT_DIR=`dirname $0`
 
 if [ "$START_SCRIPT_DIR" = "/" ]; then
   START_SCRIPT_DIR=""
@@ -431,7 +429,12 @@ else
   if [ ${LARCH} = "linux" ]; then
     if [ -e /etc/systemd/system ]; then
 
-      install_file_noupdate $START_SCRIPT_DIR/domino.service /etc/systemd/system/$DOMINO_SYSTEMD_NAME $ROOT_USER $ROOT_GROUP 644
+      if [ "$PARAM1" = "upd" ]; then
+        install_file $START_SCRIPT_DIR/domino.service /etc/systemd/system/$DOMINO_SYSTEMD_NAME $ROOT_USER $ROOT_GROUP 644
+      else
+        install_file_noupdate $START_SCRIPT_DIR/domino.service /etc/systemd/system/$DOMINO_SYSTEMD_NAME $ROOT_USER $ROOT_GROUP 644
+      fi
+
       if [ $? -eq 2 ]; then
         systemctl daemon-reload
       fi

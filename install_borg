@@ -3,8 +3,7 @@
 
 SCRIPT_NAME=$0
 PARAM1=$1
-SCRIPT_REAL=`realpath $0`
-SCRIPT_DIR=`dirname $SCRIPT_REAL`
+SCRIPT_DIR=$(dirname $SCRIPT_NAME)
 
 LOTUS=/opt/hcl/domino
 BORG_SCRIPT_DIR=$SCRIPT_DIR/extra/backup/borg

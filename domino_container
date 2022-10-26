@@ -463,6 +463,10 @@ upload_image ()
   # Load image if a .tgz file is specified and skip searching for the image
   case "$1" in
     *.tgz)
+
+      header "Uploading image [$1]"
+      log_space "Upload takes a moment ..."
+
       $CONTAINER_CMD load --input $1
       return 0
       ;;
@@ -602,8 +606,17 @@ inspect_image_native ()
     IMAGE_SIZE_MB=$(($IMAGE_SIZE / 1000 / 1000 ))
   fi
 
-  IMAGE_DOMINO_VERSION="$($CONTAINER_CMD inspect --format "{{ index .Config.Labels \"DominoDocker.version\" }}" $CONTAINER_IMAGE 2>/dev/null)"
-  IMAGE_TRAVELER_VERSION="$($CONTAINER_CMD inspect --format "{{ index .Config.Labels \"TravelerDocker.version\" }}" $CONTAINER_IMAGE 2>/dev/null)"
+  IMAGE_DOMINO_VERSION="$($CONTAINER_CMD inspect --format "{{ index .Config.Labels \"DominoContainer.version\" }}" $CONTAINER_IMAGE 2>/dev/null)"
+
+  if [ -z "$IMAGE_DOMINO_VERSION" ]; then
+    IMAGE_DOMINO_VERSION="$($CONTAINER_CMD inspect --format "{{ index .Config.Labels \"DominoDocker.version\" }}" $CONTAINER_IMAGE 2>/dev/null)"
+  fi
+
+  IMAGE_TRAVELER_VERSION="$($CONTAINER_CMD inspect --format "{{ index .Config.Labels \"TravelerContainer.version\" }}" $CONTAINER_IMAGE 2>/dev/null)"
+
+  if [ -z "$IMAGE_TRAVELER_VERSION" ]; then
+    IMAGE_TRAVELER_VERSION="$($CONTAINER_CMD inspect --format "{{ index .Config.Labels \"TravelerDocker.version\" }}" $CONTAINER_IMAGE 2>/dev/null)"
+  fi
 
   return 0
 }
@@ -643,7 +656,16 @@ inspect_image ()
   fi
 
   IMAGE_DOMINO_VERSION="$(echo "$JSON" | jq -r '.Config.Labels."DominoDocker.version"' | sed "s/null//")"
-  IMAGE_TRAVELER_VERSION="$(echo "$JSON" | jq -r '.Config.Labels."TravelerDocker.version"' | sed "s/null//")"
+
+  if [ -z "$IMAGE_DOMINO_VERSION" ]; then
+    IMAGE_DOMINO_VERSION="$(echo "$JSON" | jq -r '.Config.Labels."DominoDocker.version"' | sed "s/null//")"
+  fi
+
+  IMAGE_TRAVELER_VERSION="$(echo "$JSON" | jq -r '.Config.Labels."TravelerContainer.version"' | sed "s/null//")"
+
+  if [ -z "$IMAGE_TRAVELER_VERSION" ]; then
+    IMAGE_TRAVELER_VERSION="$(echo "$JSON" | jq -r '.Config.Labels."TravelerDocker.version"' | sed "s/null//")"
+  fi
 
   return 0
 }
@@ -707,8 +729,17 @@ inspect_container_native ()
     CONTAINER_HEALTH="$($CONTAINER_CMD inspect --format "{{ .State.Healthcheck.Status }}" $CONTAINER_KEY 2>/dev/null)"
   fi
 
-  CONTAINER_DOMINO_VERSION="$($CONTAINER_CMD inspect --format "{{ index .Config.Labels \"DominoDocker.version\" }}" $CONTAINER_KEY 2>/dev/null)"
-  CONTAINER_TRAVELER_VERSION="$($CONTAINER_CMD inspect --format "{{ index .Config.Labels \"TravelerDocker.version\" }}" $CONTAINER_KEY 2>/dev/null)" 
+  CONTAINER_DOMINO_VERSION="$($CONTAINER_CMD inspect --format "{{ index .Config.Labels \"DominoContainer.version\" }}" $CONTAINER_KEY 2>/dev/null)"
+
+  if [ -z "$CONTAINER_DOMINO_VERSION" ]; then
+    CONTAINER_DOMINO_VERSION="$($CONTAINER_CMD inspect --format "{{ index .Config.Labels \"DominoDocker.version\" }}" $CONTAINER_KEY 2>/dev/null)"
+  fi
+
+  CONTAINER_TRAVELER_VERSION="$($CONTAINER_CMD inspect --format "{{ index .Config.Labels \"TravelerContainer.version\" }}" $CONTAINER_KEY 2>/dev/null)"
+
+  if [ -z "$CONTAINER_TRAVELER_VERSION" ]; then
+    CONTAINER_TRAVELER_VERSION="$($CONTAINER_CMD inspect --format "{{ index .Config.Labels \"TravelerDocker.version\" }}" $CONTAINER_KEY 2>/dev/null)"
+  fi
 
   STARTDATE="$($CONTAINER_CMD inspect --format "{{ .State.StartedAt }}" $CONTAINER_KEY | cut -f1 -d+ 2>/dev/null)"
   CONTAINER_STARTED_AT=$(date +"%d.%m.%Y %H:%M:%S" -d "$STARTDATE")
@@ -799,8 +830,17 @@ inspect_container ()
     CONTAINER_HEALTH=$(echo "$JSON" | jq -r .State.Healthcheck.Status | sed "s/null//")
   fi
 
-  CONTAINER_DOMINO_VERSION=$(echo "$JSON" | jq -r '.Config.Labels."DominoDocker.version"' | sed "s/null//")
-  CONTAINER_TRAVELER_VERSION=$(echo "$JSON" | jq -r '.Config.Labels."TravelerDocker.version"' | sed "s/null//")
+  CONTAINER_DOMINO_VERSION=$(echo "$JSON" | jq -r '.Config.Labels."DominoContainer.version"' | sed "s/null//")
+
+  if [ -z "$CONTAINER_DOMINO_VERSION" ]; then
+    CONTAINER_DOMINO_VERSION=$(echo "$JSON" | jq -r '.Config.Labels."DominoDocker.version"' | sed "s/null//")
+  fi
+
+  CONTAINER_TRAVELER_VERSION=$(echo "$JSON" | jq -r '.Config.Labels."TravelerContainer.version"' | sed "s/null//")
+
+  if [ -z "$CONTAINER_TRAVELER_VERSION" ]; then
+    CONTAINER_TRAVELER_VERSION=$(echo "$JSON" | jq -r '.Config.Labels."TravelerDocker.version"' | sed "s/null//")
+  fi
 
   STARTDATE=$(echo "$JSON" | jq -r .State.StartedAt | sed "s/null//" | cut -f1 -d+ 2>/dev/null)
   CONTAINER_STARTED_AT=$(date +"%d.%m.%Y %H:%M:%S" -d "$STARTDATE")
