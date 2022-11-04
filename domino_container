@@ -72,7 +72,7 @@ if [ -z "$DOMINO_CFG_DIR" ]; then
   # Else use standard config dir (default: /etc/sysconfig)
 
   if [ -e .dominoctl ]; then
-    DOMINO_CFG_DIR=.dominoctl
+    DOMINO_CFG_DIR=$(pwd)/.dominoctl
   elif [ -e ~/.dominoctl ]; then
     DOMINO_CFG_DIR=~/.dominoctl
   else
@@ -2092,6 +2092,11 @@ case "$PARAM1" in
     ;;
 
   env)
+
+    if [ -n "$CONTAINER_COMPOSE_FILE" ]; then
+      CONTAINER_ENV_FILE=.env
+    fi
+
     if [ -z "$CONTAINER_FULL_ENV_FILE" ]; then
 
       if [ -z "$CONTAINER_ENV_FILE" ]; then
@@ -2188,6 +2193,8 @@ case "$PARAM1" in
 
       export SCRIPT_DIR_NAME
       export DOMINO_AUTO_CONFIG_JSON_FILE
+
+      echo "DOMINO_AUTO_CONFIG_JSON_FILE: [$DOMINO_AUTO_CONFIG_JSON_FILE]"
 
       . "$SCRIPT_DIR_NAME/DominoOneTouchSetup.sh" "$PARAM2" "$PARAM3" "$PARAM4" "$PARAM5"
     else
