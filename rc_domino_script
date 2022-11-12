@@ -26,9 +26,12 @@ DOMINO_SCRIPT_VERSION=3.7.2
 VERBOSE_INFO="yes"
 
 # Get Linux version and platform
-LINUX_VERSION=$(cat /etc/os-release | grep "VERSION_ID="| cut -d= -f2 | xargs)
-LINUX_PRETTY_NAME=$(cat /etc/os-release | grep "PRETTY_NAME="| cut -d= -f2 | xargs)
-LINUX_ID=$(cat /etc/os-release | grep "^ID="| cut -d= -f2 | xargs)
+
+if [ -e /etc/os-release ]; then
+  LINUX_VERSION=$(cat /etc/os-release | grep "VERSION_ID="| cut -d= -f2 | xargs)
+  LINUX_PRETTY_NAME=$(cat /etc/os-release | grep "PRETTY_NAME="| cut -d= -f2 | xargs)
+  LINUX_ID=$(cat /etc/os-release | grep "^ID="| cut -d= -f2 | xargs)
+fi
 
 
 if [ -z "$LOGNAME" ]; then

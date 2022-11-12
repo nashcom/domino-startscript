@@ -276,12 +276,14 @@ config_warnings ()
 
 check_version ()
 {
-  count=1
+  local count=1
+  # Remove any unexpected chars like for Docker CE version on some platforms 
+  local VERSION_STR=$(echo $1 | sed 's/[^0-9.]*//g')
 
   while true
   do
-    VER=$(echo $1|cut -d"." -f $count)
-    CHECK=$(echo $2|cut -d"." -f $count)
+    VER=$(echo $VERSION_STR|cut -d"." -f $count)
+    CHECK=$(echo $VERSION_STR|cut -d"." -f $count)
 
     if [ -z "$VER" ]; then return 0; fi
     if [ -z "$CHECK" ]; then return 0; fi

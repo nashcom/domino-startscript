@@ -2,7 +2,7 @@
 
 ###########################################################################
 # Nash!Com Domino Container Addon Install Script                          #
-# Version 1.0.1 18.09.2022                                                #
+# Version 1.0.2 12.11.2022                                                #
 #                                                                         #
 # (C) Copyright Daniel Nashed/NashCom 2019                                #
 # Feedback domino_unix@nashcom.de                                         #
@@ -112,17 +112,17 @@ install_all_binaries "$INSTALL_DIR/extmgr"
 install_res_files "$INSTALL_DIR/res"
 
 
-# Install health check script
-if [ -e "$INSTALL_DIR/domino_docker_healthcheck.sh" ]; then
-  install_file "$INSTALL_DIR/domino_docker_healthcheck.sh" "/domino_docker_healthcheck.sh" root root 755
+# Install health check script if present
+if [ -e "$INSTALL_DIR/healthcheck.sh" ]; then
+  install_file "$INSTALL_DIR/healthcheck.sh" "/healthcheck.sh" root root 755
 fi
 
-# Copy pre-start configuration
-if [ -e "$INSTALL_DIR/docker_prestart.sh" ]; then
-  install_file "$INSTALL_DIR/docker_prestart.sh" "$DOMDOCK_SCRIPT_DIR/docker_prestart.sh" root root 755
+# Copy pre-start configuration if present
+if [ -e "$INSTALL_DIR/domino_prestart.sh" ]; then
+  install_file "$INSTALL_DIR/domino_prestart.sh" "$DOMDOCK_SCRIPT_DIR/domino_prestart.sh" root root 755
 fi
 
-# Copy install data copy
+# Copy install data copy if present
 if [ -e "$INSTALL_DIR/domino_install_data_copy.sh" ]; then
   install_file "$INSTALL_DIR/domino_install_data_copy.sh" "$DOMDOCK_SCRIPT_DIR/domino_install_data_copy.sh" root root 755
 fi
