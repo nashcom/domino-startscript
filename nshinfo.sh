@@ -48,8 +48,8 @@ domino_uptime()
   fi
 
   DOMINO_SERVER_PID=$(ps -ef -fu $PARTITION_USER | grep "$LOTUS_BIN_DIR" | grep "server" | grep -v " -jc" | xargs | cut -d " " -f2)
-  if [ -n $DOMINO_SERVER_PID ]; then
-    DOMINO_UPTIME=$(ps -o etimes= -p $DOMINO_SERVER_PID | awk '{x=$1/86400;y=($1%86400)/3600;z=($1%3600)/60} {printf("%d day, %d hour %d min\n",x,y,z)}' )
+  if [ -n "$DOMINO_SERVER_PID" ]; then
+    DOMINO_UPTIME=$(ps -o etimes= -p "$DOMINO_SERVER_PID" | awk '{x=$1/86400;y=($1%86400)/3600;z=($1%3600)/60} {printf("%d day, %d hour %d min\n",x,y,z)}' )
   fi
 }
 
