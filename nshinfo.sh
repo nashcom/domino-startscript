@@ -34,6 +34,7 @@ domino_uptime()
   local LOTUS_BIN_DIR
   local DOMINO_SERVER_PID
   local PARTITION_USER
+  local DOMINO_UID
 
   if [ -z "$DOMINO_USER" ]; then
     PARTITION_USER=notes
@@ -41,10 +42,20 @@ domino_uptime()
     PARTITION_USER=$DOMINO_USER
   fi
 
+  DOMINO_UID=$(id -u notesx 2>/dev/null)
+
+  if [ -z "$DOMINO_UID" ]; then
+    return 0
+  fi
+
   if [ -z "$Notes_ExecDirectory" ]; then
     LOTUS_BIN_DIR=/opt/hcl/domino/notes/latest/linux
   else
     LOTUS_BIN_DIR=$Notes_ExecDirectory
+  fi
+
+  if [ ! -e "$LOTUS_BIN_DIR" ]; then
+    return 0
   fi
 
   DOMINO_SERVER_PID=$(ps -ef -fu $PARTITION_USER | grep "$LOTUS_BIN_DIR" | grep "server" | grep -v " -jc" | xargs | cut -d " " -f2)
