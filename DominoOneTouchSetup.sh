@@ -209,7 +209,13 @@ GetConfig()
   fi
 
   echo
-  read -p "$PROMPT: " -e -i "$DEFAULT" VAR
+
+  if [ "$(uname)" = "Darwin" ]; then
+    read -p "$PROMPT: " VAR
+  else
+    read -p "$PROMPT: " -e -i "$DEFAULT" VAR
+  fi
+
   CHECKED_VAR=$CHECKED_VAR:$VAR_NAME
   export $1="$VAR"
   return 0
@@ -255,11 +261,24 @@ ConfigJSON()
 
   CHECKED_VAR=
 
-  if [ -z "$JSON_CFG" ]; then
-  cat $JSON_TEMPLATE | sed 's/{{ /${/g;s/{{/${/g;s/ }}/}/g;s/}}/}/g' | envsubst
+  if [ "$(uname)" = "Darwin" ]; then
+
+    if [ -z "$JSON_CFG" ]; then
+      cat $JSON_TEMPLATE | sed 's/{{ /${/g;s/{{/${/g;s/ }}/}/g;s/}}/}/g' | sed 's/"/\\"/g' | eval "echo \"$(cat -)\""
+    else
+      cat $JSON_TEMPLATE | sed 's/{{ /${/g;s/{{/${/g;s/ }}/}/g;s/}}/}/g' | sed 's/"/\\"/g' | eval "echo \"$(cat -)\"" > $JSON_CFG
+    fi
+
   else
-    cat $JSON_TEMPLATE | sed 's/{{ /${/g;s/{{/${/g;s/ }}/}/g;s/}}/}/g' | envsubst > $JSON_CFG
+
+    if [ -z "$JSON_CFG" ]; then
+      cat $JSON_TEMPLATE | sed 's/{{ /${/g;s/{{/${/g;s/ }}/}/g;s/}}/}/g' | envsubst
+    else
+      cat $JSON_TEMPLATE | sed 's/{{ /${/g;s/{{/${/g;s/ }}/}/g;s/}}/}/g' | envsubst > $JSON_CFG
+    fi
+
   fi
+
 }
 
 
