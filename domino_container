@@ -3,9 +3,9 @@
 # dominoctl                                                               #
 # ---------                                                               #
 # Nash!Com Domino Container Management Script                             #
-# Version 1.1.0 04.06.2022                                                #
+# Version 1.2.0 24.03.2023                                                #
 #                                                                         #
-# (C) Copyright Daniel Nashed/NashCom 2021-2022                           #
+# (C) Copyright Daniel Nashed/NashCom 2021-2023                           #
 # Feedback domino_unix@nashcom.de                                         #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #
@@ -21,15 +21,10 @@
 # limitations under the License.                                          #
 ###########################################################################
 
-SCRIPT_NAME=$0
 
-if [ -x /usr/bin/realpath ]; then
-  FULL_SCRIPT_NAME=$(realpath $0)
-else
-  FULL_SCRIPT_NAME=/opt/nashcom/start_script
-fi
+SCRIPT_NAME=$(readlink -f $0)
+SCRIPT_DIR_NAME=$(dirname $SCRIPT_NAME)
 
-SCRIPT_DIR_NAME=$(dirname $FULL_SCRIPT_NAME)
 NAME_PREFIX="container_"
 PARAM1=$1
 PARAM2=$2

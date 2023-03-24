@@ -66,6 +66,11 @@ domino_uptime()
 
 print_infos()
 {
+
+  if [ "$(uname)" = "Darwin" ]; then
+    echo "No OS infos for MacOS"
+  fi
+
   if [ -r  /etc/os-release ]; then
     get_entry LINUX_VERSION /etc/os-release "VERSION_ID=" "="
     get_entry LINUX_PRETTY_NAME /etc/os-release "PRETTY_NAME=" "="
@@ -179,7 +184,10 @@ print_infos()
     return
   fi
 
-  if [ ! -x /usr/bin/jq ]; then
+
+  JQ_VERSION=$(jq --version 2>/dev/null)
+
+  if [ -z "$JQ_VERSION" ]; then
     return
   fi
 

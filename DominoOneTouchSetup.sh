@@ -76,7 +76,9 @@ check_json_file()
     return 1
   fi
 
-  if [ ! -e /usr/bin/jq ]; then
+  JQ_VERSION=$(jq --version 2>/dev/null)
+
+  if [ -z "$JQ_VERSION" ]; then
     echo "Warning: No jq tool installed"
   else
     # Don't show JSON but show error log
