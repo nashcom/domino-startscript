@@ -296,98 +296,136 @@ check_version ()
   return 0
 }
 
+
+detect_compose_environment()
+{
+  COMPOSE_VERSION=$(docker compose version 2> /dev/null | awk -F'version ' '{print $2}')
+
+  if [ -n "$COMPOSE_VERSION" ]; then
+    CONTAINER_COMPOSE_CMD="docker compose"
+    return 0
+  fi
+
+  COMPOSE_VERSION=$(docker-compose version 2> /dev/null | grep docker-compose | awk -F'version ' '{print $2}')
+
+  if [ -n "$COMPOSE_VERSION" ]; then
+    CONTAINER_COMPOSE_CMD="docker-compose"
+    return 0
+  fi
+
+  COMPOSE_VERSION=$(podman-compose version 2> /dev/null | grep podman-compose | awk -F'version ' '{print $2}' | xargs)
+
+  if [ -n "$COMPOSE_VERSION" ]; then
+    CONTAINER_COMPOSE_CMD="podman-compose"
+    return 0
+  fi
+
+  if [ -z "$COMPOSE_CMD" ]; then
+    log "No container compose detected!"
+    exit 1
+  fi
+}
+
+
+detect_container_environment()
+{
+
+  if [ -n "$CONTAINER_CMD" ]; then
+    return 0
+  fi
+
+  if [ -x /usr/bin/podman ]; then
+    if [ -z "$USE_DOCKER" ]; then
+      # Podman environment detected
+      CONTAINER_CMD=podman
+    fi
+  fi
+
+  if [ -z "$CONTAINER_CMD" ]; then
+    if [ -n "$(nerdctl 2> /dev/null)" ]; then
+      CONTAINER_CMD=nerdctl
+
+      # Nerdctl needs no additional config
+      return 0
+    fi
+  fi
+
+  if [ -z "$CONTAINER_CMD" ]; then
+    if [ -x "/usr/bin/docker" ] || [ -x "/usr/local/bin/docker" ]; then
+      CONTAINER_CMD=docker
+      return 0
+    fi
+  fi
+
+  if [ -z "$CONTAINER_CMD" ]; then
+    log "No container environment detected!"
+    exit 1
+  fi
+
+  return 0
+}
+
+
 check_container_environment()
 {
   DOCKER_MINIMUM_VERSION="20.10.0"
   PODMAN_MINIMUM_VERSION="3.3.0"
 
-  CONTAINER_CMD=
   CONTAINER_ENV_NAME=
   CONTAINER_RUNTIME_VERSION=
 
-  # Auto detect container environment
+  detect_container_environment
+  detect_compose_environment
 
-  if [ -z "$CONTAINER_CMD" ] || [ "$CONTAINER_CMD_FORCE" = "podman" ]; then
-    if [ -x /usr/bin/podman ]; then
-      if [ -z "$USE_DOCKER" ]; then
-        # Podman environment detected
-        CONTAINER_CMD=podman
-        CONTAINER_ENV_NAME=Podman
-        CONTAINER_RUNTIME_VERSION_STR=$(podman -v 2> /dev/null | head -1)
-        CONTAINER_RUNTIME_VERSION=$(echo $CONTAINER_RUNTIME_VERSION_STR | awk -F'version ' '{print $2 }')
-        check_version "$CONTAINER_RUNTIME_VERSION" "$PODMAN_MINIMUM_VERSION" "$CONTAINER_CMD"
+  if [ -z "$CONTAINER_HEALTH_CHECK" ]; then
+    CONTAINER_HEALTH_CHECK="--health-cmd=/healthcheck.sh --health-interval=60s --health-retries=4 --health-start-period=120s"
+  fi
 
-        if [ "$DOMINO_NO_SYSTEMD" != "yes" ]; then
-          DOMINO_SYSTEMD_NAME=
-        else
-          if [ -z "$DOMINO_SYSTEMD_NAME" ]; then
-             DOMINO_SYSTEMD_NAME=domino_container.service
-          fi
-        fi
+  if [ "$CONTAINER_CMD" = "docker" ]; then
 
+    CONTAINER_ENV_NAME=Docker
+    CONTAINER_RUNTIME_VERSION_STR=$(docker -v 2> /dev/null | head -1)
+    CONTAINER_RUNTIME_VERSION=$(echo $CONTAINER_RUNTIME_VERSION_STR | awk -F'version ' '{print $2 }'|cut -d"," -f1)
+
+    # Docker doesn't uses systemd
+    CONTAINER_SYSTEMD_NAME=
+
+    # Check container environment
+    check_version "$CONTAINER_RUNTIME_VERSION" "$DOCKER_MINIMUM_VERSION" "$CONTAINER_CMD"
+
+    TAG_CONTAINER_ID=".Id"
+    # For Docker we are done here
+
+  fi
+
+  if [ "$CONTAINER_CMD" = "podman" ]; then
+
+    check_version "$CONTAINER_RUNTIME_VERSION" "$PODMAN_MINIMUM_VERSION" "$CONTAINER_CMD"
+
+    CONTAINER_ENV_NAME=Podman
+    CONTAINER_RUNTIME_VERSION_STR=$(podman -v 2> /dev/null | head -1)
+    CONTAINER_RUNTIME_VERSION=$(echo $CONTAINER_RUNTIME_VERSION_STR | awk -F'version ' '{print $2 }')
+
+    if [ "$DOMINO_NO_SYSTEMD" != "yes" ]; then
+      DOMINO_SYSTEMD_NAME=
+    else
+      if [ -z "$DOMINO_SYSTEMD_NAME" ]; then
+        DOMINO_SYSTEMD_NAME=domino_container.service
       fi
     fi
   fi
 
-  if [ -z "$CONTAINER_CMD" ] || [ "$CONTAINER_CMD_FORCE" = "nerdctl" ]; then
-    if [ -z "$USE_DOCKER" ]; then
+  if [ "$CONTAINER_CMD" = "nerdctl" ]; then
 
-      CONTAINER_RUNTIME_VERSION_STR=$(nerdctl -v 2> /dev/null | head -1)
+    CONTAINER_ENV_NAME=nerdctl
+    CONTAINER_RUNTIME_VERSION_STR=$(nerdctl -v 2> /dev/null | head -1)
+    CONTAINER_RUNTIME_VERSION=$(echo $CONTAINER_RUNTIME_VERSION_STR | awk -F'version ' '{print $2 }')
 
-      if [ -n "$CONTAINER_RUNTIME_VERSION_STR" ]; then
-
-        # nerdctl environment detected
-        CONTAINER_CMD=nerdctl
-
-        # nerdctl doesn't uses systemd
-        CONTAINER_SYSTEMD_NAME=
-        CONTAINER_ENV_NAME=nerdctl
-        CONTAINER_RUNTIME_VERSION=$(echo $CONTAINER_RUNTIME_VERSION_STR | awk -F'version ' '{print $2 }')
-
-        # Nerdctl needs no additional config
-        return 0
-      fi
-    fi
+    # nerdctl doesn't uses systemd
+    CONTAINER_SYSTEMD_NAME=
   fi
 
-  if [ -z "$CONTAINER_CMD" ] || [ "$CONTAINER_CMD_FORCE" = "docker" ]; then
-    if [ -x "/usr/bin/docker" ] || [ -x "/usr/local/bin/docker" ]; then
-      CONTAINER_CMD=docker
-      # Docker doesn't uses systemd 
-      CONTAINER_SYSTEMD_NAME=
-      CONTAINER_ENV_NAME=Docker
-
-      # Check container environment
-      CONTAINER_RUNTIME_VERSION_STR=$(docker -v 2> /dev/null | head -1)
-      CONTAINER_RUNTIME_VERSION=$(echo $CONTAINER_RUNTIME_VERSION_STR | awk -F'version ' '{print $2 }'|cut -d"," -f1)
-
-      check_version "$CONTAINER_RUNTIME_VERSION" "$DOCKER_MINIMUM_VERSION" "$CONTAINER_CMD"
-
-      TAG_CONTAINER_ID=".Id"
-      # For Docker we are done here
-
-      # In case a Docker compose file is specified, we need docker_compose
-
-      if [ -n "$CONTAINER_COMPOSE_FILE" ]; then
-
-         if [ -e /usr/local/bin/docker-compose ]; then
-           CONTAINER_COMPOSE_CMD=/usr/local/bin/docker-compose
-           return 0
-         fi
-
-         if [ -e /usr/bin/docker-compose ]; then
-           CONTAINER_COMPOSE_CMD=/usr/bin/docker-compose
-           return 0
-         fi
-
-         log_and_exit "Docker Compose is not installed!"
-      fi
-
-      return 0
-    fi
-  fi  
-
-  if [ -z "$CONTAINER_CMD" ]; then
+  if [ -z "$CONTAINER_RUNTIME_VERSION" ]; then
     if [ ! "$1" = "install" ]; then
       log_and_exit "No container environment detected! Tip: use 'install' option to install Podman"
     fi
@@ -398,10 +436,6 @@ check_container_environment()
     CONTAINER_CID=/tmp/$DOMINO_SYSTEMD_NAME.cid
     TAG_CONTAINER_ID=".Id"
     PODMAN_OPTIONS="--cgroups=no-conmon --conmon-pidfile $CONTAINER_PID --cidfile $CONTAINER_CID"
-  fi
-
-  if [ -z "$CONTAINER_HEALTH_CHECK" ]; then
-    CONTAINER_HEALTH_CHECK="--health-cmd=/healthcheck.sh --health-interval=60s --health-retries=4 --health-start-period=120s"
   fi
 
   return 0
@@ -924,6 +958,11 @@ container_show_inspect ()
   echo 
   print_delim
   echo " Runtime        :  $CONTAINER_ENV_NAME $CONTAINER_RUNTIME_VERSION"
+
+  if [ -n "$CONTAINER_COMPOSE_CMD" ]; then
+    echo " Compose        :  $CONTAINER_COMPOSE_CMD $COMPOSE_VERSION"
+  fi
+
   echo " Status         :  $CONTAINER_STATUS"
   echo " Health         :  $CONTAINER_HEALTH"
   echo " Started        :  $CONTAINER_STARTED_AT"
@@ -1958,6 +1997,12 @@ init_project ()
 
 }
 
+case "$PARAM1" in
+  config|cfg)
+    $CONTAINER_SUDO $EDIT_COMMAND "$CONFIG_FILE"
+    exit 0
+    ;;
+esac
 
 check_container_environment "$PARAM1"
 check_root_permissions

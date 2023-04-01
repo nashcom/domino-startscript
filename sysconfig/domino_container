@@ -30,6 +30,9 @@ CONTAINER_RESTART_POLICY=on-failure:3
 # Domino V12 Borg Backup support (enables FUSE device)
 #BORG_BACKUP=yes
 
+# Container command override
+#CONTAINER_CMD=docker
+
 # Specify a Docker compose file to use docker-compose to define the server (useful if you have other services to add)
 #CONTAINER_COMPOSE_FILE=/etc/sysconfig/domino/domino_compose.yml
 
