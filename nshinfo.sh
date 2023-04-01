@@ -129,23 +129,26 @@ print_infos()
 
   local CONTAINER_STR=
 
-  if [ -x /usr/bin/podman ]; then
-    CONTAINER_STR=$(podman -v | head -1)
+  CONTAINER_STR=$(podman -v 2> /dev/null | head -1)
+
+  if [ -n "$CONTAINER_STR" ]; then
+    CONTAINER_STR=$(podman -v 2> /dev/null | head -1)
     PODMAN_RUNTIME_VERSION=$(echo $CONTAINER_STR | awk -F'version ' '{print $2 }')
     printf "Podman        :      $PODMAN_RUNTIME_VERSION\n"
   fi
 
   if [ -x "/usr/bin/docker" ]; then
     # only check if docker is a binary and not a podman script
-    if [ -n "$(file /usr/bin/docker | grep ELF)" ]; then
+    if [ -n "$(file /usr/bin/docker 2> /dev/null | grep ELF)" ]; then
       CONTAINER_STR=$(docker -v | head -1)
       DOCKER_RUNTIME_VERSION=$(echo $CONTAINER_STR | awk -F'version ' '{print $2 }'|cut -d"," -f1)
       printf "Docker        :      $DOCKER_RUNTIME_VERSION\n"
     fi
   fi
 
-  if [ -n "$(which nerdctl 2> /dev/null)" ]; then
-      CONTAINER_STR=$(nerdctl -v | head -1)
+  CONTAINER_STR=$(nerdctl -v 2> /dev/null | head -1)
+
+  if [ -n "$CONTAINER_STR" ]; then
       DOCKER_RUNTIME_VERSION=$(echo $CONTAINER_STR | awk -F'version ' '{print $2 }'|cut -d"," -f1)
       printf "Nerdctl       :      $DOCKER_RUNTIME_VERSION\n"
   fi
