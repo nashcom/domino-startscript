@@ -334,27 +334,27 @@ detect_container_environment()
     return 0
   fi
 
-  if [ -x /usr/bin/podman ]; then
-    if [ -z "$USE_DOCKER" ]; then
-      # Podman environment detected
-      CONTAINER_CMD=podman
-    fi
+  if [ -n "$USE_DOCKER" ]; then
+     CONTAINER_CMD=docker
+     return 0
   fi
 
-  if [ -z "$CONTAINER_CMD" ]; then
-    if [ -n "$(nerdctl 2> /dev/null)" ]; then
-      CONTAINER_CMD=nerdctl
-
-      # Nerdctl needs no additional config
-      return 0
-    fi
+  CONTAINER_RUNTIME_VERSION_STR=$(podman -v 2> /dev/null | head -1)
+  if [ -n "$CONTAINER_RUNTIME_VERSION_STR" ]; then
+    CONTAINER_CMD=podman
+    return 0
   fi
 
-  if [ -z "$CONTAINER_CMD" ]; then
-    if [ -x "/usr/bin/docker" ] || [ -x "/usr/local/bin/docker" ]; then
-      CONTAINER_CMD=docker
-      return 0
-    fi
+  CONTAINER_RUNTIME_VERSION_STR=$(nerdctl -v 2> /dev/null | head -1)
+  if [ -n "$CONTAINER_RUNTIME_VERSION_STR" ]; then
+    CONTAINER_CMD=nerdctl
+    return 0
+  fi
+
+  CONTAINER_RUNTIME_VERSION_STR=$(docker -v 2> /dev/null | head -1)
+  if [ -n "$CONTAINER_RUNTIME_VERSION_STR" ]; then
+    CONTAINER_CMD=docker
+    return 0
   fi
 
   if [ -z "$CONTAINER_CMD" ]; then
@@ -384,7 +384,9 @@ check_container_environment()
   if [ "$CONTAINER_CMD" = "docker" ]; then
 
     CONTAINER_ENV_NAME=Docker
-    CONTAINER_RUNTIME_VERSION_STR=$(docker -v 2> /dev/null | head -1)
+    if [ -z "$CONTAINER_RUNTIME_VERSION_STR" ]; then
+      CONTAINER_RUNTIME_VERSION_STR=$(docker -v 2> /dev/null | head -1)
+    fi
     CONTAINER_RUNTIME_VERSION=$(echo $CONTAINER_RUNTIME_VERSION_STR | awk -F'version ' '{print $2 }'|cut -d"," -f1)
 
     # Docker doesn't uses systemd
@@ -403,7 +405,9 @@ check_container_environment()
     check_version "$CONTAINER_RUNTIME_VERSION" "$PODMAN_MINIMUM_VERSION" "$CONTAINER_CMD"
 
     CONTAINER_ENV_NAME=Podman
-    CONTAINER_RUNTIME_VERSION_STR=$(podman -v 2> /dev/null | head -1)
+    if [ -z "$CONTAINER_RUNTIME_VERSION_STR" ]; then
+      CONTAINER_RUNTIME_VERSION_STR=$(podman -v 2> /dev/null | head -1)
+    fi
     CONTAINER_RUNTIME_VERSION=$(echo $CONTAINER_RUNTIME_VERSION_STR | awk -F'version ' '{print $2 }')
 
     if [ "$DOMINO_NO_SYSTEMD" != "yes" ]; then
@@ -418,7 +422,9 @@ check_container_environment()
   if [ "$CONTAINER_CMD" = "nerdctl" ]; then
 
     CONTAINER_ENV_NAME=nerdctl
-    CONTAINER_RUNTIME_VERSION_STR=$(nerdctl -v 2> /dev/null | head -1)
+    if [ -z "$CONTAINER_RUNTIME_VERSION_STR" ]; then
+      CONTAINER_RUNTIME_VERSION_STR=$(nerdctl -v 2> /dev/null | head -1)
+    fi
     CONTAINER_RUNTIME_VERSION=$(echo $CONTAINER_RUNTIME_VERSION_STR | awk -F'version ' '{print $2 }')
 
     # nerdctl doesn't uses systemd
