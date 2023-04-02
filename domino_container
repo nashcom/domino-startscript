@@ -655,8 +655,8 @@ container_status ()
 
 inspect_image_native ()
 {
-  IMAGE_ID="$($CONTAINER_CMD inspect --format "{{.ID}}" $CONTAINER_IMAGE 2>/dev/null)"
-  IMAGE_SHORTID=$(echo $IMAGE_ID | cut -d":" -f2 | cut -c1-12)
+  IMAGE_ID="$($CONTAINER_CMD inspect --format "{{.ID}}" $CONTAINER_IMAGE 2>/dev/null | cut -d":" -f2)"
+  IMAGE_SHORTID=$(echo $IMAGE_ID | cut -c1-12)
 
   if [ -z "$1" ]; then return 0; fi
 
@@ -704,8 +704,8 @@ inspect_image ()
 
   local JSON=$(echo $FULL_JSON | jq .[0])
 
-  IMAGE_ID=$(echo "$JSON" | jq -r .Id | sed "s/null//")
-  IMAGE_SHORTID=$(echo $IMAGE_ID | cut -d":" -f2 | cut -c1-12)
+  IMAGE_ID=$(echo "$JSON" | jq -r .Id | sed "s/null//" | cut -d":" -f2)
+  IMAGE_SHORTID=$(echo $IMAGE_ID | cut -c1-12)
 
   if [ -z "$1" ]; then return 0; fi
 
