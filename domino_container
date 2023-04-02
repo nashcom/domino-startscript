@@ -390,6 +390,8 @@ check_container_environment()
   detect_container_environment
   detect_compose_environment
 
+  TAG_CONTAINER_ID=".Id"
+
   if [ "$CONTAINER_CMD" = "docker" ]; then
 
     CONTAINER_ENV_NAME=docker
@@ -404,7 +406,6 @@ check_container_environment()
     # Check container environment
     check_version "$CONTAINER_RUNTIME_VERSION" "$DOCKER_MINIMUM_VERSION" "$CONTAINER_CMD"
 
-    TAG_CONTAINER_ID=".Id"
     # For Docker we are done here
 
     if [ -z "$CONTAINER_HEALTH_CHECK" ]; then
@@ -464,7 +465,6 @@ check_container_environment()
   if [ -n "$DOMINO_SYSTEMD_NAME" ]; then
     CONTAINER_PID=/tmp/$DOMINO_SYSTEMD_NAME.pid
     CONTAINER_CID=/tmp/$DOMINO_SYSTEMD_NAME.cid
-    TAG_CONTAINER_ID=".Id"
     PODMAN_OPTIONS="--cgroups=no-conmon --conmon-pidfile $CONTAINER_PID --cidfile $CONTAINER_CID"
   fi
 
@@ -719,7 +719,7 @@ inspect_image ()
     IMAGE_SIZE_MB=$(($IMAGE_SIZE / 1000 / 1000 ))
   fi
 
-  IMAGE_DOMINO_VERSION="$(echo "$JSON" | jq -r '.Config.Labels."DominoDocker.version"' | sed "s/null//")"
+  IMAGE_DOMINO_VERSION="$(echo "$JSON" | jq -r '.Config.Labels."DominoContainer.version"' | sed "s/null//")"
 
   if [ -z "$IMAGE_DOMINO_VERSION" ]; then
     IMAGE_DOMINO_VERSION="$(echo "$JSON" | jq -r '.Config.Labels."DominoDocker.version"' | sed "s/null//")"
@@ -749,7 +749,6 @@ inspect_container_native ()
   fi
 
   CONTAINER_STATUS="$($CONTAINER_CMD inspect --format "{{ .State.Status }}" $CONTAINER_KEY 2>/dev/null)"
-  CONTAINER_VERSION="$($CONTAINER_CMD inspect --format "{{ .Config.Labels.version }}" $CONTAINER_KEY 2>/dev/null)"
   if [ -z "$CONTAINER_STATUS" ]; then return 0; fi
 
   CONTAINER_IMAGE_ID="$($CONTAINER_CMD inspect --format "{{ .Image }}" $CONTAINER_KEY 2>/dev/null)"
@@ -759,13 +758,29 @@ inspect_container_native ()
   fi
 
   CONTAINER_SHORTID=$(echo $CONTAINER_ID | cut -d":" -f2 | cut -c1-12)
-  CONTAINER_IMAGE_ID="$($CONTAINER_CMD inspect --format "{{ .Image }}" $CONTAINER_KEY 2>/dev/null)"
+
+  # nerdctl returns image name instead of ID
+
+  local TMP_ID=$(echo "$JSON" | jq -r .Image | sed "s/null//")
+  CONTAINER_IMAGE_ID="$(echo $TMP_ID | awk -F'sha256:' '{print $2}')"
+
+  if [ -z "$CONTAINER_IMAGE_ID" ]; then
+    CONTAINER_IMAGE_ID="$($CONTAINER_CMD inspect --format "{{.ID}}" $TMP_ID 2>/dev/null)"
+  fi
+
+  CURRENT_CONTAINER_IMAGE=$(echo "$JSON" | jq -r .Config.Image | sed "s/null//")
+  if [ -z "$CURRENT_CONTAINER_IMAGE" ]; then
+    CURRENT_CONTAINER_IMAGE=$TMP_ID
+  fi
+
   CONTAINER_IMAGE_SHORTID=$(echo $CONTAINER_IMAGE_ID | cut -d":" -f2 | cut -c1-12)
+
+  CONTAINER_VERSION="$($CONTAINER_CMD inspect --format "{{ .Config.Labels.version }}" $CONTAINER_IMAGE_ID 2>/dev/null)"
+  CONTAINER_BUILDTIME="$($CONTAINER_CMD inspect --format "{{ .Config.Labels.buildtime }}" $CONTAINER_IMAGE_ID 2>/dev/null)"
 
   if [ -z "$1" ]; then return 0; fi
 
   CONTAINER_NAME_DISPLAY="$($CONTAINER_CMD inspect --format "{{ .Name }}" $CONTAINER_KEY | cut -d/ -f2 2>/dev/null)"
-  CURRENT_CONTAINER_IMAGE="$($CONTAINER_CMD inspect --format "{{ .Config.Image }}" $CONTAINER_KEY 2>/dev/null)"
 
   CONTAINER_HOSTNAME="$($CONTAINER_CMD inspect --format "{{ .Config.Hostname }}" $CONTAINER_KEY 2>/dev/null)"
   CONTAINER_DRIVER="$($CONTAINER_CMD inspect --format "{{ .Driver }}" $CONTAINER_KEY 2>/dev/null)"
@@ -783,7 +798,6 @@ inspect_container_native ()
     CONTAINER_IPADDRESS=
   fi
 
-  CONTAINER_BUILDTIME="$($CONTAINER_CMD inspect --format "{{ .Config.Labels.buildtime }}" $CONTAINER_KEY 2>/dev/null)"
   CONTAINER_VOLUMES="$($CONTAINER_CMD inspect --format '{{range .Mounts}} {{ .Source }} {{end}}' $CONTAINER_KEY | xargs 2>/dev/null)"
   CONTAINER_MOUNTS="$($CONTAINER_CMD inspect --format '{{range .Mounts}} {{ .Destination }} {{end}}' $CONTAINER_KEY | xargs 2>/dev/null)"
 
@@ -822,7 +836,7 @@ inspect_container ()
   CONTAINER_STATUS=
   CONTAINER_VERSION=
 
-  if [ ! -e /usr/bin/jq ]; then
+  if [ -z "$JQ_VERSION" ] ; then
     inspect_container_native "$@"
     return 0
   fi
@@ -860,13 +874,27 @@ inspect_container ()
   fi
 
   CONTAINER_SHORTID=$(echo $CONTAINER_ID | cut -d":" -f2 | cut -c1-12)
-  CONTAINER_IMAGE_ID=$(echo "$JSON" | jq -r .Image | sed "s/null//")
+
+
+  # nerdctl returns image name instead of ID
+
+  local TMP_ID=$(echo "$JSON" | jq -r .Image | sed "s/null//")
+  CONTAINER_IMAGE_ID="$(echo $TMP_ID | awk -F'sha256:' '{print $2}')"
+
+  if [ -z "$CONTAINER_IMAGE_ID" ]; then
+    CONTAINER_IMAGE_ID="$($CONTAINER_CMD inspect --format "{{.ID}}" $TMP_ID 2>/dev/null)"
+  fi
+
+  CURRENT_CONTAINER_IMAGE=$(echo "$JSON" | jq -r .Config.Image | sed "s/null//")
+  if [ -z "$CURRENT_CONTAINER_IMAGE" ]; then
+    CURRENT_CONTAINER_IMAGE=$TMP_ID
+  fi
+
   CONTAINER_IMAGE_SHORTID=$(echo $CONTAINER_IMAGE_ID | cut -d":" -f2 | cut -c1-12)
 
   if [ -z "$1" ]; then return 0; fi
 
   CONTAINER_NAME_DISPLAY=$(echo "$JSON" | jq -r .Name | sed "s/null//")
-  CURRENT_CONTAINER_IMAGE=$(echo "$JSON" | jq -r .Config.Image | sed "s/null//")
 
   CONTAINER_HOSTNAME=$(echo "$JSON" | jq -r .Config.Hostname | sed "s/null//")
   CONTAINER_DRIVER=$(echo "$JSON" | jq -r .Driver | sed "s/null//")
