@@ -3,7 +3,7 @@
 # dominoctl                                                               #
 # ---------                                                               #
 # Nash!Com Domino Container Management Script                             #
-# Version 1.2.0 24.03.2023                                                #
+# Version 1.2.1 01.04.2023                                                #
 #                                                                         #
 # (C) Copyright Daniel Nashed/NashCom 2021-2023                           #
 # Feedback domino_unix@nashcom.de                                         #
@@ -57,7 +57,12 @@ DOWNLOAD_LINK_FLEXNET="https://hclsoftware.flexnetoperations.com/flexnet/operati
 DOWNLOAD_LINK_FLEXNET_OPTIONS="+&resultType=Files&sortBy=eff_date&listButton=Search"
 
 
-CONTAINER_SCRIPT_VERSION=1.2.0
+CONTAINER_SCRIPT_VERSION=1.2.1
+
+if [ "$1" == "--version" ]; then
+  echo $CONTAINER_SCRIPT_VERSION
+  exit 0
+fi
 
 # Default config directory. Can be overwritten by environment 
 if [ -z "$DOMINO_CFG_DIR" ]; then
@@ -261,7 +266,6 @@ config_warnings ()
     fi
   fi
   
-  JQ_VERSION=$(jq --version 2>/dev/null)
   if [ -z "$JQ_VERSION" ] ; then
     log_space "Warning: For a better 'inspect' command experience install 'jq' from repository -- infos: https://stedolan.github.io/jq/"
   fi
@@ -299,6 +303,16 @@ check_version ()
 
 detect_compose_environment()
 {
+
+ if [ -n "$CONTAINER_COMPOSE_CMD" ]; then
+    return 0
+  fi
+
+  # Ensure docker command on Rancher Desktop does not hang during detection
+  if [ "$CONTAINER_CMD" = "nerdctl" ]; then
+    return 0
+  fi
+
   COMPOSE_VERSION=$(docker compose version 2> /dev/null | awk -F'version ' '{print $2}')
 
   if [ -n "$COMPOSE_VERSION" ]; then
@@ -321,8 +335,7 @@ detect_compose_environment()
   fi
 
   if [ -z "$COMPOSE_CMD" ]; then
-    log "No container compose detected!"
-    exit 1
+    log_space "Info: No container compose detected!"
   fi
 }
 
@@ -358,7 +371,7 @@ detect_container_environment()
   fi
 
   if [ -z "$CONTAINER_CMD" ]; then
-    log "No container environment detected!"
+    log_space "No container environment detected!"
     exit 1
   fi
 
@@ -377,13 +390,9 @@ check_container_environment()
   detect_container_environment
   detect_compose_environment
 
-  if [ -z "$CONTAINER_HEALTH_CHECK" ]; then
-    CONTAINER_HEALTH_CHECK="--health-cmd=/healthcheck.sh --health-interval=60s --health-retries=4 --health-start-period=120s"
-  fi
-
   if [ "$CONTAINER_CMD" = "docker" ]; then
 
-    CONTAINER_ENV_NAME=Docker
+    CONTAINER_ENV_NAME=docker
     if [ -z "$CONTAINER_RUNTIME_VERSION_STR" ]; then
       CONTAINER_RUNTIME_VERSION_STR=$(docker -v 2> /dev/null | head -1)
     fi
@@ -398,13 +407,17 @@ check_container_environment()
     TAG_CONTAINER_ID=".Id"
     # For Docker we are done here
 
+    if [ -z "$CONTAINER_HEALTH_CHECK" ]; then
+      CONTAINER_HEALTH_CHECK="--health-cmd=/healthcheck.sh --health-interval=60s --health-retries=4 --health-start-period=120s"
+    fi
+
   fi
 
   if [ "$CONTAINER_CMD" = "podman" ]; then
 
     check_version "$CONTAINER_RUNTIME_VERSION" "$PODMAN_MINIMUM_VERSION" "$CONTAINER_CMD"
 
-    CONTAINER_ENV_NAME=Podman
+    CONTAINER_ENV_NAME=podman
     if [ -z "$CONTAINER_RUNTIME_VERSION_STR" ]; then
       CONTAINER_RUNTIME_VERSION_STR=$(podman -v 2> /dev/null | head -1)
     fi
@@ -417,6 +430,10 @@ check_container_environment()
         DOMINO_SYSTEMD_NAME=domino_container.service
       fi
     fi
+
+    if [ -z "$CONTAINER_HEALTH_CHECK" ]; then
+      CONTAINER_HEALTH_CHECK="--health-cmd=/healthcheck.sh --health-interval=60s --health-retries=4 --health-start-period=120s"
+    fi
   fi
 
   if [ "$CONTAINER_CMD" = "nerdctl" ]; then
@@ -426,6 +443,13 @@ check_container_environment()
       CONTAINER_RUNTIME_VERSION_STR=$(nerdctl -v 2> /dev/null | head -1)
     fi
     CONTAINER_RUNTIME_VERSION=$(echo $CONTAINER_RUNTIME_VERSION_STR | awk -F'version ' '{print $2 }')
+
+    if [ -z "$CONTAINER_NAMESPACE" ]; then
+      CONTAINER_NAMESPACE=k8s.io
+    fi
+
+    # Always add namespace option to nerdctl command line
+    CONTAINER_CMD="$CONTAINER_CMD --namespace=$CONTAINER_NAMESPACE"
 
     # nerdctl doesn't uses systemd
     CONTAINER_SYSTEMD_NAME=
@@ -663,7 +687,7 @@ inspect_image_native ()
 
 inspect_image ()
 {
-  if [ ! -e /bin/usr/jq ]; then
+  if [ -z "$JQ_VERSION" ] ; then
     inspect_image_native "$@"
     return 0
   fi
@@ -899,6 +923,11 @@ container_inspect_extras ()
 {
   if [ -z "$1" ]; then return 0; fi
 
+  # nerdctl has issues with interactive mode in shell scripts
+  if [ "$CONTAINER_ENV_NAME" = "nerdctl" ]; then
+    return 0
+  fi
+
   if [ "$CONTAINER_STATUS" = "running" ]; then 
     # CONTAINER_OS_VERSION=$($CONTAINER_CMD exec -it $CONTAINER_NAME cat /etc/os-release)
     # CONTAINER_OS_KERNEL=$($CONTAINER_CMD exec -it $CONTAINER_NAME uname -r)
@@ -1038,7 +1067,7 @@ container_show_inspect ()
     # echo " Container OS   :  $CONTAINER_OS_VERSION"
     # echo " Kernel         :  $CONTAINER_OS_KERNEL"
 
-    CONTAINER_PORTS=$($CONTAINER_CMD port "$CONTAINER_NAME")
+    CONTAINER_PORTS=$($CONTAINER_CMD port "$CONTAINER_NAME" 2> /dev/null)
     if [ ! -z "$CONTAINER_PORTS" ]; then
       echo " Container Ports:"
       echo "$CONTAINER_PORTS" | awk '{print "                  " $0}'
@@ -1340,7 +1369,13 @@ container_run ()
     log_space "--- Running Docker Container interactive [ Use Ctrl + p q to exit ] ---"
     CONTAINER_IT="-it"
   else
-    CONTAINER_IT="-d -it"
+
+    if [ "$CONTAINER_ENV_NAME" = "nerdctl" ]; then
+      CONTAINER_IT="-d -t"
+    else
+      CONTAINER_IT="-d -it"
+    fi
+
   fi
 
   if [ -z "$CONTAINER_NETWORK" ]; then
@@ -1354,7 +1389,7 @@ container_run ()
     CONTAINER_ENV_FILE_OPTION="--env-file $CONTAINER_FULL_ENV_FILE"
    
     if [ ! -r "$CONTAINER_FULL_ENV_FILE" ]; then
-      log_and_error "Error - Cannot read environment file [$CONTAINER_FULL_ENV_FILE]"
+      log_and_exit "Error - Cannot read environment file [$CONTAINER_FULL_ENV_FILE]"
     fi
   fi
 
@@ -1362,7 +1397,7 @@ container_run ()
     CONTAINER_LABEL_FILE_OPTION="--label-file $CONTAINER_FULL_LABEL_FILE"
 
     if [ ! -r "$CONTAINER_FULL_LABEL_FILE" ]; then
-      log_and_error "Error - Cannot read label file [$CONTAINER_FULL_LABEL_FILE]"
+      log_and_exit "Error - Cannot read label file [$CONTAINER_FULL_LABEL_FILE]"
     fi
   fi
 
@@ -1381,8 +1416,11 @@ container_run ()
     CONTAINER_RESTART_OPTIONS=
   fi 
 
-
   if [ -n "$CONTAINER_COMPOSE_FILE" ]; then
+
+    if [ -z "$CONTAINER_COMPOSE_CMD" ]; then
+      log_and_exit "Error - No compose command configured"
+    fi
 
     container_compose_exports
     echo
@@ -2004,11 +2042,16 @@ init_project ()
 }
 
 case "$PARAM1" in
+
   config|cfg)
     $CONTAINER_SUDO $EDIT_COMMAND "$CONFIG_FILE"
     exit 0
     ;;
+
 esac
+
+# Check if JQ is installed
+JQ_VERSION=$(jq --version 2>/dev/null)
 
 check_container_environment "$PARAM1"
 check_root_permissions
@@ -2209,11 +2252,11 @@ case "$PARAM1" in
     container_restart_policy "$PARAM2"
     ;;
 
-  ver|version)
+  ver|version|-ver|-version)
     show_version
     ;;
 
-  help)
+  -h|/h|-?|/?|-help|--help|help|usage)
     help
     ;;
 
