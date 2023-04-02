@@ -751,8 +751,6 @@ inspect_container_native ()
   CONTAINER_STATUS="$($CONTAINER_CMD inspect --format "{{ .State.Status }}" $CONTAINER_KEY 2>/dev/null)"
   if [ -z "$CONTAINER_STATUS" ]; then return 0; fi
 
-  CONTAINER_IMAGE_ID="$($CONTAINER_CMD inspect --format "{{ .Image }}" $CONTAINER_KEY 2>/dev/null)"
-
   if [ -z "$CONTAINER_ID" ]; then
     CONTAINER_ID="$($CONTAINER_CMD inspect --format "{{ $TAG_CONTAINER_ID }}" $CONTAINER_KEY 2>/dev/null)"
   fi
@@ -761,14 +759,15 @@ inspect_container_native ()
 
   # nerdctl returns image name instead of ID
 
-  local TMP_ID=$(echo "$JSON" | jq -r .Image | sed "s/null//")
+  local TMP_ID="$($CONTAINER_CMD inspect --format "{{ .Image }}" $CONTAINER_KEY 2>/dev/null)"
   CONTAINER_IMAGE_ID="$(echo $TMP_ID | awk -F'sha256:' '{print $2}')"
 
   if [ -z "$CONTAINER_IMAGE_ID" ]; then
     CONTAINER_IMAGE_ID="$($CONTAINER_CMD inspect --format "{{.ID}}" $TMP_ID 2>/dev/null)"
   fi
 
-  CURRENT_CONTAINER_IMAGE=$(echo "$JSON" | jq -r .Config.Image | sed "s/null//")
+  CURRENT_CONTAINER_IMAGE="$($CONTAINER_CMD inspect --format "{{ .Image }}" $CONTAINER_IMAGE_ID 2>/dev/null)"
+
   if [ -z "$CURRENT_CONTAINER_IMAGE" ]; then
     CURRENT_CONTAINER_IMAGE=$TMP_ID
   fi
