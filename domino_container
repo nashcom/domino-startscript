@@ -273,6 +273,19 @@ config_warnings ()
   return 0
 }
 
+is_sha256()
+{
+  case $1 in
+    "") return 1 ;;
+    [!0-9A-Fa-f]) return 2 ;;
+    *)
+      case ${#1} in
+        64) return 0 ;;
+        * ) return 3 ;;
+      esac
+   esac
+}
+
 check_version ()
 {
   local count=1
@@ -752,10 +765,8 @@ inspect_container_native ()
   if [ -z "$CONTAINER_STATUS" ]; then return 0; fi
 
   if [ -z "$CONTAINER_ID" ]; then
-    CONTAINER_ID="$($CONTAINER_CMD inspect --format "{{ $TAG_CONTAINER_ID }}" $CONTAINER_KEY 2>/dev/null)"
+    CONTAINER_ID="$($CONTAINER_CMD inspect --format "{{ $TAG_CONTAINER_ID }}" $CONTAINER_KEY 2>/dev/null | cut -d":" -f2)"
   fi
-
-  CONTAINER_SHORTID=$(echo $CONTAINER_ID | cut -d":" -f2 | cut -c1-12)
 
   # nerdctl returns image name instead of ID
 
@@ -763,7 +774,14 @@ inspect_container_native ()
   CONTAINER_IMAGE_ID="$(echo $TMP_ID | awk -F'sha256:' '{print $2}')"
 
   if [ -z "$CONTAINER_IMAGE_ID" ]; then
-    CONTAINER_IMAGE_ID="$($CONTAINER_CMD inspect --format "{{.ID}}" $TMP_ID 2>/dev/null)"
+
+    is_sha256 "$TMP_ID"
+
+    if [ "$?" = "0" ]; then
+      CONTAINER_IMAGE_ID="$TMP_ID"
+    else
+      CONTAINER_IMAGE_ID="$($CONTAINER_CMD inspect --format "{{.ID}}" $TMP_ID 2>/dev/null | cut -d":" -f2)"
+    fi
   fi
 
   CURRENT_CONTAINER_IMAGE="$($CONTAINER_CMD inspect --format "{{ .Image }}" $CONTAINER_IMAGE_ID 2>/dev/null)"
@@ -772,7 +790,7 @@ inspect_container_native ()
     CURRENT_CONTAINER_IMAGE=$TMP_ID
   fi
 
-  CONTAINER_IMAGE_SHORTID=$(echo $CONTAINER_IMAGE_ID | cut -d":" -f2 | cut -c1-12)
+  CONTAINER_IMAGE_SHORTID=$(echo $CONTAINER_IMAGE_ID | cut -c1-12)
 
   CONTAINER_VERSION="$($CONTAINER_CMD inspect --format "{{ .Config.Labels.version }}" $CONTAINER_IMAGE_ID 2>/dev/null)"
   CONTAINER_BUILDTIME="$($CONTAINER_CMD inspect --format "{{ .Config.Labels.buildtime }}" $CONTAINER_IMAGE_ID 2>/dev/null)"
@@ -819,7 +837,12 @@ inspect_container_native ()
   fi
 
   STARTDATE="$($CONTAINER_CMD inspect --format "{{ .State.StartedAt }}" $CONTAINER_KEY | cut -f1 -d+ 2>/dev/null)"
-  CONTAINER_STARTED_AT=$(date +"%d.%m.%Y %H:%M:%S" -d "$STARTDATE")
+
+  CONTAINER_STARTED_AT=$(date +"%d.%m.%Y %H:%M:%S" -d "$STARTDATE" 2>/dev/null)
+
+  if [ -z "$CONTAINER_STARTED_AT" ]; then
+    CONTAINER_STARTED_AT=$STARTDATE
+  fi
 
   # Docker specific information
   if [ "$CONTAINER_CMD" = "docker" ]; then
@@ -881,7 +904,15 @@ inspect_container ()
   CONTAINER_IMAGE_ID="$(echo $TMP_ID | awk -F'sha256:' '{print $2}')"
 
   if [ -z "$CONTAINER_IMAGE_ID" ]; then
-    CONTAINER_IMAGE_ID="$($CONTAINER_CMD inspect --format "{{.ID}}" $TMP_ID 2>/dev/null)"
+
+    is_sha256 "$TMP_ID"
+
+    if [ "$?" = "0" ]; then
+      CONTAINER_IMAGE_ID="$TMP_ID"
+    else
+      CONTAINER_IMAGE_ID="$($CONTAINER_CMD inspect --format "{{.ID}}" $TMP_ID 2>/dev/null | cut -d":" -f2 )"
+      echo "Test1 - CONTAINER_IMAGE_ID: [$CONTAINER_IMAGE_ID]"
+    fi
   fi
 
   CURRENT_CONTAINER_IMAGE=$(echo "$JSON" | jq -r .Config.Image | sed "s/null//")
@@ -889,7 +920,7 @@ inspect_container ()
     CURRENT_CONTAINER_IMAGE=$TMP_ID
   fi
 
-  CONTAINER_IMAGE_SHORTID=$(echo $CONTAINER_IMAGE_ID | cut -d":" -f2 | cut -c1-12)
+  CONTAINER_IMAGE_SHORTID=$(echo $CONTAINER_IMAGE_ID | cut -c1-12)
 
   if [ -z "$1" ]; then return 0; fi
 
@@ -934,7 +965,11 @@ inspect_container ()
   fi
 
   STARTDATE=$(echo "$JSON" | jq -r .State.StartedAt | sed "s/null//" | cut -f1 -d+ 2>/dev/null)
-  CONTAINER_STARTED_AT=$(date +"%d.%m.%Y %H:%M:%S" -d "$STARTDATE")
+  CONTAINER_STARTED_AT=$(date +"%d.%m.%Y %H:%M:%S" -d "$STARTDATE" 2>/dev/null)
+
+  if [ -z "$CONTAINER_STARTED_AT" ]; then
+    CONTAINER_STARTED_AT=$STARTDATE
+  fi
 
   # Docker specific information
   if [ "$CONTAINER_CMD" = "docker" ]; then
