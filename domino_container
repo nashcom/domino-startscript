@@ -333,14 +333,14 @@ detect_compose_environment()
     return 0
   fi
 
-  COMPOSE_VERSION=$(docker-compose version 2> /dev/null | grep docker-compose | awk -F'version ' '{print $2}')
+  COMPOSE_VERSION=$(docker-compose version 2> /dev/null | grep -i compose | awk -F'version ' '{print $2}')
 
   if [ -n "$COMPOSE_VERSION" ]; then
     CONTAINER_COMPOSE_CMD="docker-compose"
     return 0
   fi
 
-  COMPOSE_VERSION=$(podman-compose version 2> /dev/null | grep podman-compose | awk -F'version ' '{print $2}' | xargs)
+  COMPOSE_VERSION=$(podman-compose version 2> /dev/null | grep -i compose | awk -F'version ' '{print $2}' | xargs)
 
   if [ -n "$COMPOSE_VERSION" ]; then
     CONTAINER_COMPOSE_CMD="podman-compose"
