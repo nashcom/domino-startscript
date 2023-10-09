@@ -2,9 +2,9 @@
 
 ###########################################################################
 # Docker Entrypoint - Start/Stop Script for Domino on xLinux/zLinux/AIX   #
-# Version 3.7.2 30.08.2022                                                #
+# Version 3.7.3 09.10.2023                                                #
 #                                                                         #
-# (C) Copyright Daniel Nashed/NashCom 2005-2022                           #
+# (C) Copyright Daniel Nashed/NashCom 2005-2023                           #
 # Feedback domino_unix@nashcom.de                                         #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #

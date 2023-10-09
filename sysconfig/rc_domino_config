@@ -201,7 +201,7 @@ DOMINO_RC_NAME=rc_domino
 DOMINO_SYSTEMD_NAME=domino.service
 
 # -- Domino PID file per Partition which has to match the PIDFile setting in the "domino.service" --
-DOMINO_PID_FILE=/tmp/domino.pid
+DOMINO_PID_FILE=/run/notes/domino.pid
 
 # -- Specify umask if really needed. Usually set in user's profile --
 #DOMINO_UMASK=0077

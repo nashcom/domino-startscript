@@ -1,8 +1,8 @@
 ###########################################################################
 # README - Start/Stop Script for Domino on Linux & AIX                    #
-# Version 3.6.2 04.12.2021                                                #
+# Version 3.7.3 09.10.2023                                                #
 #                                                                         #
-# (C) Copyright Daniel Nashed/NashCom 2005-2021                           #
+# (C) Copyright Daniel Nashed/NashCom 2005-2023                           #
 # Feedback domino_unix@nashcom.de                                         #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #

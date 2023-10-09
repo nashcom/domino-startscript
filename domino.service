@@ -2,9 +2,9 @@
 
 ###########################################################################
 # systemd Service - Start/Stop Script for Domino on xLinux/zLinux/AIX     #
-# Version 3.7.2 30.08.2022                                                #
+# Version 3.7.3 09.10.2023                                                #
 #                                                                         #
-# (C) Copyright Daniel Nashed/NashCom 2005-2022                           #
+# (C) Copyright Daniel Nashed/NashCom 2005-2023                           #
 # Feedback domino_unix@nashcom.de                                         #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #
@@ -25,7 +25,9 @@ After=syslog.target network.target
 
 [Service]
 User=notes
-PIDFile=/tmp/domino.pid
+PIDFile=/run/notes/domino.pid
+ExecStartPre=+/bin/mkdir -p /run/notes
+ExecStartPre=+/bin/chown notes:notes /run/notes
 ExecStart=/opt/nashcom/startscript/rc_domino_script start
 ExecStop=/opt/nashcom/startscript/rc_domino_script stop
 Type=forking

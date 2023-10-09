@@ -476,8 +476,8 @@ check_container_environment()
   fi
 
   if [ -n "$DOMINO_SYSTEMD_NAME" ]; then
-    CONTAINER_PID=/tmp/$DOMINO_SYSTEMD_NAME.pid
-    CONTAINER_CID=/tmp/$DOMINO_SYSTEMD_NAME.cid
+    CONTAINER_PID=/run/$DOMINO_SYSTEMD_NAME.pid
+    CONTAINER_CID=/run/$DOMINO_SYSTEMD_NAME.cid
     PODMAN_OPTIONS="--cgroups=no-conmon --conmon-pidfile $CONTAINER_PID --cidfile $CONTAINER_CID"
   fi
 
