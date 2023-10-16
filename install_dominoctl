@@ -244,7 +244,11 @@ fi
 copy_one_touch_templates
 
 if [ -x /usr/bin/podman ]; then
-  install_file_noupdate "$START_SCRIPT_DIR/domino_container.service" "/etc/systemd/system/$CONTAINER_SYSTEMD_NAME" $ROOT_USER $ROOT_GROUP 644
+  if [ "$PARAM1" = "upd" ]; then
+    install_file "$START_SCRIPT_DIR/domino_container.service" "/etc/systemd/system/$CONTAINER_SYSTEMD_NAME" $ROOT_USER $ROOT_GROUP 644
+  else
+    install_file_noupdate "$START_SCRIPT_DIR/domino_container.service" "/etc/systemd/system/$CONTAINER_SYSTEMD_NAME" $ROOT_USER $ROOT_GROUP 644
+  fi
 fi
 
 if [ $? -eq 2 ]; then
