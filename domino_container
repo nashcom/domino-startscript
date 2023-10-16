@@ -437,7 +437,7 @@ check_container_environment()
     fi
     CONTAINER_RUNTIME_VERSION=$(echo $CONTAINER_RUNTIME_VERSION_STR | awk -F'version ' '{print $2 }')
 
-    if [ "$DOMINO_NO_SYSTEMD" != "yes" ]; then
+    if [ "$DOMINO_NO_SYSTEMD" = "yes" ]; then
       DOMINO_SYSTEMD_NAME=
     else
       if [ -z "$DOMINO_SYSTEMD_NAME" ]; then
