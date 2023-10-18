@@ -25,9 +25,9 @@ After=syslog.target network.target
 
 [Service]
 User=notes
+RuntimeDirectory=notes
+RuntimeDirectoryPreserve=yes
 PIDFile=/run/notes/domino.pid
-ExecStartPre=+/bin/mkdir -p /run/notes
-ExecStartPre=+/bin/chown notes:notes /run/notes
 ExecStart=/opt/nashcom/startscript/rc_domino_script start
 ExecStop=/opt/nashcom/startscript/rc_domino_script stop
 Type=forking
