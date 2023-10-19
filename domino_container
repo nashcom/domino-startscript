@@ -343,13 +343,11 @@ detect_compose_environment()
   COMPOSE_VERSION=$(podman-compose version 2> /dev/null | grep -i compose | awk -F'version ' '{print $2}' | xargs)
 
   if [ -n "$COMPOSE_VERSION" ]; then
-    CONTAINER_COMPOSE_CMD="podman-compose"
+    # podman-compose is not supported and cannot be used!
+    # CONTAINER_COMPOSE_CMD="podman-compose"
     return 0
   fi
 
-  if [ -z "$COMPOSE_CMD" ]; then
-    log_space "Info: No container compose detected!"
-  fi
 }
 
 
