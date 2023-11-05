@@ -534,6 +534,7 @@ CheckConnection()
     echo "$MYHCL_PORTAL_URL"
     echo "$MYHCL_API_URL"
     echo "$HCL_AUTOUPDATE_URL"
+    echo "$GITHUB_URL"
     echo
     echo
     read -p "Confirm connection : (yes/no) ? " QUESTION
@@ -567,7 +568,7 @@ CheckConnection()
   fi
 
   PerfTimerBegin
-  local CURL_RET=$($CURL_CMD --silent "$MYHCL_PORTAL_URL" --head -w 'RESP_CODE:%{response_code}\n')
+  local CURL_RET=$($CURL_CMD --silent "$GITHUB_URL" --head -w 'RESP_CODE:%{response_code}\n')
   PerfTimerEnd $PERF_MAX_CURL "$MYHCL_PORTAL_URL"
 
   if [ -z "$(echo "$CURL_RET" | grep "RESP_CODE:200")" ]; then
@@ -2196,6 +2197,7 @@ fi
 
 SOFTWARE_URL=$HCL_AUTOUPDATE_URL/software.jwt
 PRODUCT_URL=$HCL_AUTOUPDATE_URL/product.jwt
+GITHUB_URL=https://github.com
 
 if [ -z "$EDIT_COMMAND" ]; then
   EDIT_COMMAND="vi"
