@@ -1,8 +1,8 @@
 ---
 layout: default
-title: Domino container control
+title: Domino Container Control
 nav_order: 5
-description: "Domino container control (dominoctl)"
+description: "Domino Container Control (dominoctl)"
 has_children: false
 ---
 

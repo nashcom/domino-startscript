@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Domino Download Script
-nav_order: 7
+nav_order: 6
 description: "Domino Download Script"
 has_children: false
 ---
@@ -14,7 +14,7 @@ The new functionality in Domino leverages the new [My HCL Software download port
 My HCL Software download portal will replace the existing Flexnet download functionality.
 The new offering is dramatically easier, faster to navigate and provides a more modern interface.
 It is the new recommended browser based download functionality operating with the same credentials used for Flexnet download.
-Log into https://my.hcltechsw.com/ to browser and download all software you are entitled to.
+Log into https://my.hcltechsw.com/ to browse and download all software you are entitled to.
 
 The Domino Download Script combines components from both offerings to provide a complementary command-line download interface, which can be used for automation flows:
 
