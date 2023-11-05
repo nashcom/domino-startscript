@@ -115,6 +115,40 @@ DebugDump()
   fi
 }
 
+PerfTimerLogSession()
+{
+  if [ -z "$PERF_LOG_FILE" ]; then
+    return 0
+  fi
+
+  echo >> "$PERF_LOG_FILE"
+  date '+%F %T' >> "$PERF_LOG_FILE"
+  echo "--------------------" >> "$PERF_LOG_FILE"
+}
+
+PerfTimerBegin()
+{
+  if [ -z "$PERF_LOG_FILE" ]; then
+    return 0
+  fi
+
+  PERF_BEGIN_TIMER=$(($(date +%s%N)/1000000))
+}
+
+PerfTimerEnd()
+{
+  if [ -z "$PERF_LOG_FILE" ]; then
+    return 0
+  fi
+
+  local END_TIMER=$(($(date +%s%N)/1000000))
+  local DIFF_TIMER=$(($END_TIMER-$PERF_BEGIN_TIMER))
+
+  if [ $DIFF_TIMER -gt $1 ]; then
+    printf "%6s ms  %s\n" "$DIFF_TIMER" "$2" >> "$PERF_LOG_FILE"
+  fi
+}
+
 CheckWriteFile()
 {
   if [ ! -w "$1" ]; then
@@ -532,7 +566,9 @@ CheckConnection()
     DebugText "Agreed to connect via $CONNECTION_AGREED_FILE at [$(cat $CONNECTION_AGREED_FILE)]"
   fi
 
+  PerfTimerBegin
   local CURL_RET=$($CURL_CMD --silent "$MYHCL_PORTAL_URL" --head -w 'RESP_CODE:%{response_code}\n')
+  PerfTimerEnd $PERF_MAX_CURL "$MYHCL_PORTAL_URL"
 
   if [ -z "$(echo "$CURL_RET" | grep "RESP_CODE:200")" ]; then
     DOMDOWNLOAD_MODE=error
@@ -620,7 +656,10 @@ GetAccessToken()
   CheckWriteFile "$DOMDOWNLOAD_TOKEN_FILE_NAME"
 
   # Exchange refresh token and get access token (JWT)
+
+  PerfTimerBegin
   JSON=$($CURL_CMD -sL "$MYHCL_TOKEN_URL" -H "Content-Type: application/json" -d "{\"refreshToken\":\"$REFRESH_TOKEN\"}")
+  PerfTimerEnd $PERF_MAX_CURL "MyHCL-API-ExchangeToken"
 
   DebugDump "JSON" "$JSON"
 
@@ -679,7 +718,9 @@ CheckDownloadedFile()
     exit 0
   fi
 
+  PerfTimerBegin
   FILE_SHA256=$($CHECKSUM_CMD "$OUTFILE_FULLPATH" | /usr/bin/cut -f1 -d" " | /usr/bin/awk '{print tolower($0)}')
+  PerfTimerEnd $PERF_MAX_CHECKSUM "SHA256: $OUTFILE_FULLPATH"
 
   if [ "$FILE_SHA256" = "$(echo "$FILE_CHECKSUM_SHA256" | /usr/bin/awk '{print tolower($0)}')" ]; then
     LogMessage "[OK] Hash verified"
@@ -729,7 +770,9 @@ DownloadCustom()
     DOWNLOAD_BASIC_AUTH_CMD="--user"
   fi
 
+  PerfTimerBegin
   $CURL_CMD "$DOWNLOAD_URL" -o "$OUTFILE_FULLPATH" "$DOWNLOAD_BASIC_AUTH_CMD" "$DOWNLOAD_BASIC_AUTH"
+  PerfTimerEnd $PERF_MAX_CURL "$OUTFILE_FULLPATH"
 
   if [ ! -e "$OUTFILE_FULLPATH" ]; then
     LogError "Cannot download file from $DOWNLOAD_URL"
@@ -809,7 +852,9 @@ DownloadSoftware()
 
   DebugText "Request: ${MYHCL_DOWNLOAD_URL_PREFIX}$1${MYHCL_DOWNLOAD_URL_SUFFIX}"
 
+  PerfTimerBegin
   DOWNLOAD_FILE_URL=$($CURL_CMD -s --write-out "%{redirect_url}\n" --output /dev/null "${MYHCL_DOWNLOAD_URL_PREFIX}$1${MYHCL_DOWNLOAD_URL_SUFFIX}" -H "Authorization: Bearer $ACCESS_TOKEN" -o "$OUTFILE_FULLPATH")
+  PerfTimerEnd $PERF_MAX_CURL "MyHCL-API-FileURL"
 
   if [ "$PRINT_DOWNLOAD_CURL_CMD" = "yes" ]; then
 
@@ -935,7 +980,9 @@ GetProductLinePortal()
     exit 1
   fi
 
-  local PRODUCT_LINE=$(echo "$PRODUCT_INFO" | $JQ_CMD  -r '.name + "|" + .description + "|" + .platform  + "|" + (.size|tostring) + "|" + .checksums.sha256 + "|" + .id + "|" + .modified')
+  PerfTimerBegin
+  local PRODUCT_LINE=$(echo "$PRODUCT_INFO" | $JQ_CMD -r '.name + "|" + .description + "|" + .platform  + "|" + (.size|tostring) + "|" + .checksums.sha256 + "|" + .id + "|" + .modified')
+  PerfTimerEnd $PERF_MAX_JQ "JQ: GetProductLinePortal"
 
   FILE_NAME=$(echo "$PRODUCT_LINE" | /usr/bin/cut -d"|" -f1)
   FILE_DESCRIPTION=$(echo "$PRODUCT_LINE" | /usr/bin/cut -d"|" -f2)
@@ -999,7 +1046,11 @@ GetProductLineAutoUpdate()
     exit 1
   fi
 
+  PerfTimerBegin
+
   local PRODUCT_LINE=$(echo "$PRODUCT_INFO" | $JQ_CMD  -r '( (select(.platform|type=="array") | .fileName + "|" + .description + "|" + .labelVersion + "|" +(.fileSize|tostring) + "|" + .fileChecksum + "|" + .fileID + "|" + .product + "|" + .type + "|" + (.platform|join(",")) + "|" + .info.S3), (select(.platform|type=="string") | .fileName + "|" + .description + "|" + .labelVersion + "|" +(.fileSize|tostring) + "|" + .fileChecksum + "|" + .fileID + "|" + .product + "|" + .type + "|" + .platform + "|" + .info.S3) )')
+
+  PerfTimerEnd $PERF_MAX_JQ "JQ: GetProductLineAutoUpdate"
 
   # cut is faster to than JQ and is a very simple operation
   FILE_NAME=$(echo "$PRODUCT_LINE" | /usr/bin/cut -d"|" -f1)
@@ -1080,7 +1131,9 @@ GetDownloadFromPortal()
       header "$2"
     fi
 
+    PerfTimerBegin
     JSON=$($CURL_CMD -sL $1)
+    PerfTimerEnd $PERF_MAX_CURL "Curl: $1"
 
     if [ -z "$JSON" ]; then
       LogError "No JSON returned from [$1]!"
@@ -1089,6 +1142,7 @@ GetDownloadFromPortal()
 
     # First check the type to see which data needs to be parsed
 
+    PerfTimerBegin
     TYPE=$(echo "$JSON" | $JQ_CMD -r '.type')
 
     if [ "$TYPE" = "null" ] || [ "$TYPE" = "product-group" ]; then
@@ -1106,6 +1160,8 @@ GetDownloadFromPortal()
       echo "Invalid Type: [$TYPE]"
       exit 1
     fi
+
+    PerfTimerEnd $PERF_MAX_JQ "JQ: parsed $TYPE"
 
     DebugText "TYPE: [$TYPE]"
 
@@ -1173,6 +1229,8 @@ GetDownloadFromPortal()
 
     # Depending on type check for children, releases or files
 
+    PerfTimerBegin
+
     if [ "$TYPE" = "null" ] || [ "$TYPE" = "product-group" ]; then
       SLUG=$(echo "$JSON" | $JQ_CMD --arg key "$KEY" -r '.children[] | select(.name==$key) | .slug')
 
@@ -1182,6 +1240,8 @@ GetDownloadFromPortal()
     elif [ "$TYPE" = "release" ]; then
       FILE_JSON=$(echo "$JSON" | $JQ_CMD --arg key "$KEY" -r '.files[] | select(.name==$key)')
     fi
+
+    PerfTimerEnd $PERF_MAX_JQ "JQ: parse key: $KEY"
 
     if [ -n "$FILE_JSON" ]; then
       DownloadProductFromPortal "$FILE_JSON" "$PRODUCT_PATH" "$SLUG"
@@ -1265,7 +1325,10 @@ DownloadFileDataJSON()
   if [ "$DOMDOWNLOAD_MODE" = "online" ]; then
 
     DebugText "Downloading: $DOWNLOAD_URL -> $DOWNLOAD_FILE"
+
+    PerfTimerBegin
     $CURL_CMD -sL "$DOWNLOAD_URL" -o "$DOWNLOAD_FILE"
+    PerfTimerEnd $PERF_MAX_CURL "Curl: $DOWNLOAD_URL"
 
   else
 
@@ -1360,10 +1423,14 @@ GetSoftwareConfig()
 
   fi
 
+  PerfTimerBegin
+
   case "$SOFTWARE_URL" in
 
     *.jwt)
+
       local PAYLOAD_BASE64URL=$($CURL_CMD -sL "$SOFTWARE_URL" | /usr/bin/cut -d"." -f2)
+
       local PAYLOAD_BASE64=$(echo -n $PAYLOAD_BASE64URL | tr '_-' '/+')
 
       # Add padding for valid BASE64 encoding (base64url encoding removes padding)
@@ -1381,6 +1448,8 @@ GetSoftwareConfig()
       CONFIG=$($CURL_CMD -sL "$SOFTWARE_URL" | $JQ_CMD -r '.configuration.tokenURL + "|" + .configuration.downloadURLPrefix + "|" + .configuration.downloadURLSuffix')
       ;;
   esac
+
+  PerfTimerEnd $PERF_MAX_CURL "Curl: $SOFTWARE_URL"
 
   if [ -z "$CONFIG" ]; then
     LogError "No configuration found"
@@ -2071,6 +2140,21 @@ if [ -z "$DOMDOWNLOAD_CFG_DIR" ]; then
   fi
 fi
 
+if [ -z "$PERF_MAX_CURL" ]; then
+  PERF_MAX_CURL=1000
+fi
+
+if [ -z "$PERF_MAX_JQ" ]; then
+  PERF_MAX_JQ=100
+fi
+
+if [ -z "$PERF_MAX_CHECKSUM" ]; then
+  PERF_MAX_CHECKSUM=5000
+fi
+
+
+PERF_LOG_FILE=$DOMDOWNLOAD_CFG_DIR/domdownload.perf
+
 if [ ! -e "$DOMDOWNLOAD_CFG_DIR" ]; then
     LogMessage "Info: Creating configuration directory: $DOMDOWNLOAD_CFG_DIR"
     mkdir -p "$DOMDOWNLOAD_CFG_DIR"
@@ -2283,6 +2367,17 @@ for a in "$@"; do
       exit 0
       ;;
 
+    perf)
+      if [ "$2" = "clear" ] || [ "$2" = "reset" ]; then
+	LogMessage "Removing $PERF_LOG_FILE"
+        remove_file "$PERF_LOG_FILE"
+
+      elif [ -e "$PERF_LOG_FILE" ]; then
+        "$EDIT_COMMAND" "$PERF_LOG_FILE"
+      fi
+      exit 0
+      ;;
+
     -h|/h|-?|/?|-help|--help|help|usage)
       Usage
       exit 0
@@ -2301,6 +2396,7 @@ for a in "$@"; do
 
 done
 
+PerfTimerLogSession
 GetSoftwareConfig
 
 if [ -z "$SOFTWARE_DIR" ]; then
