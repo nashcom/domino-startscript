@@ -121,6 +121,10 @@ PerfTimerLogSession()
     return 0
   fi
 
+  # truncate log
+  tail -$PERF_MAX_LOG_LINES "$PERF_LOG_FILE" >> "$PERF_LOG_FILE.tmp"
+  mv -f "$PERF_LOG_FILE.tmp" "$PERF_LOG_FILE"
+
   echo >> "$PERF_LOG_FILE"
   date '+%F %T' >> "$PERF_LOG_FILE"
   echo "--------------------" >> "$PERF_LOG_FILE"
@@ -2153,8 +2157,12 @@ if [ -z "$PERF_MAX_CHECKSUM" ]; then
   PERF_MAX_CHECKSUM=5000
 fi
 
+if [ -z "$PERF_MAX_LOG_LINES" ]; then
+  PERF_MAX_LOG_LINES=100
+fi
 
 PERF_LOG_FILE=$DOMDOWNLOAD_CFG_DIR/domdownload.perf
+
 
 if [ ! -e "$DOMDOWNLOAD_CFG_DIR" ]; then
     LogMessage "Info: Creating configuration directory: $DOMDOWNLOAD_CFG_DIR"
