@@ -2,7 +2,7 @@
 
 ###########################################################################
 # Domino Software Download Script                                         #
-# Version 0.9.7 05.11.2023                                                #
+# Version 0.9.8 21.11.2023                                                #
 # Copyright Nash!Com, Daniel Nashed                                       #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #
@@ -38,11 +38,12 @@
 #        Caching access token for 40 minutes to avoid round trips got get a new access token (token is valid for 60 minutes)
 # 0.9.6  Bug fixes
 # 0.9.7  Fit & Finish changes
+# 0.9.8  Performance counter for Linux but not for Mac because there is only a seconds timer in "date" and we don't want to install tools extra for this 
 
 SCRIPT_NAME=$0
 SCRIPT_DIR=$(dirname $SCRIPT_NAME)
 
-DOMDOWNLOAD_SCRIPT_VERSION=0.9.7
+DOMDOWNLOAD_SCRIPT_VERSION=0.9.8
 
 ClearScreen()
 {
@@ -117,6 +118,10 @@ DebugDump()
 
 PerfTimerLogSession()
 {
+  if [ "$OS_PLATFORM" = "Darwin" ]; then
+    return 0
+  fi
+
   if [ -z "$PERF_LOG_FILE" ]; then
     return 0
   fi
@@ -132,6 +137,10 @@ PerfTimerLogSession()
 
 PerfTimerBegin()
 {
+  if [ "$OS_PLATFORM" = "Darwin" ]; then
+    return 0
+  fi
+
   if [ -z "$PERF_LOG_FILE" ]; then
     return 0
   fi
@@ -141,6 +150,10 @@ PerfTimerBegin()
 
 PerfTimerEnd()
 {
+  if [ "$OS_PLATFORM" = "Darwin" ]; then
+    return 0
+  fi
+
   if [ -z "$PERF_LOG_FILE" ]; then
     return 0
   fi
