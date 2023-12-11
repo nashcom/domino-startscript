@@ -127,8 +127,10 @@ PerfTimerLogSession()
   fi
 
   # truncate log
-  tail -$PERF_MAX_LOG_LINES "$PERF_LOG_FILE" >> "$PERF_LOG_FILE.tmp"
-  mv -f "$PERF_LOG_FILE.tmp" "$PERF_LOG_FILE"
+  if [ -e "$PERF_LOG_FILE" ]; then
+    tail -$PERF_MAX_LOG_LINES "$PERF_LOG_FILE" >> "$PERF_LOG_FILE.tmp"
+    mv -f "$PERF_LOG_FILE.tmp" "$PERF_LOG_FILE"
+  fi
 
   echo >> "$PERF_LOG_FILE"
   date '+%F %T' >> "$PERF_LOG_FILE"

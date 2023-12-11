@@ -153,6 +153,14 @@ print_infos()
       printf "Nerdctl       :      $DOCKER_RUNTIME_VERSION\n"
   fi
 
+  DOMINO_DOWNLOAD_VER=$(domdownload --version 2> /dev/null)
+
+  if [ -n "$DOMINO_DOWNLOAD_VER" ]; then
+      printf "DomDownload   :      $DOMINO_DOWNLOAD_VER\n"
+  else
+      printf "DomDownload   :      [not installed]\n"
+  fi
+
   printf "\n"
 
   printf "CPU Model     :      $CPU_MODEL\n"

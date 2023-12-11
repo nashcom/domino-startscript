@@ -693,6 +693,8 @@ inspect_image_native ()
     IMAGE_TRAVELER_VERSION="$($CONTAINER_CMD inspect --format "{{ index .Config.Labels \"TravelerDocker.version\" }}" $CONTAINER_IMAGE 2>/dev/null)"
   fi
 
+  IMAGE_DOMINO_ADDONS="$($CONTAINER_CMD inspect --format "{{ index .Config.Labels \"DominoContainer.addons\" }}" $CONTAINER_IMAGE 2>/dev/null)"
+
   return 0
 }
 
@@ -741,6 +743,8 @@ inspect_image ()
   if [ -z "$IMAGE_TRAVELER_VERSION" ]; then
     IMAGE_TRAVELER_VERSION="$(echo "$JSON" | jq -r '.Config.Labels."TravelerDocker.version"' | sed "s/null//")"
   fi
+
+  IMAGE_DOMINO_ADDONS="$(echo "$JSON" | jq -r '.Config.Labels."DominoContainer.addons"' | sed "s/null//")"
 
   return 0
 }
@@ -833,6 +837,8 @@ inspect_container_native ()
   if [ -z "$CONTAINER_TRAVELER_VERSION" ]; then
     CONTAINER_TRAVELER_VERSION="$($CONTAINER_CMD inspect --format "{{ index .Config.Labels \"TravelerDocker.version\" }}" $CONTAINER_KEY 2>/dev/null)"
   fi
+
+  CONTAINER_DOMINO_ADDONS="$($CONTAINER_CMD inspect --format "{{ index .Config.Labels \"DominoContainer.addons\" }}" $CONTAINER_KEY 2>/dev/null)"
 
   STARTDATE="$($CONTAINER_CMD inspect --format "{{ .State.StartedAt }}" $CONTAINER_KEY | cut -f1 -d+ 2>/dev/null)"
 
@@ -962,6 +968,8 @@ inspect_container ()
     CONTAINER_TRAVELER_VERSION=$(echo "$JSON" | jq -r '.Config.Labels."TravelerDocker.version"' | sed "s/null//")
   fi
 
+  CONTAINER_DOMINO_ADDONS=$(echo "$JSON" | jq -r '.Config.Labels."DominoContainer.addons"' | sed "s/null//")
+
   STARTDATE=$(echo "$JSON" | jq -r .State.StartedAt | sed "s/null//" | cut -f1 -d+ 2>/dev/null)
   CONTAINER_STARTED_AT=$(date +"%d.%m.%Y %H:%M:%S" -d "$STARTDATE" 2>/dev/null)
 
@@ -1083,6 +1091,13 @@ container_show_inspect ()
   else
     echo " Domino Ver CNT :  $CONTAINER_DOMINO_VERSION"
     echo " Domino Ver IMG :  $IMAGE_DOMINO_VERSION"
+  fi
+
+  if [ "$CONTAINER_DOMINO_ADDONS" = "$IMAGE_DOMINO_ADDONS" ]; then
+    echo " Add-ons        :  $CONTAINER_DOMINO_ADDONS"
+  else
+    echo " Add-ons CNT    :  $CONTAINER_DOMINO_ADDONS"
+    echo " Add-ons IMG    :  $IMAGE_DOMINO_ADDONS"
   fi
 
   if [ "$IMAGE_BUILDTIME" = "$CONTAINER_BUILDTIME" ]; then 
