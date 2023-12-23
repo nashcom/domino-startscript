@@ -5,7 +5,7 @@
 ############################################################################
 
 # Domino on Linux installation script
-# Version 3.7.3 09.10.2023
+# Version 3.8.0 20.12.2023
 
 # - Installs required software
 # - Adds notes:notes user and group

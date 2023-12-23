@@ -55,7 +55,7 @@ The script is pre-configured and will work for older versions with init.d and al
 - And finally the server is started
 
 ```
-tar -xzf domino-startscript_v3.7.3.taz
+tar -xzf domino-startscript_v3.8.0.taz
 cd domino-startscript
 ./install_script
 ```

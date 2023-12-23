@@ -2,7 +2,7 @@
 
 ###########################################################################
 # systemd Service - Start/Stop Script for Domino on Podman                #
-# Version 3.7.3 09.10.2023                                                #
+# Version 1.4.0 20.12.2023                                                #
 #                                                                         #
 # (C) Copyright Daniel Nashed/NashCom 2020-2023                           #
 # Feedback domino_unix@nashcom.de                                         #
@@ -29,7 +29,7 @@ PIDFile=/run/domino_container.service.pid
 ExecStart=/opt/nashcom/startscript/domino_container startd
 ExecStop=/opt/nashcom/startscript/domino_container stopd
 Type=forking
-LimitNOFILE=65535
+LimitNOFILE=80000
 LimitNPROC=8000
 TasksMax=8000
 
