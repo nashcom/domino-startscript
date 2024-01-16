@@ -315,7 +315,7 @@ AssistInstallJQ4Mac()
 
   if [ "$QUESTION" = "yes" ] || [ "$QUESTION" = "y" ]; then
 
-    if [ "$CPU_TYPE" ]; then
+    if [ "$CPU_TYPE" = "arm64" ]; then
       JQ_GITHUB_BIN="https://github.com/jqlang/jq/releases/download/jq-1.7/jq-macos-arm64"
     else
       JQ_GITHUB_BIN="https://github.com/jqlang/jq/releases/download/jq-1.7/jq-macos-amd64"
