@@ -14,7 +14,7 @@ The new functionality in Domino leverages the new [My HCL Software download port
 My HCL Software download portal will replace the existing Flexnet download functionality.
 The new offering is dramatically easier, faster to navigate and provides a more modern interface.
 It is the new recommended browser based download functionality operating with the same credentials used for Flexnet download.
-Log into https://my.hcltechsw.com/ to browse and download all software you are entitled to.
+Log into [https://my.hcltechsw.com/](https://my.hcltechsw.com/) to browse and download all software you are entitled to.
 
 The Domino Download Script combines components from both offerings to provide a complementary command-line download interface, which can be used for automation flows:
 
@@ -31,7 +31,7 @@ The script is also leveraged in the container build script in the [HCL Domino Co
 - Navigate the [autoupdate.jwt](https://ds_infolib.hcltechsw.com/software.jwt) data to download or list software
 - Determine the latest version of a product via [product.jwt](https://ds_infolib.hcltechsw.com/software.jwt).
 - "**local mode**": Download software from an own internal server leveraging software.jwt.
-  Can be also downloaded manually in an air gapped environment.
+  Can be also downloaded manually in an air gap environment.
 - Generate a curl command-line with an authenticated redirect instead of downloading (-curl option)
 
 # How to get started
@@ -40,6 +40,13 @@ Download the script and make it executable via `chmod +x domdownload.sh` and run
 
 The script is part of the Domino start script repository and can be installed directly from there using the `install` option once you cloned the Start Script repository using git. 
 The install option installs the script to `/usr/local/bin/domdownload`.
+
+Run the following commands. After the script is installed, it is in the search path.
+
+```
+chmod +x domdownload.sh
+./domdownload install
+```
 
 - The script prompts for missing components and also ask for accessing the internet once
 - At first start a default configuration with the most commonly used options is written

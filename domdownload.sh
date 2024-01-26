@@ -2,7 +2,7 @@
 
 ###########################################################################
 # Domino Software Download Script                                         #
-# Version 0.9.8 21.11.2023                                                #
+# Version 0.9.9 26.01.2024                                                #
 # Copyright Nash!Com, Daniel Nashed                                       #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #
@@ -39,11 +39,12 @@
 # 0.9.6  Bug fixes
 # 0.9.7  Fit & Finish changes
 # 0.9.8  Performance counter for Linux but not for Mac because there is only a seconds timer in "date" and we don't want to install tools extra for this 
+# 0.9.9  Better error output for invalid refesh tokens
 
 SCRIPT_NAME=$0
 SCRIPT_DIR=$(dirname $SCRIPT_NAME)
 
-DOMDOWNLOAD_SCRIPT_VERSION=0.9.8
+DOMDOWNLOAD_SCRIPT_VERSION=0.9.9
 
 ClearScreen()
 {
@@ -686,7 +687,14 @@ GetAccessToken()
   REFRESH_TOKEN=$(echo "$JSON" | $JQ_CMD -r .refreshToken)
 
   if [ "$REFRESH_TOKEN" = "null" ] || [ -z "$REFRESH_TOKEN" ]; then
-    LogError "No refresh token returned"
+
+    ERROR_TEXT=$(echo "$JSON" | $JQ_CMD -r .summary)
+    if [ -z "$ERROR_TEXT" ]; then
+      LogError "No refresh token returned"
+    else
+      LogError "$ERROR_TEXT"
+    fi
+
     exit 1
   fi
 
@@ -875,6 +883,11 @@ DownloadSoftware()
   PerfTimerBegin
   DOWNLOAD_FILE_URL=$($CURL_CMD -s --write-out "%{redirect_url}\n" --output /dev/null "${MYHCL_DOWNLOAD_URL_PREFIX}$1${MYHCL_DOWNLOAD_URL_SUFFIX}" -H "Authorization: Bearer $ACCESS_TOKEN" -o "$OUTFILE_FULLPATH")
   PerfTimerEnd $PERF_MAX_CURL "MyHCL-API-FileURL"
+
+  if [ -z "$DOWNLOAD_FILE_URL" ]; then
+    LogError "No download URL returned"
+    return 1
+  fi
 
   if [ "$PRINT_DOWNLOAD_CURL_CMD" = "yes" ]; then
 
@@ -2232,7 +2245,7 @@ fi
 
 CheckEnvironment
 
-CURL_CMD="$CURL_BIN --max-redirs 10 --fail --connect-timeout 15 --max-time 300 $SPECIAL_CURL_ARGS"
+CURL_CMD="$CURL_BIN --max-redirs 10 --connect-timeout 15 --max-time 300 $SPECIAL_CURL_ARGS"
 CURL_DOWNLOAD_CMD="$CURL_BIN --max-redirs 10 --fail --connect-timeout 15 --max-time $CURL_DOWNLOAD_TIMEOUT $SPECIAL_CURL_ARGS"
 
 if [ -z "$MAX_JSON_FILE_AGE_MIN" ]; then
