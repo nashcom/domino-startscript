@@ -372,7 +372,8 @@ create_directories()
 
   # creates local directory structure with the right owner
 
-  create_directory /local $DOMINO_USER $DOMINO_GROUP $DIR_PERM
+  create_directory /local $DOMINO_USER $DOMINO_GROUP 777
+  create_directory /local/software $DOMINO_USER $DOMINO_GROUP 777
   create_directory /local/notesdata $DOMINO_USER $DOMINO_GROUP $DIR_PERM
   create_directory /local/translog $DOMINO_USER $DOMINO_GROUP $DIR_PERM
   create_directory /local/daos $DOMINO_USER $DOMINO_GROUP $DIR_PERM
@@ -380,7 +381,6 @@ create_directories()
   create_directory /local/ft $DOMINO_USER $DOMINO_GROUP $DIR_PERM
   create_directory /local/backup $DOMINO_USER $DOMINO_GROUP $DIR_PERM
   create_directory /local/github $DOMINO_USER $DOMINO_GROUP $DIR_PERM
-  create_directory /local/software $DOMINO_USER $DOMINO_GROUP $DIR_PERM
 }
 
 install()
@@ -403,6 +403,14 @@ install()
     git clone https://github.com/nashcom/domino-startscript.git
   fi
 
+  local CONFIG_DIR=~/.DominoContainer
+  local CONFIG_FILE=$CONFIG_DIR/build.cfg
+
+  mkdir -p "$CONFIG_DIR"
+  cp  /local/github/domino-container/build.cfg "$CONFIG_FILE"
+  sed -i 's%# SOFTWARE_DIR=/local/software%SOFTWARE_DIR=/local/software%' "$CONFIG_FILE"
+
+
   header "Installing/updating Domino Container Control (dominoctl)"
 
   cd /local/github/domino-startscript
@@ -410,7 +418,7 @@ install()
 
   header "Installing/updating Domino Download (domdownload.sh)"
 
-  ./domdownload.sh install
+  ./domdownload.sh -connect install
 }
 
 detect_container_env()
@@ -529,6 +537,8 @@ else
 fi
 
 cd $SAVED_DIR
+
+cd /local/github/domino-container
 
 echo
 print_runtime
