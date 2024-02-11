@@ -407,6 +407,10 @@ install()
 
   cd /local/github/domino-startscript
   ./install_dominoctl
+
+  header "Installing/updating Domino Download (domdownload.sh)"
+
+  ./domdownload.sh install
 }
 
 detect_container_env()
@@ -435,13 +439,21 @@ install_container_env()
     install_package "$CNT"
   else
     if [ -x /usr/bin/apt-get ]; then
-      install_package docker.io
+
+      install_packages docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
     else
-      install_package docker
+      # Assume Redhat/CentOS compatible environments
+
+      install_package yum-utils
+      yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+      install_packages docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
     fi
+
   fi
 
-  #detect_container_env
+  systemctl enable --now docker
 }
 
 print_runtime()
