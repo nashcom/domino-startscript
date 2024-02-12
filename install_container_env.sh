@@ -547,7 +547,9 @@ echo
 
 if [ ! -e ~/.DominoDownload/download.token ]; then
   header "Configure Domino Download Token"
-  domdownload -token
+
+  # Script needs to be invoked interactive to be able to read token
+  bash -i domdownload -token
 fi
 
 cd /local/github/domino-container

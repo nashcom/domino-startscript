@@ -626,6 +626,7 @@ SetRefreshToken()
 
   if [ -z "$REFRESH_TOKEN" ]; then
     LogError "No download token specified"
+    LogMessage "Info: To set a token, please invoke: 'domdownload -token'" 
     exit 1
   fi
 
