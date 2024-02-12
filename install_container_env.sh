@@ -394,6 +394,7 @@ install()
     git pull
   else
     git clone https://github.com/HCL-TECH-SOFTWARE/domino-container.git
+    git checkout develop
   fi
 
   if [ -e /local/github/domino-startscript ]; then
@@ -401,6 +402,7 @@ install()
     git pull
   else
     git clone https://github.com/nashcom/domino-startscript.git
+    git checkout develop
   fi
 
   local CONFIG_DIR=~/.DominoContainer
@@ -540,7 +542,13 @@ cd $SAVED_DIR
 
 cd /local/github/domino-container
 
-echo
 print_runtime
 echo
+
+if [ ! -e ~/.DominoDownload/download.token ]; then
+  header "Configure Domino Download Token"
+  domdownload -token
+fi
+
+cd /local/github/domino-container
 

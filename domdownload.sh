@@ -613,7 +613,7 @@ SetRefreshToken()
   fi
 
   echo
-  echo "My HCL Software portal requires an download token."
+  echo "My HCL Software portal requires a download token."
   echo
   echo "Please visit -> $MYHCL_PORTAL_URL"
   echo
