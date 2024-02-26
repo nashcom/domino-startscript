@@ -4,11 +4,11 @@
 # RC RunLevel Entry Point
 ###########################################################################
 # Start/Stop Script for Domino on Linux & AIX
-# 2005-2023 Copyright by Daniel Nashed, feedback domino_unix@nashcom.de
+# 2005-2024 Copyright by Daniel Nashed, feedback domino_unix@nashcom.de
 # You may use and distribute the unmodified version of this script.
 # Use at your own risk. No implied or specific warranties are given.
 # You may change it for your own usage only
-# Version 3.8.0 20.12.2023
+# Version 3.8.1 24.02.2024
 ###########################################################################
 # chkconfig: 345 66 19
 # description: HCL Domino Server (notes)
@@ -48,15 +48,15 @@ DOMINO_SYSTEMD_NAME=domino.service
 
 
 # Determine architecture and platform
-if [ `uname` = AIX ]; then
+if [ $(uname) = "AIX" ]; then
   LARCH=ibmpow
   PLATFORM_NAME=AIX
-elif [ `uname` = Linux ]; then
+else
   LARCH=linux
   PLATFORM_NAME=xLinux
 fi
 
-if [ ${LARCH} = "linux" ]; then
+if [ "$LARCH" = "linux" ]; then
   # Determine script name. for symbolic link check real name
   DOMINO_SERVICE_NAME=$(readlink $0)
   if [ -z "$DOMINO_SERVICE_NAME" ]; then
@@ -81,15 +81,17 @@ fi
 
 # If no systemd is running start server directy (Docker, Podman, K8s, WSL)
 
-if [ -z "$( ps -p 1 -o cmd= | grep systemd)" ]; then
+if [ "$LARCH" = "linux" ]; then
+  if [ -z "$( ps -p 1 -o cmd= | grep systemd)" ]; then
 
-  if [ "$LOGNAME" = "$DOMINO_USER" ]; then
-    $DOMINO_START_SCRIPT "$1" "$2" "$3" "$4" "$5" "$6"
-  else
-    su - $DOMINO_USER -c "$DOMINO_START_SCRIPT '$1' '$2' '$3' '$4' '$5' '$6'"
+    if [ "$LOGNAME" = "$DOMINO_USER" ]; then
+      $DOMINO_START_SCRIPT "$1" "$2" "$3" "$4" "$5" "$6"
+    else
+      su - $DOMINO_USER -c "$DOMINO_START_SCRIPT '$1' '$2' '$3' '$4' '$5' '$6'"
+    fi
+
+    exit 0
   fi
-
-  exit 0
 fi
 
 # systemd operations for start/stop

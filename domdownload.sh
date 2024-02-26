@@ -2,7 +2,7 @@
 
 ###########################################################################
 # Domino Software Download Script                                         #
-# Version 0.9.9 26.01.2024                                                #
+# Version 1.0.0 24.04.2024                                                #
 # Copyright Nash!Com, Daniel Nashed                                       #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #
@@ -25,6 +25,7 @@
 # - Ubuntu/Debian
 # - VMware Photon OS
 # - MacOS
+# - Alpine Linux
 # - GitBash on Windows
 
 # Change History
@@ -40,11 +41,12 @@
 # 0.9.7  Fit & Finish changes
 # 0.9.8  Performance counter for Linux but not for Mac because there is only a seconds timer in "date" and we don't want to install tools extra for this 
 # 0.9.9  Better error output for invalid refesh tokens
+# 1.0.0  Support for Alpine Linux
 
 SCRIPT_NAME=$0
 SCRIPT_DIR=$(dirname $SCRIPT_NAME)
 
-DOMDOWNLOAD_SCRIPT_VERSION=0.9.9
+DOMDOWNLOAD_SCRIPT_VERSION=1.0.0
 
 ClearScreen()
 {
@@ -272,6 +274,9 @@ install_package()
 
     $SUDO /usr/bin/apt-get install -y "$@"
 
+  elif [ -x /sbin/apk]; then
+    $SUDO  /sbin/apk add "$@"
+
   else
 
     if [ -z "$2" ]; then
@@ -408,11 +413,11 @@ InstallCurl()
 
 CheckBin()
 {
-  if [ ! -x "/usr/bin/$1" ]; then
+  if [ ! -x "/usr/bin/$1" ] && [ ! -x "/bin/$1" ] ; then
     AssistInstallPackage "$1"
   fi
 
-  if [ ! -x "/usr/bin/$1" ]; then
+  if [ ! -x "/usr/bin/$1" ] && [ ! -x "/bin/$1" ] ; then
     LogError "$1 is required!"
     exit 1
   fi
@@ -447,14 +452,14 @@ CheckEnvironment()
       LogError "No sha256sum found"
       exit 1
     fi
-
   fi
 
   if [ -e /usr/bin/curl ]; then
     CURL_BIN=/usr/bin/curl
+  elif [ -e /bin/curl ]; then
+    CURL_BIN=/bin/curl
   elif [ -e /mingw64/bin/curl ]; then
     CURL_BIN=/mingw64/bin/curl
-
   else
     CURL_BIN=
   fi
@@ -472,6 +477,8 @@ CheckEnvironment()
 
   if [ -e /usr/bin/jq ]; then
     JQ_CMD=/usr/bin/jq
+  elif [ -e /bin/jq ]; then
+    JQ_CMD=/bin/jq
   elif [ -e /usr/local/bin/jq ]; then
     JQ_CMD=/usr/local/bin/jq
   elif [ -e /mingw64/bin/jq ]; then
@@ -487,6 +494,8 @@ CheckEnvironment()
     # Check JQ again
     if [ -e /usr/bin/jq ]; then
       JQ_CMD=/usr/bin/jq
+    elif [ -e /bin/jq ]; then
+      JQ_CMD=/bin/jq
     elif [ -e /usr/local/bin/jq ]; then
       JQ_CMD=/usr/local/bin/jq
     elif [ -e /mingw64/bin/jq ]; then

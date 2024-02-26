@@ -3,9 +3,9 @@
 
 ###########################################################################
 # Main Script Logic - Start/Stop Script for Domino on xLinux/zLinux/AIX   #
-# Version 3.8.0 20.12.2023                                                #
+# Version 3.8.1 24.02.2024                                                #
 #                                                                         #
-# (C) Copyright Daniel Nashed/NashCom 2005-2023                           #
+# (C) Copyright Daniel Nashed/NashCom 2005-2024                           #
 # Feedback domino_unix@nashcom.de                                         #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #
@@ -21,7 +21,7 @@
 # limitations under the License.                                          #
 ###########################################################################
 
-DOMINO_SCRIPT_VERSION=3.8.0
+DOMINO_SCRIPT_VERSION=3.8.1
 
 VERBOSE_INFO="yes"
 
@@ -33,12 +33,11 @@ if [ -e /etc/os-release ]; then
   LINUX_ID=$(cat /etc/os-release | grep "^ID="| cut -d= -f2 | xargs)
 fi
 
-
 if [ -z "$LOGNAME" ]; then
-  LOGNAME=`whoami 2>/dev/null`
+  LOGNAME=$(whoami 2>/dev/null)
 
   if [ -z "$LOGNAME" ]; then
-    LOGNAME=`id -u`
+    LOGNAME=$(id -u)
   fi
 
   export LOGNAME
@@ -166,10 +165,10 @@ fi
 # --- End of special configuration parameters ---
 
 # Determine architecture and platform
-if [ `uname` = AIX ]; then
+if [ $(uname) = "AIX" ]; then
   LARCH=ibmpow
   PLATFORM_NAME=AIX
-elif [ `uname` = Linux ]; then
+else
   LARCH=linux
   PLATFORM_NAME=xLinux
 fi
@@ -180,12 +179,6 @@ if [ -z "$LARCH" ]; then
 fi
 
 TAIL_CMD=tail
-
-if [ ${LARCH} = "sunspa" ]; then
-  # Solaris has a separate directory containing POSIX command line tools
-  TAIL_CMD=/usr/xpg4/bin/tail
-fi
-
 
 # --- Default configuration begin ---
 
@@ -250,11 +243,6 @@ LOTUS_BIN_DIR=$LOTUS/notes
 if [ ${LARCH} = "ibmpow" ]; then
   LIBPATH=$Notes_ExecDirectory:$LIBPATH
   export LIBPATH
-fi
-
-if [ ${LARCH} = "sunspa" ]; then
-  LD_LIBRARY_PATH=$Notes_ExecDirectory:$LD_LIBRARY_PATH
-  export LD_LIBRARY_PATH
 fi
 
 if [ ${LARCH} = "linux" ]; then
@@ -446,6 +434,11 @@ stop_monitor ()
   echo "Live Console closed."
   echo
   echo
+
+  if [ "$DOMINO_CONSOLE_NO_EXIT" = "yes" ]; then
+    return 0
+  fi
+
   exit 0
 }
 
@@ -1185,7 +1178,7 @@ domino_status_check ()
 
 java_controller_is_running ()
 {
-  JAVA_CONTROLLER_RUNNING=`$PS_COMMAND -fu $DOMINO_USER | grep "$LOTUS_BIN_DIR" | grep " -jc" | grep -v "grep"`
+  JAVA_CONTROLLER_RUNNING=$($PS_COMMAND -fu $DOMINO_USER | grep "$LOTUS_BIN_DIR" | grep " -jc" | grep -v "grep")
 
   if [ -n "$JAVA_CONTROLLER_RUNNING" ]; then
     DebugText "Java Controller is running"
@@ -1210,8 +1203,8 @@ archive_logs ()
   fi
   
   # Move log-file and compress it
-  LOG_NAME=`echo "$DOMINO_OUTPUT_LOG" |cut -d. -f1`
-  LOG_EXTENSION=`echo "$DOMINO_OUTPUT_LOG" |cut -d. -f2`
+  LOG_NAME=$(echo "$DOMINO_OUTPUT_LOG" |cut -d. -f1)
+  LOG_EXTENSION=$(echo "$DOMINO_OUTPUT_LOG" |cut -d. -f2)
 
   #sanity check for log name
   if [ -z "$LOG_NAME" ]; then
@@ -1223,9 +1216,9 @@ archive_logs ()
   DebugText "LOG_NAME_INFO: '$LOG_NAME_INFO'"
 
   if [ -z "$DOMINO_LOG_BACKUP_DIR" ]; then
-    DOMINO_OUTPUT_LOG_BACKUP="$LOG_NAME"_`LANG=C date +"%y%m%d_%H%M%S"`"$LOG_NAME_INFO"."$LOG_EXTENSION"
+    DOMINO_OUTPUT_LOG_BACKUP="$LOG_NAME"_$(LANG=C date +"%y%m%d_%H%M%S")"$LOG_NAME_INFO"."$LOG_EXTENSION"
   else
-    DOMINO_OUTPUT_LOG_BACKUP="$DOMINO_LOG_BACKUP_DIR"/`basename "$LOG_NAME"`_`LANG=C date +"%y%m%d_%H%M%S"`"$LOG_NAME_INFO"."$LOG_EXTENSION"
+    DOMINO_OUTPUT_LOG_BACKUP="$DOMINO_LOG_BACKUP_DIR"/$(basename "$LOG_NAME")_$(LANG=C date +"%y%m%d_%H%M%S")"$LOG_NAME_INFO"."$LOG_EXTENSION"
   fi
 
   DebugText "backup log filename:" $DOMINO_OUTPUT_LOG_BACKUP
@@ -1341,7 +1334,6 @@ run_monitor ()
   echo 
   sleep 2
 
-
   if [ "$1" = "filter" ]; then
     if [ -z "$DOMINO_MONITOR_FILTER_STRING" ]; then
       FILTER_STRING=""
@@ -1381,7 +1373,7 @@ run_monitor ()
       exit 0
     fi
     
-    CHARS=`echo "$var" | wc -m`
+    CHARS=$(echo "$var" | wc -m)
     if [ "$CHARS" -lt 5 ]; then # includes the new line -> means commands 3 chars or less
       if [ "$var" = "$lastvar" ]; then
         echo "Terminating live console - Repeated short command!"
@@ -1427,7 +1419,7 @@ run_monitor ()
 
 check_for_crashed_server ()
 {
-  nsd_status=`$TAIL_CMD -n 5000 $REAL_OUTPUT_FILE |grep "NSD is in progress" | wc -l`
+  nsd_status=$($TAIL_CMD -n 5000 $REAL_OUTPUT_FILE |grep "NSD is in progress" | wc -l)
 
   if [ $nsd_status -eq 0 ]; then
     return 0
@@ -1519,10 +1511,6 @@ usage ()
   echo "Log Commands    :  {archivelog    | clearlog  | lastlog    | log | systemlog}"
   echo "Config Commands :  {inivar | ini  | listini   | config/cfg | systemdcfg}"
   echo "Setup  Commands :  {setup json    | setup env | setup      | setup log [edit] }"
-
-  if [ -e "$DOMINO_DATA_PATH/trace" ]; then
-    echo "ST Commands     :  {resetstlogs}"
-  fi
 
   usage_extension_commands
   echo
@@ -1626,7 +1614,7 @@ cleanup_domino_server_os_level ()
   pre_cleanup_operations
   
   # Kill all domino processes including java server controller
-  for pid in `$PS_COMMAND -fu $DOMINO_USER | grep "$LOTUS_BIN_DIR" | grep -v "$SCRIPT_NAME" | grep -v "grep" | awk '{ print $2 }'`; do
+  for pid in $($PS_COMMAND -fu $DOMINO_USER | grep "$LOTUS_BIN_DIR" | grep -v "$SCRIPT_NAME" | grep -v "grep" | awk '{ print $2 }'); do
     echo "Killing pid #" $pid
     kill -9 $pid
   done
@@ -1642,7 +1630,7 @@ cleanup_domino_server_os_level ()
       if [ -n "$j" ]; then
        DebugText "Killing 3rd Party Processes for" $j
     
-       for pid in `$PS_COMMAND -fu $DOMINO_USER | grep "$j" | grep -v "$SCRIPT_NAME" | grep -v "grep" | awk '{ print $2 }'`; do
+       for pid in $($PS_COMMAND -fu $DOMINO_USER | grep "$j" | grep -v "$SCRIPT_NAME" | grep -v "grep" | awk '{ print $2 }'); do
          echo "Killing 3rd-party process - pid #" $pid
          kill -9 $pid
        done
@@ -1671,21 +1659,15 @@ cleanup_domino_server_os_level ()
   
   # Remove shared mem, semaphores and message-queues 
   if [ ${LARCH} = "ibmpow" ]; then
-    mems=`ipcs -m | grep " $DOMINO_USER " | grep ^m | awk '{ print $2 }'`
-    sems=`ipcs -s | grep " $DOMINO_USER " | grep ^s | awk '{ print $2 }'`
-    mqs=`ipcs  -q | grep " $DOMINO_USER " | grep ^q | awk '{ print $2 }'`
-  fi
-
-  if [ ${LARCH} = "sunspa" ]; then
-    mems=`ipcs -m | grep " $DOMINO_USER " | awk '{ print $2 }'`
-    sems=`ipcs -s | grep " $DOMINO_USER " | awk '{ print $2 }'`
-    mqs=`ipcs  -q | grep " $DOMINO_USER " | awk '{ print $2 }'`  
+    mems=$(ipcs -m | grep " $DOMINO_USER " | grep ^m | awk '{ print $2 }')
+    sems=$(ipcs -s | grep " $DOMINO_USER " | grep ^s | awk '{ print $2 }')
+    mqs=$(ipcs  -q | grep " $DOMINO_USER " | grep ^q | awk '{ print $2 }')
   fi
 
   if [ ${LARCH} = "linux" ]; then
-    mems=`ipcs -m | grep " $DOMINO_USER " | grep ^0x | awk '{ print $2 }'`
-    sems=`ipcs -s | grep " $DOMINO_USER " | grep ^0x | awk '{ print $2 }'`
-    mqs=`ipcs  -q | grep " $DOMINO_USER " | grep ^0x | awk '{ print $2 }'`
+    mems=$(ipcs -m | grep " $DOMINO_USER " | grep ^0x | awk '{ print $2 }')
+    sems=$(ipcs -s | grep " $DOMINO_USER " | grep ^0x | awk '{ print $2 }')
+    mqs=$(ipcs  -q | grep " $DOMINO_USER " | grep ^0x | awk '{ print $2 }')
   fi
 
   for j in $mems; do
@@ -1709,16 +1691,6 @@ cleanup_domino_server_os_level ()
     fi 
   done
 
-  # Remove memory mapped files on Solaris
-  if [ ${LARCH} = "sunspa" ]; then
-    mem_files = `find /tmp -name ".NOTESMEM_please_do_not_remove.*" -user "$DOMINO_USER"`
-
-    for mem_file_name in `find /tmp -name ".NOTESMEM_please_do_not_remove.*" -user "$DOMINO_USER"`; do
-      echo "Removing memory mapped file #" $mem_file_name
-      rm $mem_file_name
-    done
-  fi
-
   post_cleanup_operations
 
   return 0
@@ -1728,7 +1700,7 @@ show_domino_resources_short ()
 {
   echo "--- Process List ---"
 
-  for pid in `$PS_COMMAND -fu $DOMINO_USER | grep "$LOTUS_BIN_DIR" | grep -v "$SCRIPT_NAME" | grep -v "grep" | awk '{ print $2 }'`; do
+  for pid in $($PS_COMMAND -fu $DOMINO_USER | grep "$LOTUS_BIN_DIR" | grep -v "$SCRIPT_NAME" | grep -v "grep" | awk '{ print $2 }'); do
     echo "pid #" $pid
   done
   echo
@@ -1742,7 +1714,7 @@ show_domino_resources_short ()
     for j in $DOMINO_3RD_PARTY_BIN_DIRS; do
       if [ -n "$j" ]; then
     
-       for pid in `$PS_COMMAND -fu $DOMINO_USER | grep "$j" | grep -v "$SCRIPT_NAME" | grep -v "grep" | awk '{ print $2 }'`; do
+         for pid in $($PS_COMMAND -fu $DOMINO_USER | grep "$j" | grep -v "$SCRIPT_NAME" | grep -v "grep" | awk '{ print $2 }'); do
          echo "3rd-party - pid #" $pid
        done
       fi 
@@ -1752,21 +1724,15 @@ show_domino_resources_short ()
   echo
 
   if [ ${LARCH} = "ibmpow" ]; then
-    mems=`ipcs -m | grep " $DOMINO_USER " | grep ^m | awk '{ print $2 }'`
-    sems=`ipcs -s | grep " $DOMINO_USER " | grep ^s | awk '{ print $2 }'`
-    mqs=`ipcs  -q | grep " $DOMINO_USER " | grep ^q | awk '{ print $2 }'`
-  fi
-
-  if [ ${LARCH} = "sunspa" ]; then
-    mems=`ipcs -m | grep " $DOMINO_USER " | awk '{ print $2 }'`
-    sems=`ipcs -s | grep " $DOMINO_USER " | awk '{ print $2 }'`
-    mqs=`ipcs  -q | grep " $DOMINO_USER " | awk '{ print $2 }'`  
+    mems=$(ipcs -m | grep " $DOMINO_USER " | grep ^m | awk '{ print $2 }')
+    sems=$(ipcs -s | grep " $DOMINO_USER " | grep ^s | awk '{ print $2 }')
+    mqs=$(ipcs  -q | grep " $DOMINO_USER " | grep ^q | awk '{ print $2 }')
   fi
 
   if [ ${LARCH} = "linux" ]; then
-    mems=`ipcs -m | grep " $DOMINO_USER " | grep ^0x | awk '{ print $2 }'`
-    sems=`ipcs -s | grep " $DOMINO_USER " | grep ^0x | awk '{ print $2 }'`
-    mqs=`ipcs  -q | grep " $DOMINO_USER " | grep ^0x | awk '{ print $2 }'`
+    mems=$(ipcs -m | grep " $DOMINO_USER " | grep ^0x | awk '{ print $2 }')
+    sems=$(ipcs -s | grep " $DOMINO_USER " | grep ^0x | awk '{ print $2 }')
+    mqs=$(ipcs  -q | grep " $DOMINO_USER " | grep ^0x | awk '{ print $2 }')
   fi
 
   echo "--- Shared Memory ---"
@@ -1791,17 +1757,6 @@ show_domino_resources_short ()
       echo "mq #" $j
     fi 
   done
-  echo
-
-  if [ ${LARCH} = "sunspa" ]; then
-    echo "--- Solaris Memory Mapped Files  ---"
-    mem_files = `find /tmp -name ".NOTESMEM_please_do_not_remove.*" -user "$DOMINO_USER"`
-
-    for mem_file_name in `find /tmp -name ".NOTESMEM_please_do_not_remove.*" -user "$DOMINO_USER"`; do
-      echo "#" $mem_file_name
-    done
-  fi
-
   echo
 
   if [ -e $DOMINO_DATA/~notes.lck ]; then
@@ -1850,17 +1805,6 @@ show_domino_resources ()
     ipcs  -q | grep " $DOMINO_USER " | grep ^q
   fi
 
-  if [ ${LARCH} = " sunspa " ]; then
-    echo "--- Shared Memory ---"
-    ipcs -m | grep " $DOMINO_USER "
-    echo
-    echo "--- Semaphores ---"
-    ipcs -s | grep " $DOMINO_USER "
-    echo
-    echo "--- MQs ---"
-    ipcs  -q | grep " $DOMINO_USER "  
-  fi
-
   if [ ${LARCH} = "linux" ]; then
     echo "--- Shared Memory ---"
     ipcs -m | grep " $DOMINO_USER " | grep ^0x
@@ -1870,13 +1814,6 @@ show_domino_resources ()
     echo
     echo "--- MQs ---"
     ipcs  -q | grep " $DOMINO_USER " | grep ^0x
-  fi
-
-  echo
-
-  if [ ${LARCH} = "sunspa" ]; then
-    echo "--- Solaris Memory Mapped Files  ---"
-    find /tmp -name ".NOTESMEM_please_do_not_remove.*" -user "$DOMINO_USER"
   fi
 
   echo
@@ -1945,7 +1882,7 @@ cleanup_domino_server ()
 cleanup_java_controller ()
 {
   # Kill java controller process
-  for pid in `$PS_COMMAND -fu $DOMINO_USER | grep "$LOTUS_BIN_DIR" | grep -v "$SCRIPT_NAME" | grep -v "grep" | grep " -jc" | awk '{ print $2 }'`; do
+  for pid in $($PS_COMMAND -fu $DOMINO_USER | grep "$LOTUS_BIN_DIR" | grep -v "$SCRIPT_NAME" | grep -v "grep" | grep " -jc" | awk '{ print $2 }'); do
     kill -9 $pid
   done
 
@@ -2389,6 +2326,7 @@ check_one_touch_setup()
   echo "No OneTouchConfig found" >> $DOMINO_OUTPUT_LOG
 }
 
+
 cleanup_one_touch_setup()
 {
 
@@ -2399,6 +2337,554 @@ cleanup_one_touch_setup()
   # JSON file is deleted by setup when done.
 
 }
+
+
+wait_for_key()
+{
+  local SELECTED=
+  read -n1 -e SELECTED;
+
+  if [ "$SELECTED" = "q" ]; then
+    exit 0
+  fi
+}
+
+
+domino_ots()
+{
+  # setup On Touch Setup
+  echo
+  if [ -e "$SCRIPT_DIR_NAME/DominoOneTouchSetup.sh" ]; then
+    . "$SCRIPT_DIR_NAME/DominoOneTouchSetup.sh" "$PARAM2" "$PARAM3" "$PARAM4" "$PARAM5"
+  else
+    echo "Domino One-Touch Setup not available!"
+  fi
+  echo
+}
+
+
+domino_start()
+{
+  echo
+
+  if [ "$PARAM2" = "live" ]; then
+    DOMINO_LIVE_START="yes"
+  fi
+
+  domino_is_running
+  if [ $? -eq 1 ]; then
+    errmsg_and_exit "Domino Server is already running - exiting"
+  fi
+
+  if [ -e "$DOMINO_DATA_PATH/domino_disabled" ]; then
+    errmsg_and_exit "Domino Server is disabled for Maintenance - Server NOT started"
+  fi
+
+  cd $DOMINO_DATA_PATH
+  # cleanup
+
+  # Terminate java controlle before restarting domino server with java controller
+  if [ "$DOMINO_USE_JAVA_CONTROLLER" = "yes" ]; then
+    java_controller_is_running
+    if [ $? -eq 1 ]; then
+      shutdown_java_controller
+    fi
+  fi
+
+  DOMINO_ARCHIVE_LOG_BACKGROUND="yes"
+  archive_logs
+  startup_remove_file_check
+  check_create_directories
+
+  check_one_touch_setup
+
+  # Empty the input file
+  cat /dev/null > $DOMINO_INPUT_FILE
+
+  echo
+  echo "Starting Domino for $PLATFORM_NAME ($DOMINO_SERVER)"
+
+  DOMINO_START_DATETIME=`date`
+  echo "---- Starting at $DOMINO_START_DATETIME  ----" >> $DOMINO_OUTPUT_LOG
+  echo >> $DOMINO_OUTPUT_LOG
+  echo "---- environment info ----" >> $DOMINO_OUTPUT_LOG
+  echo >> $DOMINO_OUTPUT_LOG
+  env >> $DOMINO_OUTPUT_LOG
+  echo >> $DOMINO_OUTPUT_LOG
+
+  echo "---- locale info ----" >> $DOMINO_OUTPUT_LOG
+  echo >> $DOMINO_OUTPUT_LOG
+  locale >> $DOMINO_OUTPUT_LOG
+  echo >> $DOMINO_OUTPUT_LOG
+
+  echo >> $DOMINO_OUTPUT_LOG
+  echo "---- umask ----" >> $DOMINO_OUTPUT_LOG
+  echo >> $DOMINO_OUTPUT_LOG
+  umask >> $DOMINO_OUTPUT_LOG
+
+  if [ ${LARCH} = "ibmpow" ]; then
+
+    # AIX platform tuning parameters
+
+    echo >> $DOMINO_OUTPUT_LOG
+    echo "---- ulimit soft info ----" >> $DOMINO_OUTPUT_LOG
+    echo >> $DOMINO_OUTPUT_LOG
+    ulimit -a >> $DOMINO_OUTPUT_LOG
+
+    echo >> $DOMINO_OUTPUT_LOG
+    echo "---- ulimit hard info ----" >> $DOMINO_OUTPUT_LOG
+    echo >> $DOMINO_OUTPUT_LOG
+    ulimit -a -H >> $DOMINO_OUTPUT_LOG
+
+    echo >> $DOMINO_OUTPUT_LOG
+    echo "---- no info ----" >> $DOMINO_OUTPUT_LOG
+    echo >> $DOMINO_OUTPUT_LOG
+    no -a >> $DOMINO_OUTPUT_LOG
+  fi
+
+  if [ ${LARCH} = "linux" ]; then
+
+    echo >> $DOMINO_OUTPUT_LOG
+    echo "---- ulimit soft info ----" >> $DOMINO_OUTPUT_LOG
+    echo >> $DOMINO_OUTPUT_LOG
+    ulimit -a >> $DOMINO_OUTPUT_LOG
+
+    echo >> $DOMINO_OUTPUT_LOG
+    echo "---- ulimit hard info ----" >> $DOMINO_OUTPUT_LOG
+    echo >> $DOMINO_OUTPUT_LOG
+    ulimit -a -H >> $DOMINO_OUTPUT_LOG
+  fi
+
+  echo >> $DOMINO_OUTPUT_LOG
+  echo "---- end of info messages ----" >> $DOMINO_OUTPUT_LOG
+  echo >> $DOMINO_OUTPUT_LOG
+
+  pre_startup_operations
+
+  if [ ! "$DOMINO_CHECK_WARNUNGS" = "no" ]; then
+    check_startup_warnings
+  fi
+
+  # check if domlog.nsf should be renamed before compacts
+  check_domlog_db_rename
+
+  if [ ! -z "$DOMINO_START_FIXUP_OPTIONS" ]; then
+    DOMINO_FIXUP_OPTIONS=$DOMINO_START_FIXUP_OPTIONS
+    fixup_dbs
+  fi
+
+  if [ -e "$DOMINO_NEXTSTART_COMPACT_STATUSFILE" ]; then
+    rm "$DOMINO_NEXTSTART_COMPACT_STATUSFILE"
+
+    compact_dbs
+
+    # check if log.nsf should be renamed after normal compacts & before log.nsf compact
+    check_log_db_rename
+    compact_log
+  else
+    if [ ! -z "$DOMINO_START_COMPACT_OPTIONS" ]; then
+      DOMINO_COMPACT_OPTIONS=$DOMINO_START_COMPACT_OPTIONS
+      compact_dbs
+    fi
+
+    # check if log.nsf should be renamed after normal compacts & before log.nsf compact
+    check_log_db_rename
+
+    if [ ! -z "$DOMINO_START_LOG_COMPACT_OPTIONS" ]; then
+      DOMINO_LOG_COMPACT_OPTIONS=$DOMINO_START_LOG_COMPACT_OPTIONS
+      compact_log
+    fi
+  fi
+
+  if [ "$DOMINO_DOCKER_STDOUT" = "yes" ]; then
+
+    echo "---- Docker Container Output ----"
+    cat $DOMINO_OUTPUT_LOG
+    rm "$DOMINO_OUTPUT_LOG"
+    $DOMINO_BIN $JAVA_CONTROLLER_STRING &
+
+  else
+    $DOMINO_BIN $JAVA_CONTROLLER_STRING < $DOMINO_INPUT_FILE >> $DOMINO_OUTPUT_LOG 2>&1 &
+  fi
+
+  DOMINO_PID=$!
+
+  # For servers using id-file passwords,
+  # uncomment the following line.
+  # cat .secure_hidden_passwd > $DOMINO_INPUT_FILE
+
+  echo $DOMINO_PID > $DOMINO_PID_FILE
+  echo "done PID is $DOMINO_PID"
+  echo
+
+  cleanup_one_touch_setup
+
+  post_startup_operations
+
+  if [ "$DOMINO_LIVE_START" = "yes" ]; then
+    run_monitor
+  fi
+
+  if [ ! "$DOMINO_CHECK_WARNUNGS" = "no" ]; then
+    check_server_start_abort_error
+  fi
+
+  echo
+}
+
+
+domino_stop()
+{
+  if [ "$PARAM2" = "live" ]; then
+    DOMINO_LIVE_SHUTDOWN="yes"
+  fi
+
+  echo
+  echo "Stopping Domino for $PLATFORM_NAME ($DOMINO_SERVER)"
+  shutdown_broadcast_message
+
+  if [ "$DOMINO_LIVE_SHUTDOWN" = "yes" ]; then
+    echo "Starting Live Console for Shutdown ..."
+    $TAIL_CMD -f $REAL_OUTPUT_FILE &
+    MONITOR_PID=$!
+
+    # signal child died causes issues in bash 5.x
+    case "$BASH_VERSION" in
+      5*)
+        trap "stop_server" 1 2 3 4 6 9 13 15 19 23
+        ;;
+      *)
+        trap "stop_server" 1 2 3 4 6 9 13 15 17 19 23
+        ;;
+    esac
+
+  fi
+
+  shutdown_domino_server
+
+  if [ "$DOMINO_USE_JAVA_CONTROLLER" = "yes" ]; then
+
+    echo "Stopping Java Controler for $PLATFORM_NAME ($DOMINO_SERVER)"
+    shutdown_java_controller
+
+    echo "Java Controler for $PLATFORM_NAME ($DOMINO_SERVER) shutdown completed"
+  fi
+
+  check_for_crashed_server
+
+  echo "Domino for $PLATFORM_NAME ($DOMINO_SERVER) shutdown completed"
+
+  if [ "$DOMINO_LIVE_SHUTDOWN" = "yes" ]; then
+    stop_monitor
+  fi
+  echo
+}
+
+
+run_nsd()
+{
+  echo
+  echo "Running NSD for ($DOMINO_SERVER)"
+  cd $DOMINO_DATA_PATH
+  nsd_check_set_posix_locale
+  $NSD_BIN "$PARAM2" "$PARAM3" "$PARAM4" "$PARAM5" "$PARAM6"
+  echo
+}
+
+
+run_nsd_hang()
+{
+  # Run 3 x NSD with stacks only + 1 full NSD
+  cd $DOMINO_DATA_PATH
+  nsd_check_set_posix_locale
+
+  echo "Running #1 NSD -stacks for ($DOMINO_SERVER)"
+  $NSD_BIN -stacks "$PARAM2" "$PARAM3" "$PARAM4" "$PARAM5" "$PARAM6"
+
+  echo "Running #2 NSD -stacks for ($DOMINO_SERVER)"
+  $NSD_BIN -stacks "$PARAM2" "$PARAM3" "$PARAM4" "$PARAM5" "$PARAM6"
+
+  echo "Running #3 NSD -stacks for ($DOMINO_SERVER)"
+  $NSD_BIN -stacks "$PARAM2" "$PARAM3" "$PARAM4" "$PARAM5" "$PARAM6"
+
+  echo "Finally running Full NSD for ($DOMINO_SERVER)"
+  $NSD_BIN "$PARAM2" "$PARAM3" "$PARAM4" "$PARAM5" "$PARAM6"
+
+  echo
+  echo "NSDs complete"
+  echo
+}
+
+
+run_nsd_kill()
+{
+  echo
+  echo "Running NSD -kill for ($DOMINO_SERVER)"
+  cd $DOMINO_DATA_PATH
+  nsd_check_set_posix_locale
+  pre_kill_operations
+  $NSD_BIN -kill "$PARAM2" "$PARAM3" "$PARAM4" "$PARAM5" "$PARAM6"
+  post_kill_operations
+  echo
+}
+
+
+domino_cleanup()
+{
+  echo
+  echo "Cleaning up Server Resources on OS-Level for ($DOMINO_SERVER)"
+  cleanup_domino_server_os_level
+  echo
+}
+
+
+domino_resources()
+{
+  echo
+  echo "Show Server Resources ($DOMINO_SERVER)"
+  echo
+  show_domino_resources
+  echo
+}
+
+
+run_memcheck()
+{
+  echo
+  echo "Creating Memory Dump for ($DOMINO_SERVER)"
+  cd $DOMINO_DATA_PATH
+  $DOMINO_BIN -m
+  echo
+}
+
+
+domino_setup()
+{
+  local SELECTED=
+  local DOMINO_AUTO_CONFIG_JSON_FILE=$DOMINO_DATA_PATH/DominoAutoConfig.json
+
+  while [ 1 ];
+  do
+    clear
+    echo
+    echo "HCL Domino Server Configuration"
+    echo "-------------------------------"
+    echo
+    echo " (C)   Configure Domino"
+    if [ -e "$DOMINO_AUTO_CONFIG_JSON_FILE" ]; then
+      echo " (E)   Edit Domino configuration"
+      echo " (S)   Start Domino Server"
+    fi
+    echo " (R)   Domino Remote Setup"
+
+    echo
+    read -n1 -e -p " Select command,  [Q] to cancel? " SELECTED;
+
+    clear
+
+    case $(echo "$SELECTED" | awk '{print tolower($0)}') in
+
+      0|q)
+        echo
+        exit 0
+        ;;
+
+      c)
+	remove_file "$DOMINO_AUTO_CONFIG_JSON_FILE"
+        domino_ots local
+	sleep 3
+        ;;
+
+      e)
+        domino_ots
+	sleep 3
+        ;;
+
+      s)
+        domino_start
+        sleep 3
+        return 0
+        ;;
+
+      r)
+	remove_file "$DOMINO_AUTO_CONFIG_JSON_FILE"
+        domino_start
+        sleep 3
+        return 0
+        ;;
+
+      *)
+        echo
+        echo
+        echo " Invalid option selected: $SELECTED"
+        echo -n " "
+        sleep 2
+        ;;
+    esac
+
+    clear
+
+  done
+}
+
+
+menu_help()
+{
+  echo
+  echo "Domino Start Script Menu Help"
+  echo "-----------------------------"
+  echo
+  echo "The Domino Start Script Menu offers the most general used commands."
+  echo "It is intended to provide an easy to use menu for daily operations."
+  echo "The menu complements the command-line operations."
+  echo
+  echo "For additional commands and options run 'domino help'."
+  echo
+  wait_for_key
+}
+
+
+menu()
+{
+  local SELECTED=
+  local QUESTION=
+  local DOMINO_STATUS=
+
+  if [ ! -e /local/notesdata/names.nsf ]; then
+    domino_setup
+  fi
+
+  while [ 1 ];
+  do
+    domino_is_running
+    if [ $? -eq 1 ]; then
+       DOMINO_STATUS=Running
+    else
+       DOMINO_STATUS=Stopped
+    fi
+
+    clear
+    echo
+    echo "HCL Domino Server"
+    echo "-----------------"
+    echo
+    echo " (S)   Start Domino"
+    echo " (T)   Stop  Domino"
+    echo " (C)   Console"
+    echo " (R)   Show resources"
+    echo " (L)   Last log lines"
+    echo " (O)   Domino log (edit)"
+    echo " (A)   Archive logs"
+    echo
+    echo "Diagnostic"
+    echo
+    echo " (N)   NSD (Notes System Diagnostic)"
+    echo " (G)   NSD Hang (3 NSDs in a row)"
+    echo " (M)   Memory dump"
+    echo " (K)   Kill/cleanup server"
+    echo
+    echo " (H)   Help"
+    echo
+    echo
+    echo " Server status:  $DOMINO_STATUS"
+    echo
+    echo
+    read -n1 -e -p " Select command,  [Q] to cancel? " SELECTED;
+
+    clear
+
+    case $(echo "$SELECTED" | awk '{print tolower($0)}') in
+
+      0|q)
+        clear
+        echo
+        exit 0
+        ;;
+
+      s)
+        domino_is_running
+        if [ $? -eq 1 ]; then
+	  echo
+	  echo "Domino server already started"
+	  echo
+	else
+          domino_start
+	fi
+
+        sleep 2
+        ;;
+
+      t)
+        domino_stop
+        sleep 2
+        ;;
+
+      c)
+	DOMINO_CONSOLE_NO_EXIT=yes
+        run_monitor
+        ;;
+
+      l)
+        echo
+        show_lastlog "$PARAM2" "$PARAM3" "$PARAM4"
+        wait_for_key
+        echo
+        ;;
+
+      o)
+        echo
+        show_log "$PARAM2" "$PARAM3" "$PARAM4"
+        echo
+        ;;
+
+      n)
+	run_nsd
+        ;;
+
+      g)
+        run_nsd_hang
+        ;;
+
+      m)
+        run_memcheck
+        ;;
+
+      k)
+	 echo
+         read -p " Really kill and cleanup Domino server: (yes/no) ? " QUESTION
+
+         if [ "$QUESTION" = "yes" ] || [ "$QUESTION" = "y" ]; then
+           run_nsd_kill
+           domino_cleanup
+         fi
+         ;;
+
+      r)
+        domino_resources
+        wait_for_key
+        ;;
+
+      a)
+	archive_logs "$PARAM2"
+	sleep 2
+        ;;
+
+      h)
+        menu_help
+        ;;
+
+      *)
+        echo
+        echo
+        echo " Invalid option selected: $SELECTED"
+        echo -n " "
+        sleep 2
+        ;;
+    esac
+
+  done
+}
+
 
 DebugText "==== Start Script Debug Begin ===="
 
@@ -2493,186 +2979,7 @@ case "$PARAM1" in
 	  
   start)
 
-    echo
-
-    if [ "$PARAM2" = "live" ]; then
-      DOMINO_LIVE_START="yes"
-    fi
-
-    domino_is_running
-    if [ $? -eq 1 ]; then
-      errmsg_and_exit "Domino Server is already running - exiting"
-    fi
-
-    if [ -e "$DOMINO_DATA_PATH/domino_disabled" ]; then
-      errmsg_and_exit "Domino Server is disabled for Maintenance - Server NOT started"
-    fi
-
-    cd $DOMINO_DATA_PATH
-    # cleanup
-
-    # Terminate java controlle before restarting domino server with java controller
-    if [ "$DOMINO_USE_JAVA_CONTROLLER" = "yes" ]; then
-      java_controller_is_running
-      if [ $? -eq 1 ]; then
-        shutdown_java_controller
-      fi
-    fi 
-
-    DOMINO_ARCHIVE_LOG_BACKGROUND="yes"
-    archive_logs    
-    startup_remove_file_check
-    check_create_directories
-
-    check_one_touch_setup
-
-    # Empty the input file
-    cat /dev/null > $DOMINO_INPUT_FILE
-
-    echo
-    echo "Starting Domino for $PLATFORM_NAME ($DOMINO_SERVER)"
-
-    DOMINO_START_DATETIME=`date`
-    echo "---- Starting at $DOMINO_START_DATETIME  ----" >> $DOMINO_OUTPUT_LOG
-    echo >> $DOMINO_OUTPUT_LOG
-    echo "---- environment info ----" >> $DOMINO_OUTPUT_LOG
-    echo >> $DOMINO_OUTPUT_LOG
-    env >> $DOMINO_OUTPUT_LOG
-    echo >> $DOMINO_OUTPUT_LOG
-
-    echo "---- locale info ----" >> $DOMINO_OUTPUT_LOG
-    echo >> $DOMINO_OUTPUT_LOG
-    locale >> $DOMINO_OUTPUT_LOG
-    echo >> $DOMINO_OUTPUT_LOG
-
-    echo >> $DOMINO_OUTPUT_LOG
-    echo "---- umask ----" >> $DOMINO_OUTPUT_LOG
-    echo >> $DOMINO_OUTPUT_LOG
-    umask >> $DOMINO_OUTPUT_LOG
-    
-    if [ ${LARCH} = "ibmpow" ]; then
-
-      # AIX platform tuning parameters
-
-      echo >> $DOMINO_OUTPUT_LOG
-      echo "---- ulimit soft info ----" >> $DOMINO_OUTPUT_LOG
-      echo >> $DOMINO_OUTPUT_LOG
-      ulimit -a >> $DOMINO_OUTPUT_LOG
-
-      echo >> $DOMINO_OUTPUT_LOG
-      echo "---- ulimit hard info ----" >> $DOMINO_OUTPUT_LOG
-      echo >> $DOMINO_OUTPUT_LOG
-      ulimit -a -H >> $DOMINO_OUTPUT_LOG
-
-      echo >> $DOMINO_OUTPUT_LOG
-      echo "---- no info ----" >> $DOMINO_OUTPUT_LOG
-      echo >> $DOMINO_OUTPUT_LOG
-      no -a >> $DOMINO_OUTPUT_LOG
-    fi
-
-    if [ ${LARCH} = "sunspa" ]; then
-
-      # Solaris platform tuning parameters
-
-      echo >> $DOMINO_OUTPUT_LOG
-      echo "---- ulimit soft info ----" >> $DOMINO_OUTPUT_LOG
-      echo >> $DOMINO_OUTPUT_LOG
-      ulimit -a >> $DOMINO_OUTPUT_LOG
-
-      echo >> $DOMINO_OUTPUT_LOG
-      echo "---- ulimit hard info ----" >> $DOMINO_OUTPUT_LOG
-      echo >> $DOMINO_OUTPUT_LOG
-      ulimit -a -H >> $DOMINO_OUTPUT_LOG
-    fi
-
-    if [ ${LARCH} = "linux" ]; then
-
-      echo >> $DOMINO_OUTPUT_LOG
-      echo "---- ulimit soft info ----" >> $DOMINO_OUTPUT_LOG
-      echo >> $DOMINO_OUTPUT_LOG
-      ulimit -a >> $DOMINO_OUTPUT_LOG
-
-      echo >> $DOMINO_OUTPUT_LOG
-      echo "---- ulimit hard info ----" >> $DOMINO_OUTPUT_LOG
-      echo >> $DOMINO_OUTPUT_LOG
-      ulimit -a -H >> $DOMINO_OUTPUT_LOG
-    fi
-    
-    echo >> $DOMINO_OUTPUT_LOG
-    echo "---- end of info messages ----" >> $DOMINO_OUTPUT_LOG
-    echo >> $DOMINO_OUTPUT_LOG
-
-    pre_startup_operations
-    
-    if [ ! "$DOMINO_CHECK_WARNUNGS" = "no" ]; then
-      check_startup_warnings
-    fi 
-
-    # check if domlog.nsf should be renamed before compacts
-    check_domlog_db_rename
-
-    if [ ! -z "$DOMINO_START_FIXUP_OPTIONS" ]; then
-      DOMINO_FIXUP_OPTIONS=$DOMINO_START_FIXUP_OPTIONS
-      fixup_dbs
-    fi
-
-    if [ -e "$DOMINO_NEXTSTART_COMPACT_STATUSFILE" ]; then
-      rm "$DOMINO_NEXTSTART_COMPACT_STATUSFILE"
-      
-      compact_dbs
-      
-      # check if log.nsf should be renamed after normal compacts & before log.nsf compact
-      check_log_db_rename
-      compact_log
-    else
-      if [ ! -z "$DOMINO_START_COMPACT_OPTIONS" ]; then
-        DOMINO_COMPACT_OPTIONS=$DOMINO_START_COMPACT_OPTIONS
-        compact_dbs
-      fi
-
-      # check if log.nsf should be renamed after normal compacts & before log.nsf compact
-      check_log_db_rename
-
-      if [ ! -z "$DOMINO_START_LOG_COMPACT_OPTIONS" ]; then
-        DOMINO_LOG_COMPACT_OPTIONS=$DOMINO_START_LOG_COMPACT_OPTIONS
-        compact_log
-      fi
-    fi
-    
-    if [ "$DOMINO_DOCKER_STDOUT" = "yes" ]; then
-
-      echo "---- Docker Container Output ----"
-      cat $DOMINO_OUTPUT_LOG
-      rm "$DOMINO_OUTPUT_LOG"
-      $DOMINO_BIN $JAVA_CONTROLLER_STRING &
-
-    else
-      $DOMINO_BIN $JAVA_CONTROLLER_STRING < $DOMINO_INPUT_FILE >> $DOMINO_OUTPUT_LOG 2>&1 &
-    fi
-
-    DOMINO_PID=$!
- 
-    # For servers using id-file passwords,
-    # uncomment the following line.
-    # cat .secure_hidden_passwd > $DOMINO_INPUT_FILE
-    
-    echo $DOMINO_PID > $DOMINO_PID_FILE
-    echo "done PID is $DOMINO_PID"
-    echo
-    
-    cleanup_one_touch_setup
-
-    post_startup_operations
-
-    if [ "$DOMINO_LIVE_START" = "yes" ]; then
-      run_monitor      
-    fi
-
-    if [ ! "$DOMINO_CHECK_WARNUNGS" = "no" ]; then
-      check_server_start_abort_error
-    fi 
-
-    echo
+    domino_start
     ;;
 
   archivelog)
@@ -2691,90 +2998,9 @@ case "$PARAM1" in
     echo
     ;;
 
-  stop)
+  stop|quit)
 
-    if [ "$PARAM2" = "live" ]; then
-      DOMINO_LIVE_SHUTDOWN="yes"
-    fi
-
-    echo
-    echo "Stopping Domino for $PLATFORM_NAME ($DOMINO_SERVER)"
-    shutdown_broadcast_message
-
-    if [ "$DOMINO_LIVE_SHUTDOWN" = "yes" ]; then
-      echo "Starting Live Console for Shutdown ..."
-      $TAIL_CMD -f $REAL_OUTPUT_FILE &
-      MONITOR_PID=$!
-
-      # signal child died causes issues in bash 5.x
-      case "$BASH_VERSION" in
-        5*)
-          trap "stop_server" 1 2 3 4 6 9 13 15 19 23
-          ;;
-        *)
-          trap "stop_server" 1 2 3 4 6 9 13 15 17 19 23
-          ;;
-      esac
-
-    fi
-    
-    shutdown_domino_server
-
-    if [ "$DOMINO_USE_JAVA_CONTROLLER" = "yes" ]; then
-
-      echo "Stopping Java Controler for $PLATFORM_NAME ($DOMINO_SERVER)"
-      shutdown_java_controller
-
-      echo "Java Controler for $PLATFORM_NAME ($DOMINO_SERVER) shutdown completed"
-    fi
-
-    check_for_crashed_server
-
-    echo "Domino for $PLATFORM_NAME ($DOMINO_SERVER) shutdown completed"
-
-    if [ "$DOMINO_LIVE_SHUTDOWN" = "yes" ]; then
-      stop_monitor
-    fi
-    echo
-    ;;
-
-  quit)
-
-    if [ "$PARAM2" = "live" ]; then
-      DOMINO_LIVE_SHUTDOWN="yes"
-    fi
-
-    echo
-    echo "Stopping Domino for $PLATFORM_NAME ($DOMINO_SERVER)"
-    shutdown_broadcast_message
-
-    if [ "$DOMINO_LIVE_SHUTDOWN" = "yes" ]; then
-      echo "Starting Live Console for Shutdown ..."
-      $TAIL_CMD -f $REAL_OUTPUT_FILE &
-      MONITOR_PID=$!
-
-      # signal child died causes issues in bash 5.x
-      case "$BASH_VERSION" in
-        5*)
-          trap "stop_server" 1 2 3 4 6 9 13 15 19 23
-          ;;
-        *)
-          trap "stop_server" 1 2 3 4 6 9 13 15 17 19 23
-          ;;
-      esac
-
-    fi
-    
-    shutdown_domino_server
-
-    check_for_crashed_server
-
-    echo "Domino for $PLATFORM_NAME ($DOMINO_SERVER) shutdown completed"
-
-    if [ "$DOMINO_LIVE_SHUTDOWN" = "yes" ]; then
-      stop_monitor
-    fi
-    echo
+    domino_stop
     ;;
 
   monitor)
@@ -2940,7 +3166,6 @@ case "$PARAM1" in
     exit 0
     ;;
 
-
   check)
   
     echo
@@ -2949,38 +3174,17 @@ case "$PARAM1" in
     exit 0
     ;;
 
-  memdump)
+  memdump|memcheck)
   
     # Write Memory Dump
-    echo
-    echo "Creating Memory Dump for ($DOMINO_SERVER)"
-    cd $DOMINO_DATA_PATH
-    $DOMINO_BIN -m
-    echo
+    run_memcheck
     exit 0
     ;;
     
-  fullnsd)
-  
-    # Run NSD 
-    echo
-    echo "Running full NSD for ($DOMINO_SERVER)"
-    cd $DOMINO_DATA_PATH
-    nsd_check_set_posix_locale
-    $NSD_BIN "$PARAM2" "$PARAM3" "$PARAM4" "$PARAM5" "$PARAM6"
-    echo
-    exit 0
-    ;;
-
-  nsd)
+  fullnsd|nsd)
   
     # Run NSD
-    echo
-    echo "Running NSD for ($DOMINO_SERVER)"
-    cd $DOMINO_DATA_PATH
-    nsd_check_set_posix_locale
-    $NSD_BIN "$PARAM2" "$PARAM3" "$PARAM4" "$PARAM5" "$PARAM6"
-    echo
+    run_nsd
     exit 0
     ;;
 
@@ -2999,25 +3203,7 @@ case "$PARAM1" in
 
   hang)
   
-    # Run 3 x NSD with stacks only + 1 full NSD
-    cd $DOMINO_DATA_PATH
-    nsd_check_set_posix_locale
-
-    echo "Running #1 NSD -stacks for ($DOMINO_SERVER)"
-    $NSD_BIN -stacks "$PARAM2" "$PARAM3" "$PARAM4" "$PARAM5" "$PARAM6"
-
-    echo "Running #2 NSD -stacks for ($DOMINO_SERVER)"
-    $NSD_BIN -stacks "$PARAM2" "$PARAM3" "$PARAM4" "$PARAM5" "$PARAM6"
-
-    echo "Running #3 NSD -stacks for ($DOMINO_SERVER)"
-    $NSD_BIN -stacks "$PARAM2" "$PARAM3" "$PARAM4" "$PARAM5" "$PARAM6"
-
-    echo "Finally running Full NSD for ($DOMINO_SERVER)"
-    $NSD_BIN "$PARAM2" "$PARAM3" "$PARAM4" "$PARAM5" "$PARAM6"
-
-    echo
-    echo "NSDs complete"
-    echo
+    run_nsd_hang
     exit 0
     ;;
 
@@ -3052,46 +3238,21 @@ case "$PARAM1" in
   kill)
   
     # Run NSD -kill
-    echo
-    echo "Running NSD -kill for ($DOMINO_SERVER)"
-    cd $DOMINO_DATA_PATH
-    nsd_check_set_posix_locale
-    pre_kill_operations
-    $NSD_BIN -kill "$PARAM2" "$PARAM3" "$PARAM4" "$PARAM5" "$PARAM6"
-    post_kill_operations
-    echo
+    run_nsd_kill
     exit 0
     ;;
 
   cleanup)
   
     # Cleanup Server on OS Level
-    echo
-    echo "Cleaning up Server Resources on OS-Level for ($DOMINO_SERVER)"
-    cleanup_domino_server_os_level
-    echo
+    domino_cleanup
     exit 0
     ;;
   
-  resources)
-  
-    # Show the resources the server is using (processes, shared mem, MQs, SEMs)
-    echo
-    echo "Show Server Resources ($DOMINO_SERVER)"
-    echo
-    show_domino_resources
-    echo
-    exit 0
-    ;;
-
-  res)
+  resources|res)
 
     # Show the resources the server is using (processes, shared mem, MQs, SEMs)
-    echo
-    echo "Show Server Resources ($DOMINO_SERVER)"
-    echo
-    show_domino_resources
-    echo
+    domino_resources
     exit 0
     ;;
      
@@ -3154,7 +3315,7 @@ case "$PARAM1" in
     exit 0
     ;;
 
-  config)
+  config|cfg)
   
     # edit start script config
     echo
@@ -3166,22 +3327,7 @@ case "$PARAM1" in
   setup)
 
     # setup On Touch Setup
-    echo
-    if [ -e "$SCRIPT_DIR_NAME/DominoOneTouchSetup.sh" ]; then
-      . "$SCRIPT_DIR_NAME/DominoOneTouchSetup.sh" "$PARAM2" "$PARAM3" "$PARAM4" "$PARAM5"
-    else
-      echo "Domino One-Touch Setup not available!"
-    fi
-    echo
-    exit 0
-    ;;
-
-  cfg)
-
-    # edit start script config
-    echo
-    edit_config_file "$PARAM2"
-    echo
+    domino_ots
     exit 0
     ;;
 
@@ -3250,7 +3396,8 @@ case "$PARAM1" in
   *)
 
     if [ -z "$PARAM1" ]; then
-      usage 
+      #usage
+      menu
       exit 1
     fi
   

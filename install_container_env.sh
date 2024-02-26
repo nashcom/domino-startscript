@@ -552,5 +552,14 @@ if [ ! -e ~/.DominoDownload/download.token ]; then
   bash -i domdownload -token
 fi
 
-cd /local/github/domino-container
+header "Container environment setup completed"
+
+echo
+echo "Switch to cloned GitHub container project directory and start the container build script"
+echo
+echo "cd /local/github/domino-container"
+echo "./build.sh"
+echo
+
+exit 0
 

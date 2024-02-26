@@ -2,7 +2,7 @@
 
 ###########################################################################
 # Install Script - Start/Stop Script for Domino on xLinux/zLinux/AIX      #
-# Version 3.8.0 20.12.2023                                                #
+# Version 3.8.1 24.02.2024                                                #
 #                                                                         #
 # (C) Copyright Daniel Nashed/NashCom 2005-2023                           #
 # Feedback domino_unix@nashcom.de                                         #
@@ -32,7 +32,7 @@ DOMINO_DOCKER_SCRIPT=entrypoint.sh
 DONT_TOUCH_THIS_NASHCOM_PATH=/opt/nashcom/startscript
 DONT_TOUCH_THIS_STANDARD_USER=notes
 
-DOMINO_SCRIPT_VERSION=3.8.0
+DOMINO_SCRIPT_VERSION=3.8.1
 
 # if you really really need to, change this and all files will be patched
 
@@ -83,11 +83,11 @@ else
 fi
 
 # Determine architecture and platform
-if [ `uname` = AIX ]; then
+if [ $(uname) = "AIX" ]; then
   LARCH=ibmpow
   PLATFORM_NAME=AIX
   ROOT_GROUP=system
-elif [ `uname` = Linux ]; then
+else
   LARCH=linux
   PLATFORM_NAME=xLinux
 fi
@@ -289,6 +289,11 @@ copy_one_touch_templates()
 
 detect_container_env()
 {
+
+  if [ "$LARCH" = "ibmpow" ]; then
+    return 0
+  fi
+
   # check if running inside a container
   if [ -e "/.dockerenv" ]; then
     CONTAINER_ENV=docker
