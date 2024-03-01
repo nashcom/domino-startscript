@@ -5,14 +5,14 @@
 ############################################################################
 
 # Domino on Linux installation script
-# Version 3.8.0 20.12.2023
+# Version 3.8.1 01.03.2024
 
 # - Installs required software
 # - Adds notes:notes user and group
 # - Creates directory structure in /local/ for the Domino server data (/local/notesdata, /local/translog, ...)
-# - Installs NashCom Domino on Linux start script 
+# - Installs NashCom Domino on Linux start script
 # - Creates a new NRPC firewall rule and opens ports NRPC, HTTP, HTTPS and SMTP
-# - Installs Domino with default options using silent install 
+# - Installs Domino with default options using silent install
 # - Sets security limits
 
 
@@ -30,7 +30,7 @@ fi
 STARTSCRIPT_GIT_URL=https://github.com/nashcom/domino-startscript
 STARTSCRIPT_GIT_RAW_URL=https://raw.githubusercontent.com/nashcom/domino-startscript/main
 
-# In any case set a software directory -- also when downloading
+# In any case set a software directory
 if [ -z "$SOFTWARE_DIR" ]; then
   SOFTWARE_DIR=/local/software
 fi
@@ -39,9 +39,7 @@ if [ -z "$DOMINO_DATA_PATH" ]; then
   DOMINO_DATA_PATH=/local/notesdata
 fi
 
-
 PROD_NAME=domino
-
 VERSION_FILE_NAME_URL=$STARTSCRIPT_GIT_RAW_URL/current_version.txt
 SOFTWARE_FILE=$SOFTWARE_DIR/software.txt
 VERSION_FILE=$SOFTWARE_DIR/current_version.txt
@@ -64,7 +62,7 @@ if [ -z "$DIR_PERM" ]; then
 fi
 
 
-print_delim ()
+print_delim()
 {
   echo "--------------------------------------------------------------------------------"
 }
@@ -76,14 +74,16 @@ log_ok ()
   echo
 }
 
-log_error ()
+
+log_error()
 {
   echo
   echo "Failed - $1"
   echo
 }
 
-header ()
+
+header()
 {
   echo
   print_delim
@@ -92,25 +92,37 @@ header ()
   echo
 }
 
+
 install_package()
 {
- if [ -x /usr/bin/zypper ]; then
-   zypper install -y "$@"
+  if [ -x /usr/bin/zypper ]; then
+    /usr/bin/zypper install -y "$@"
 
- elif [ -x /usr/bin/dnf ]; then
-   dnf install -y "$@"
+  elif [ -x /usr/bin/dnf ]; then
+    /usr/bin/dnf install -y "$@"
 
- elif [ -x /usr/bin/yum ]; then
-   yum install -y "$@"
+  elif [ -x /usr/bin/tdnf ]; then
+    /usr/bin/tdnf install -y "$@"
 
- elif [ -x /usr/bin/apt-get ]; then
-   apt-get install -y "$@"
+  elif [ -x /usr/bin/microdnf ]; then
+    /usr/bin/microdnf install -y "$@"
 
- else
-  echo "No package manager found!"
-  exit 1
+  elif [ -x /usr/bin/yum ]; then
+    /usr/bin/yum install -y "$@"
 
- fi
+  elif [ -x /usr/bin/apt-get ]; then
+    /usr/bin/apt-get install -y "$@"
+
+  elif [ -x /usr/bin/pacman ]; then
+    /usr/bin/pacman --noconfirm -Sy "$@"
+
+  elif [ -x /sbin/apk ]; then
+    /sbin/apk add "$@"
+
+  else
+    log_error "No package manager found!"
+    exit 1
+  fi
 }
 
 install_packages()
@@ -123,20 +135,32 @@ install_packages()
 
 remove_package()
 {
- if [ -x /usr/bin/zypper ]; then
-   zypper rm -y "$@"
+  if [ -x /usr/bin/zypper ]; then
+    /usr/bin/zypper rm -y "$@"
 
- elif [ -x /usr/bin/dnf ]; then
-   dnf remove -y "$@"
+  elif [ -x /usr/bin/dnf ]; then
+    /usr/bin/dnf remove -y "$@"
 
- elif [ -x /usr/bin/yum ]; then
-   yum remove -y "$@"
+  elif [ -x /usr/bin/tdnf ]; then
+    /usr/bin/tdnf remove -y "$@"
 
- elif [ -x /usr/bin/apt-get ]; then
-   apt-get remove -y "$@"
+  elif [ -x /usr/bin/microdnf ]; then
+    /usr/bin/microdnf remove -y "$@"
 
- fi
+  elif [ -x /usr/bin/yum ]; then
+    /usr/bin/yum remove -y "$@"
+
+  elif [ -x /usr/bin/apt-get ]; then
+    /usr/bin/apt-get remove -y "$@"
+
+  elif [ -x /usr/bin/pacman ]; then
+    /usr/bin/pacman --noconfirm -R "$@"
+
+  elif [ -x /sbin/apk ]; then
+      /sbin/apk del "$@"
+  fi
 }
+
 
 remove_packages()
 {
@@ -145,6 +169,7 @@ remove_packages()
     remove_package $PACKAGE
   done
 }
+
 
 install_if_missing()
 {
@@ -169,40 +194,80 @@ install_if_missing()
 }
 
 
-linux_update()
+check_linux_update()
 {
+
+  # On Ubuntu and Debian update the cache in any case to be able to install additional packages
+  if [ -x /usr/bin/apt-get ]; then
+    header "Refreshing packet list via apt-get"
+    /usr/bin/apt-get update -y
+  fi
+
+  if [ -x /usr/bin/pacman ]; then
+    header "Refreshing packet list via pacman"
+    pacman --noconfirm -Sy
+  fi
+
+  # Install Linux updates if requested
+  if [ ! "$LinuxYumUpdate" = "yes" ]; then
+    return 0
+  fi
+
   if [ -x /usr/bin/zypper ]; then
 
     header "Updating Linux via zypper"
-    zypper refresh
-    zypper update -y
+    /usr/bin/zypper refresh
+    /usr/bin/zypper update -y
 
   elif [ -x /usr/bin/dnf ]; then
 
     header "Updating Linux via dnf"
-    dnf update -y
+    /usr/bin/dnf update -y
+
+  elif [ -x /usr/bin/tdnf ]; then
+
+    header "Updating Linux via tdnf"
+    /usr/bin/tdnf update -y
+
+  elif [ -x /usr/bin/microdnf ]; then
+
+    header "Updating Linux via microdnf"
+    /usr/bin/microdnf update -y
 
   elif [ -x /usr/bin/yum ]; then
 
     header "Updating Linux via yum"
-    yum update -y
+    /usr/bin/yum update -y
 
   elif [ -x /usr/bin/apt-get ]; then
 
-    header "Updating Linux via apt-get"
-    apt-get update -y
+    header "Updating Linux via apt"
+    echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
+
+    /usr/bin/apt-get update -y
 
     # Needed by Astra Linux, Ubuntu and Debian. Should be installed before updating Linux but after updating the repo!
     if [ -x /usr/bin/apt-get ]; then
       install_package apt-utils
     fi
 
-    apt-get upgrade -y
+    /usr/bin/apt-get upgrade -y
 
+  elif [ -x /usr/bin/pacman ]; then
+    header "Updating Linux via pacman"
+    pacman --noconfirm -Syu
+
+  elif [ -x /sbin/apk ]; then
+    header "Updating Linux via apk"
+    /sbin/apk update
+
+  else
+    log_error "No packet manager to update Linux"
   fi
 }
 
-remove_directory ()
+
+remove_directory()
 {
   if [ -z "$1" ]; then
     return 1
@@ -223,12 +288,13 @@ remove_directory ()
   return 0
 }
 
-get_download_name ()
+get_download_name()
 {
-  DOWNLOAD_NAME=""
+  local DOWNLOAD_NAME=""
+
   if [ -e "$SOFTWARE_FILE" ]; then
     DOWNLOAD_NAME=$(grep "$1|$2|" "$SOFTWARE_FILE" | cut -d"|" -f3)
-  else 
+  else
     log_error "Download file [$SOFTWARE_FILE] not found!"
     exit 1
   fi
@@ -241,11 +307,13 @@ get_download_name ()
   return 0
 }
 
-download_file_ifpresent ()
+
+download_file_ifpresent()
 {
-  DOWNLOAD_SERVER=$1
-  DOWNLOAD_FILE=$2
-  TARGET_DIR=$3
+  local DOWNLOAD_SERVER=$1
+  local DOWNLOAD_FILE=$2
+  local TARGET_DIR=$3
+  local SAVED_DIR=
 
   if [ -z "$DOWNLOAD_FILE" ]; then
     log_error "No download file specified!"
@@ -288,7 +356,8 @@ download_file_ifpresent ()
   fi
 }
 
-download_and_check_hash ()
+
+download_and_check_hash()
 {
   DOWNLOAD_SERVER=$1
   DOWNLOAD_STR=$2
@@ -301,7 +370,7 @@ download_and_check_hash ()
 
   # check if file exists before downloading
 
-  for CHECK_FILE in $(echo "$DOWNLOAD_STR" | tr "," "\n" ) ; do
+  for CHECK_FILE in $(echo "$DOWNLOAD_STR" | tr "," "\n" ); do
 
     DOWNLOAD_FILE=$DOWNLOAD_SERVER/$CHECK_FILE
     CURL_RET=$($CURL_CMD "$DOWNLOAD_FILE" --silent --head 2>&1)
@@ -340,7 +409,7 @@ download_and_check_hash ()
   if [ -z "$TAR_OPTIONS" ]; then
 
     # download without extracting for none tar files
-    
+
     echo
     local DOWNLOADED_FILE=$(basename $DOWNLOAD_FILE)
     $CURL_CMD "$DOWNLOAD_FILE" -o "$DOWNLOADED_FILE"
@@ -400,7 +469,8 @@ download_and_check_hash ()
   return 0
 }
 
-get_current_version ()
+
+get_current_version()
 {
   if [ -n "$VERSION_FILE_NAME_URL" ]; then
 
@@ -415,22 +485,23 @@ get_current_version ()
 
   if [ -n "$DOWNLOAD_VERSION_FILE" ]; then
     log_ok "Getting current software version from [$DOWNLOAD_VERSION_FILE]"
-    LINE=`$CURL_CMD -L --silent $DOWNLOAD_VERSION_FILE | grep "^$1|"`
+    LINE=$($CURL_CMD -L --silent $DOWNLOAD_VERSION_FILE | grep "^$1|")
   else
     if [ ! -r "$VERSION_FILE" ]; then
       log_ok "No current version file found! [$VERSION_FILE]"
     else
       log_ok "Getting current software version from [$VERSION_FILE]"
-      LINE=`grep "^$1|" $VERSION_FILE`
+      LINE=$(grep "^$1|" $VERSION_FILE)
     fi
   fi
 
-  PROD_VER=`echo $LINE|cut -d'|' -f2`
-  PROD_FP=`echo $LINE|cut -d'|' -f3`
-  PROD_HF=`echo $LINE|cut -d'|' -f4`
+  PROD_VER=$(echo $LINE|cut -d'|' -f2)
+  PROD_FP=$(echo $LINE|cut -d'|' -f3)
+  PROD_HF=$(echo $LINE|cut -d'|' -f4)
 
   return 0
 }
+
 
 set_security_limits()
 {
@@ -447,7 +518,7 @@ set_security_limits()
   NOFILES_HARD=$(su - $DOMINO_USER -c ulimit' -Hn')
 
   if [ "$NOFILES_SOFT" -ne "$REQ_NOFILES_SOFT" ]; then
-    SET_SOFT=$REQ_NOFILES_SOFT   
+    SET_SOFT=$REQ_NOFILES_SOFT
     UPD=TRUE
   fi
 
@@ -473,12 +544,22 @@ set_security_limits()
 
   echo "# -- Domino configuation end --" >> /etc/security/limits.conf
   echo >> /etc/security/limits.conf
-  
+
 }
+
 
 config_firewall()
 {
+  if [ -n "$1" ]; then
+    STARTSCRIPT_DIR="$1"
+  fi
+
   header "Configure firewall"
+
+  if [ -n "$STARTSCRIPT_SKIP_FIREWALL_CFG" ]; then
+    echo "Skip firewall config requested"
+    return 0
+  fi
 
   if [ ! -e /usr/sbin/firewalld ]; then
     echo "Firewalld not installed"
@@ -486,16 +567,17 @@ config_firewall()
   fi
 
   if [ -z "$STARTSCRIPT_DIR" ]; then
-    echo "No start script directory found"
+    echo "No start script directory found when configuring firewall settings"
+    return 0
   fi
 
-  if [ ! -e "$SOFTWARE_DIR/$STARTSCRIPT_DIR" ]; then
-    echo "Start Script install directory not found!"
+  if [ -e "/etc/firewalld/services/nrpc.xml" ]; then
+    echo "Firewall settings for NRPC already configured"
     return 0
   fi
 
   # Add well known NRPC port
-  cp "$SOFTWARE_DIR/$STARTSCRIPT_DIR/extra/firewalld/nrpc.xml" /etc/firewalld/services/ 
+  cp "$STARTSCRIPT_DIR/extra/firewalld/nrpc.xml" /etc/firewalld/services/
 
   # Reload just in case to let firewalld notice the change
   firewall-cmd --reload
@@ -505,7 +587,11 @@ config_firewall()
 
   # reload firewall changes
   firewall-cmd --reload
+
+  echo "Info: Firewall services enabled - TCP/Inbound: NRPC, HTTP, HTTPS, SMTP"
+
 }
+
 
 add_notes_user()
 {
@@ -515,7 +601,7 @@ add_notes_user()
   if [ -n "$NOTES_UID" ]; then
     echo "$DOMINO_USER user already exists (UID:$NOTES_UID)"
     return 0
-  fi 
+  fi
 
   # creates user and group
 
@@ -547,7 +633,7 @@ glibc_lang_add()
 
   CHECK_LOCALE_INSTALLED=$(locale -a | grep "^$INSTALL_LOCALE")
 
-  if [ -n "$CHECK_LOCALE_INSTALLED" ]; then
+ if [ -n "$CHECK_LOCALE_INSTALLED" ]; then
     echo "Locale [$INSTALL_LOCALE] already installed"
     return 0
   fi
@@ -588,9 +674,6 @@ glibc_lang_add()
 
 install_software()
 {
-  # updates Linux
-  linux_update
-
   # adds epel repository for additional software packages on RHEL/CentOS/Fedora platforms
 
   header "Installing required Linux packages"
@@ -648,7 +731,8 @@ install_software()
   fi
 }
 
-create_directory ()
+
+create_directory()
 {
   TARGET_FILE=$1
   OWNER=$2
@@ -676,51 +760,27 @@ create_directory ()
   return 0
 }
 
+
 create_directories()
 {
   header "Create directory structure /local ..."
 
-  # creates local directory structure with the right owner 
+  # creates local directory structure with the right owner
 
-  create_directory /local $DOMINO_USER $DOMINO_GROUP $DIR_PERM
+  create_directory /local           $DOMINO_USER $DOMINO_GROUP $DIR_PERM
   create_directory /local/notesdata $DOMINO_USER $DOMINO_GROUP $DIR_PERM
-  create_directory /local/translog $DOMINO_USER $DOMINO_GROUP $DIR_PERM
-  create_directory /local/daos $DOMINO_USER $DOMINO_GROUP $DIR_PERM
-  create_directory /local/nif $DOMINO_USER $DOMINO_GROUP $DIR_PERM
-  create_directory /local/ft $DOMINO_USER $DOMINO_GROUP $DIR_PERM
-  create_directory /local/backup $DOMINO_USER $DOMINO_GROUP $DIR_PERM
-
-  mkdir -p $SOFTWARE_DIR
+  create_directory /local/translog  $DOMINO_USER $DOMINO_GROUP $DIR_PERM
+  create_directory /local/daos      $DOMINO_USER $DOMINO_GROUP $DIR_PERM
+  create_directory /local/nif       $DOMINO_USER $DOMINO_GROUP $DIR_PERM
+  create_directory /local/ft        $DOMINO_USER $DOMINO_GROUP $DIR_PERM
+  create_directory /local/backup    $DOMINO_USER $DOMINO_GROUP $DIR_PERM
+  create_directory "$SOFTWARE_DIR"  $DOMINO_USER $DOMINO_GROUP $DIR_PERM
 }
 
-set_sh_shell()
-{
-  ORIG_SHELL_LINK=$(readlink /bin/sh)
-
-  if [ -z "$1" ]; then
-     echo "Current sh: [$ORIG_SHELL_LINK]"
-     ORIG_SHELL_LINK=
-     return 0
-  fi
-
-  if [ "$ORIG_SHELL_LINK" = "$1" ]; then
-    ORIG_SHELL_LINK=
-    return 0
-  fi
-
-  echo "Switching sh shell from [$ORIG_SHELL_LINK] to [$1]"
-
-  local SAVED_DIR=$(pwd)
-  cd /bin
-  ln -sf "$1" sh
-  cd "$SAVED_DIR"
-
-  return 1
-}
 
 install_start_script()
 {
-  header "Install Nash!Com Domino start script"
+  header "Install Nash!Com Domino Start Script"
 
   STARTSCRIPT_LATEST_LINK=https://raw.githubusercontent.com/nashcom/domino-startscript/main/latest.txt
 
@@ -734,7 +794,7 @@ install_start_script()
      if [ ! -e "$STARTSCRIPT_FILE" ]; then
        curl -L $(curl -sL $STARTSCRIPT_LATEST_LINK) -o "$STARTSCRIPT_FILE"
      fi
-  
+
   else
 
     STARTSCRIPT_FILE=domino-startscript_v${STARTSCRIPT_VER}.taz
@@ -747,28 +807,36 @@ install_start_script()
     fi
   fi
 
-  STARTSCRIPT_DIR=domino-startscript
-
-  # First remove old directory if present
-  remove_directory "$STARTSCRIPT_DIR"
+  if [ ! -e "$STARTSCRIPT_FILE" ]; then
+    echo "Cannot download start script"
+    return 1
+  fi
 
   # Extract new start script, install and remove dir & tar
   tar -xf "$STARTSCRIPT_FILE"
+  rm -f "$STARTSCRIPT_FILE"
 
-  if [ ! -e "$STARTSCRIPT_DIR/install_script" ]; then
-    echo "Start Script ${STARTSCRIPT_VER} installer not found!"
+  #Find start script installer (directory might have varying names
+  START_SCRIPT_INSTALLER=$(find . -name "install_script")
+  if [ -z "$START_SCRIPT_INSTALLER" ]; then
+    echo "Start Script installer not found!"
     return 1
   fi
- 
-  "$STARTSCRIPT_DIR/install_script"
+
+  STARTSCRIPT_DIR=$(dirname "$START_SCRIPT_INSTALLER")
+
+  # Finally run the start script install script
+  "$START_SCRIPT_INSTALLER"
+
+  header "Install Nash!Com Domino Download Script"
+  "$(STARTSCRIPT_DIR)/domdownload.sh install"
+
+  config_firewall "$STARTSCRIPT_DIR"
+
+  cd $SOFTWARE_DIR
+  remove_directory "$STARTSCRIPT_DIR"
 }
 
-cleanup_install_data ()
-{
-  if [ -n "$STARTSCRIPT_DIR" ]; then
-    remove_directory "$STARTSCRIPT_DIR"
-  fi
-}
 
 get_notes_ini_var()
 {
@@ -784,9 +852,10 @@ get_notes_ini_var()
     return 0
   fi
 
-  ret_ini_var=`awk -F '=' -v SEARCH_STR="$2" '{if (tolower($1) == tolower(SEARCH_STR)) print $2}' $1 | xargs`
+  ret_ini_var=$(awk -F '=' -v SEARCH_STR="$2" '{if (tolower($1) == tolower(SEARCH_STR)) print $2}' $1 | xargs)
   return 0
 }
+
 
 set_notes_ini_var()
 {
@@ -809,6 +878,7 @@ set_notes_ini_var()
   return 0
 }
 
+
 setup_notes_ini()
 {
   # Avoid Domino Directory Design Update Prompt
@@ -821,13 +891,14 @@ setup_notes_ini()
   set_notes_ini_var $DOMINO_DATA_PATH/notes.ini "Create_R12_Databases" "1"
 }
 
+
 install_domino()
 {
   header "Install Domino"
 
   # If no version was speficed find current version
   if [ -z "$PROD_VER" ]; then
-    get_current_version $PROD_NAME 
+    get_current_version $PROD_NAME
   fi
 
   if [ -z "$PROD_VER" ]; then
@@ -839,7 +910,7 @@ install_domino()
 
     # If Domino was installed by this routine, there is a version file
     if [ -e "$PROD_VER_FILE" ]; then
-  
+
       PROD_VER_INSTALLED=$(head -1 $PROD_VER_FILE)
 
       if [ "$PROD_FORCE_INSTALL" = "yes" ]; then
@@ -862,7 +933,7 @@ install_domino()
     log_ok "Installing Domino $PROD_VER"
   fi
 
-  # Gets download name stored in GitHub repo 
+  # Gets download name stored in GitHub repo
 
   download_file_ifpresent "$STARTSCRIPT_GIT_RAW_URL" software.txt "$SOFTWARE_DIR"
 
@@ -890,39 +961,29 @@ install_domino()
     echo
     echo 1. Log into Flexnet first: https://hclsoftware.flexnetoperations.com
     echo 2. Visit the following URL:
-    echo 
+    echo
     echo $CURRENT_DOWNLOAD_URL
-    echo 
+    echo
 
     exit 1
   fi
 
   # Installs Domino with silent response file
 
-  # Switch default sh shell from dash to bash on Ubuntu and Debian for Domino install
-  set_sh_shell bash
-
   cd $SOFTWARE_DIR/linux64
-  ./install -f "$(pwd)/responseFile/installer.properties" -i silent
-  
-  # Switch back sh shell if changed
-  if [ -n "$ORIG_SHELL_LINK" ]; then
-    set_sh_shell "$ORIG_SHELL_LINK"
-  fi
+  bash ./install -f "$(pwd)/responseFile/installer.properties" -i silent
 
-  cd $SOFTWARE_DIR 
+  cd $SOFTWARE_DIR
   remove_directory linux64
 
   echo $PROD_VER > $PROD_VER_FILE
 
 }
 
+
 print_runtime()
 {
   echo
-
-  # the following line does not work on OSX
-  # echo "Completed in" `date -d@$SECONDS -u +%T`
 
   hours=$((SECONDS / 3600))
   seconds=$((SECONDS % 3600))
@@ -972,6 +1033,7 @@ fi
 header "Nash!Com Domino Installer for $LINUX_PRETTY_NAME $LINUX_VM_INFO"
 
 must_be_root
+check_linux_update
 install_software
 add_notes_user
 create_directories
@@ -980,12 +1042,10 @@ glibc_lang_add
 # Set posix locale for installing Domino to ensure the right res/C link
 export LANG=C
 
-install_start_script
 install_domino
+install_start_script
 setup_notes_ini
 set_security_limits
-config_firewall
-cleanup_install_data
 
 cd $SAVED_DIR
 
@@ -993,3 +1053,4 @@ echo
 echo "Done"
 print_runtime
 echo
+
