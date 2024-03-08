@@ -449,8 +449,7 @@ install_container_env()
     install_package "$CNT"
   else
     if [ -x /usr/bin/apt-get ]; then
-
-      install_packages docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+      install_packages docker.io docker-buildx docker-compose-v2
 
     else
       # Assume Redhat/CentOS compatible environments

@@ -2016,7 +2016,7 @@ CheckWriteStandardConfig()
   echo >> "$DOMDOWNLOAD_CFG_FILE"
 
   echo \#Software direcory >> "$DOMDOWNLOAD_CFG_FILE"
-  echo \#SOFTWARE_DIR=/local/software >> "$DOMDOWNLOAD_CFG_FILE"
+  echo SOFTWARE_DIR=/local/software >> "$DOMDOWNLOAD_CFG_FILE"
   echo >> "$DOMDOWNLOAD_CFG_FILE"
 
   echo \#Maximum age of json/jwt files >> "$DOMDOWNLOAD_CFG_FILE"

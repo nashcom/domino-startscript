@@ -16,6 +16,11 @@
 # - Sets security limits
 
 
+# Get install options if specified
+if [ -n "$1" ]; then
+  INSTALL_OPTIONS="$@"
+fi
+
 if [ -n "$DOWNLOAD_FROM" ]; then
   echo "Downloading and installing software from [$DOWNLOAD_FROM]"
 
@@ -27,24 +32,27 @@ else
   echo "Installing software from default location [$SOFTWARE_DIR]"
 fi
 
-STARTSCRIPT_GIT_URL=https://github.com/nashcom/domino-startscript
-STARTSCRIPT_GIT_RAW_URL=https://raw.githubusercontent.com/nashcom/domino-startscript/main
-
 # In any case set a software directory
 if [ -z "$SOFTWARE_DIR" ]; then
   SOFTWARE_DIR=/local/software
 fi
 
-if [ -z "$DOMINO_DATA_PATH" ]; then
-  DOMINO_DATA_PATH=/local/notesdata
+if [ -z "$HCL_SOFTWARE" ]; then
+  HCL_SOFTWARE=/local/HCLSoftware
 fi
 
-PROD_NAME=domino
-VERSION_FILE_NAME_URL=$STARTSCRIPT_GIT_RAW_URL/current_version.txt
-SOFTWARE_FILE=$SOFTWARE_DIR/software.txt
-VERSION_FILE=$SOFTWARE_DIR/current_version.txt
-LOTUS=/opt/hcl/domino
-PROD_VER_FILE=$LOTUS/DominoVersionInstalled.txt
+if [ -z "$INSTALL_TEMP_DIR" ]; then
+  INSTALL_TEMP_DIR=/tmp/install_domino_$$
+fi
+
+if [ -z "$DOMINO_START_SCRIPT_GIT_ZIP" ]; then
+  DOMINO_START_SCRIPT_GIT_ZIP=https://github.com/nashcom/domino-startscript/archive/refs/heads/develop.zip
+fi
+
+if [ -z "$DOMINO_CONTAINER_GIT_ZIP" ]; then
+  DOMINO_CONTAINER_GIT_ZIP=https://github.com/HCL-TECH-SOFTWARE/domino-container/archive/refs/heads/develop.zip
+fi
+
 
 SPECIAL_CURL_ARGS=
 CURL_CMD="curl --fail --location --connect-timeout 15 --max-time 300 $SPECIAL_CURL_ARGS"
@@ -778,65 +786,6 @@ create_directories()
 }
 
 
-install_start_script()
-{
-  header "Install Nash!Com Domino Start Script"
-
-  STARTSCRIPT_LATEST_LINK=https://raw.githubusercontent.com/nashcom/domino-startscript/main/latest.txt
-
-  cd $SOFTWARE_DIR
-
-  if [ -z "$STARTSCRIPT_VER" ]; then
-
-     STARTSCRIPT_FILE=domino-startscript_latest.taz
-
-     #Download latest version from GitHub
-     if [ ! -e "$STARTSCRIPT_FILE" ]; then
-       curl -L $(curl -sL $STARTSCRIPT_LATEST_LINK) -o "$STARTSCRIPT_FILE"
-     fi
-
-  else
-
-    STARTSCRIPT_FILE=domino-startscript_v${STARTSCRIPT_VER}.taz
-    STARTSCRIPT_URL=${STARTSCRIPT_GIT_URL}/releases/download/v${STARTSCRIPT_VER}/${STARTSCRIPT_FILE}
-
-    # Download start script if it does not exist
-    if [ ! -e "$STARTSCRIPT_FILE" ]; then
-      echo "Downloading start script from $STARTSCRIPT_URL"
-      $CURL_CMD $STARTSCRIPT_URL -o $STARTSCRIPT_FILE
-    fi
-  fi
-
-  if [ ! -e "$STARTSCRIPT_FILE" ]; then
-    echo "Cannot download start script"
-    return 1
-  fi
-
-  # Extract new start script, install and remove dir & tar
-  tar -xf "$STARTSCRIPT_FILE"
-  rm -f "$STARTSCRIPT_FILE"
-
-  #Find start script installer (directory might have varying names
-  START_SCRIPT_INSTALLER=$(find . -name "install_script")
-  if [ -z "$START_SCRIPT_INSTALLER" ]; then
-    echo "Start Script installer not found!"
-    return 1
-  fi
-
-  STARTSCRIPT_DIR=$(dirname "$START_SCRIPT_INSTALLER")
-
-  # Finally run the start script install script
-  "$START_SCRIPT_INSTALLER"
-
-  header "Install Nash!Com Domino Download Script"
-  "$(STARTSCRIPT_DIR)/domdownload.sh install"
-
-  config_firewall "$STARTSCRIPT_DIR"
-
-  cd $SOFTWARE_DIR
-  remove_directory "$STARTSCRIPT_DIR"
-}
-
 
 get_notes_ini_var()
 {
@@ -886,98 +835,6 @@ setup_notes_ini()
 
   # Allow server names with dots and undercores
   set_notes_ini_var $DOMINO_DATA_PATH/notes.ini "ADMIN_IGNORE_NEW_SERVERNAMING_CONVENTION" "1"
-
-  # Ensure current ODS is used for V12 -> does not harm on earlier releases
-  set_notes_ini_var $DOMINO_DATA_PATH/notes.ini "Create_R12_Databases" "1"
-}
-
-
-install_domino()
-{
-  header "Install Domino"
-
-  # If no version was speficed find current version
-  if [ -z "$PROD_VER" ]; then
-    get_current_version $PROD_NAME
-  fi
-
-  if [ -z "$PROD_VER" ]; then
-    log_error "No Domino version to install specified!"
-    return 1
-  fi
-
-  if [ -e "$LOTUS/bin/server" ]; then
-
-    # If Domino was installed by this routine, there is a version file
-    if [ -e "$PROD_VER_FILE" ]; then
-
-      PROD_VER_INSTALLED=$(head -1 $PROD_VER_FILE)
-
-      if [ "$PROD_FORCE_INSTALL" = "yes" ]; then
-        log_ok "Re-installing Domino $PROD_VER"
-
-      elif [ "$PROD_VER" = "$PROD_VER_INSTALLED" ]; then
-        log_ok "Domino $PROD_VER already installed"
-        return 0
-
-      else
-        log_ok "Updating Domino $PROD_VER_INSTALLED -> $PROD_VER"
-      fi
-
-    else
-      log_ok "Domino already installed"
-      return 0
-    fi
-
-  else
-    log_ok "Installing Domino $PROD_VER"
-  fi
-
-  # Gets download name stored in GitHub repo
-
-  download_file_ifpresent "$STARTSCRIPT_GIT_RAW_URL" software.txt "$SOFTWARE_DIR"
-
-  get_download_name $PROD_NAME $PROD_VER
-
-  # Either extract existing files or download, check hash and unpack Domino web-kit
-
-  if [ -e $SOFTWARE_DIR/$DOWNLOAD_NAME ]; then
-
-   echo "Extracting existing web kit [$DOWNLOAD_NAME]"
-   cd $SOFTWARE_DIR
-   tar -xf $DOWNLOAD_NAME
-
-  elif [ -n "$DOWNLOAD_FROM" ]; then
-      download_and_check_hash "$DOWNLOAD_FROM" "$DOWNLOAD_NAME"
-  else
-
-    DOWNLOAD_LINK_FLEXNET="https://hclsoftware.flexnetoperations.com/flexnet/operationsportal/DownloadSearchPage.action?search="
-    DOWNLOAD_LINK_FLEXNET_OPTIONS="+&resultType=Files&sortBy=eff_date&listButton=Search"
-
-    CURRENT_DOWNLOAD_URL="$DOWNLOAD_LINK_FLEXNET$DOWNLOAD_NAME$DOWNLOAD_LINK_FLEXNET_OPTIONS"
-
-    header "Software download"
-    echo "Please download [$DOWNLOAD_NAME] from FlexNet to [$SOFTWARE_DIR]"
-    echo
-    echo 1. Log into Flexnet first: https://hclsoftware.flexnetoperations.com
-    echo 2. Visit the following URL:
-    echo
-    echo $CURRENT_DOWNLOAD_URL
-    echo
-
-    exit 1
-  fi
-
-  # Installs Domino with silent response file
-
-  cd $SOFTWARE_DIR/linux64
-  bash ./install -f "$(pwd)/responseFile/installer.properties" -i silent
-
-  cd $SOFTWARE_DIR
-  remove_directory linux64
-
-  echo $PROD_VER > $PROD_VER_FILE
-
 }
 
 
@@ -1033,8 +890,8 @@ fi
 header "Nash!Com Domino Installer for $LINUX_PRETTY_NAME $LINUX_VM_INFO"
 
 must_be_root
-check_linux_update
-install_software
+#check_linux_update
+#install_software
 add_notes_user
 create_directories
 glibc_lang_add
@@ -1042,12 +899,89 @@ glibc_lang_add
 # Set posix locale for installing Domino to ensure the right res/C link
 export LANG=C
 
-install_domino
-install_start_script
+
+mkdir -p "$INSTALL_TEMP_DIR"
+cd "$INSTALL_TEMP_DIR"
+
+header "Download Domino Start Script Project"
+
+if [ -e "$SOFTWARE_DIR/domino-startscript.zip" ]; then
+  unzip -q "$SOFTWARE_DIR/domino-startscript.zip"
+
+else
+  curl -L "$DOMINO_START_SCRIPT_GIT_ZIP" -o domino-startscript.zip
+  unzip -q domino-startscript.zip
+fi
+
+header "Download Domino Container Project"
+
+if [ -e "$SOFTWARE_DIR/domino-container.zip" ]; then
+  unzip -q "$SOFTWARE_DIR/domino-container.zip"
+
+else
+  curl -L "$DOMINO_CONTAINER_GIT_ZIP" -o domino-container.zip
+  unzip -q domino-container.zip
+fi
+
+INSTALL_DOMDOWNLOAD_SCRIPT=$(find $(pwd) -maxdepth 2 -name "domdownload.sh")
+START_SCRIPT_DIR="$(dirname $INSTALL_DOMDOWNLOAD_SCRIPT)"
+INSTALL_DOMINO_SCRIPT="$START_SCRIPT_DIR/install_script"
+BUILD_SCRIPT=$(find $(pwd) -maxdepth 2 -name "build.sh")
+CONTAINER_SCRIPT_DIR="$(dirname $BUILD_SCRIPT)"
+
+
+if [ -z "$INSTALL_DOMDOWNLOAD_SCRIPT" ]; then
+  echo "Domino Download Script not found"
+  exit 1
+fi
+
+if [ -z "$START_SCRIPT_DIR" ]; then
+  echo "Domino Start Script dir not found"
+  exit 1
+fi
+
+if [ -z "$INSTALL_DOMINO_SCRIPT" ]; then
+  echo "Domino Start Script installer not found"
+  exit 1
+fi
+
+if [ -z "$BUILD_SCRIPT" ]; then
+  echo "Build script not found"
+  exit 1
+fi
+
+if [ -z "$CONTAINER_SCRIPT_DIR" ]; then
+  echo "Domino Container script dir not found"
+  exit 1
+fi
+
+cp -f "$CONTAINER_SCRIPT_DIR/software/software.txt" "$SOFTWARE_DIR"
+cp -f "$CONTAINER_SCRIPT_DIR/software/current_version.txt" "$SOFTWARE_DIR"
+
+# Install Domino Download Script
+"$INSTALL_DOMDOWNLOAD_SCRIPT" -connect install
+
+header "Installing Domino"
+
+if [ -z "$INSTALL_OPTIONS" ]; then
+  echo "Install native via menu"
+  "$BUILD_SCRIPT" menu -installnative
+else
+  echo "Install native silent"
+  "$BUILD_SCRIPT" domino $INSTALL_OPTIONS -installnative
+fi
+
+header "Installing Domino Start Script"
+"$INSTALL_DOMINO_SCRIPT"
+
 setup_notes_ini
 set_security_limits
 
 cd $SAVED_DIR
+
+# Cleanup
+remove_directory "$INSTALL_TEMP_DIR"
+# remove_directory "$SOFTWARE_DIR"
 
 echo
 echo "Done"
