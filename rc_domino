@@ -106,7 +106,7 @@ if [ -e /etc/systemd/system ]; then
 
     if [ "$1" = "start" ]; then
       echo Starting systemd "$DOMINO_SYSTEMD_NAME"
-      systemctl start "$DOMINO_SYSTEMD_NAME"
+      sudo systemctl start "$DOMINO_SYSTEMD_NAME"
 
       if [ "$2" = "live" ]; then
         echo starting live console
@@ -120,11 +120,11 @@ if [ -e /etc/systemd/system ]; then
       echo
  
       if [ "$2" = "live" ]; then
-        systemctl stop "$DOMINO_SYSTEMD_NAME" &
+        sudo systemctl stop "$DOMINO_SYSTEMD_NAME" &
         echo starting live console
         $SWITCH_MONITOR_COMMAND "$DOMINO_START_SCRIPT monitor"
       else
-        systemctl stop "$DOMINO_SYSTEMD_NAME"
+        sudo systemctl stop "$DOMINO_SYSTEMD_NAME"
       fi
       echo
       exit 0
@@ -135,18 +135,18 @@ if [ -e /etc/systemd/system ]; then
       fi
       echo
       echo Stopping systemd "$DOMINO_SYSTEMD_NAME"
-      systemctl stop "$DOMINO_SYSTEMD_NAME"
+      sudo systemctl stop "$DOMINO_SYSTEMD_NAME"
 
       echo
       echo Starting systemd "$DOMINO_SYSTEMD_NAME"
-      systemctl start "$DOMINO_SYSTEMD_NAME"
+      sudo systemctl start "$DOMINO_SYSTEMD_NAME"
       echo
       exit 0
 
     elif [ "$1" = "restartcompact" ]; then
       echo
       echo Stopping systemd "$DOMINO_SYSTEMD_NAME"
-      systemctl stop "$DOMINO_SYSTEMD_NAME"
+      sudo systemctl stop "$DOMINO_SYSTEMD_NAME"
 
       if [ "$LOGNAME" = "$DOMINO_USER" ]; then
         $DOMINO_START_SCRIPT compact
@@ -156,14 +156,14 @@ if [ -e /etc/systemd/system ]; then
 
       echo
       echo Starting systemd "$DOMINO_SYSTEMD_NAME"
-      systemctl start "$DOMINO_SYSTEMD_NAME"
+      sudo systemctl start "$DOMINO_SYSTEMD_NAME"
       echo
       exit 0
 
     elif [ "$1" = "restartfixup" ]; then
       echo
       echo Stopping systemd "$DOMINO_SYSTEMD_NAME"
-      systemctl stop "$DOMINO_SYSTEMD_NAME"
+      sudo systemctl stop "$DOMINO_SYSTEMD_NAME"
 
       if [ "$LOGNAME" = "$DOMINO_USER" ]; then
       $DOMINO_START_SCRIPT fixup
@@ -173,7 +173,7 @@ if [ -e /etc/systemd/system ]; then
 
       echo
       echo Starting systemd "$DOMINO_SYSTEMD_NAME"
-      systemctl start "$DOMINO_SYSTEMD_NAME"
+      sudo systemctl start "$DOMINO_SYSTEMD_NAME"
       echo
       exit 0
 
@@ -199,28 +199,33 @@ if [ -e /etc/systemd/system ]; then
 
     elif [ "$1" = "service" ]; then
       echo
-      if [ -z "$2" ]; then
-        echo "Status"
-        systemctl status "$DOMINO_SYSTEMD_NAME"
-      elif [ "$2" = "status" ]; then
-        echo "Status"
-        systemctl status "$DOMINO_SYSTEMD_NAME"
-      elif [ "$2" = "on" ]; then
-        echo "Enabling Service"
-        systemctl enable "$DOMINO_SYSTEMD_NAME"
-      elif [ "$2" = "off" ]; then
-        echo "Disabling Service"
-        systemctl disable "$DOMINO_SYSTEMD_NAME"
-      elif [ "$2" = "add" ]; then
-        echo "Enabling Service"
-        systemctl enable "$DOMINO_SYSTEMD_NAME"
-      elif [ "$2" = "del" ]; then
-        echo "Disabling Service"
-        systemctl disable "$DOMINO_SYSTEMD_NAME"
-      else
-        systemctl "$2" "$DOMINO_SYSTEMD_NAME"
-      fi
     
+      case "$2" in
+        "")
+          echo "Status"
+          systemctl status "$DOMINO_SYSTEMD_NAME"
+          ;;
+
+        status)
+          echo "Status"
+          systemctl status "$DOMINO_SYSTEMD_NAME"
+          ;;
+
+        on|add|enable)
+          echo "Enabling Service"
+          sudo systemctl enable "$DOMINO_SYSTEMD_NAME"
+          ;;
+
+        off|del|disable)
+          echo "Disabling Service"
+          sudo systemctl disable "$DOMINO_SYSTEMD_NAME"
+          ;;
+
+        *)
+          systemctl "$2" "$DOMINO_SYSTEMD_NAME"
+          ;;
+      esac
+
       echo
       exit 0
     fi

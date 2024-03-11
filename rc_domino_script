@@ -2504,7 +2504,22 @@ domino_start()
     $DOMINO_BIN $JAVA_CONTROLLER_STRING &
 
   else
+
     $DOMINO_BIN $JAVA_CONTROLLER_STRING < $DOMINO_INPUT_FILE >> $DOMINO_OUTPUT_LOG 2>&1 &
+
+    # Check if server is already configured. If not start in setup listen mode on 1352
+    CHECK_SERVER_SETUP=$(grep -i "ServerSetup=" $DOMINO_DATA_PATH/notes.ini)
+
+    if [ -n "$CHECK_SERVER_SETUP" ]; then
+      $DOMINO_BIN $JAVA_CONTROLLER_STRING < $DOMINO_INPUT_FILE >> $DOMINO_OUTPUT_LOG 2>&1 &
+
+    else
+      if [ -z "$DOMINO_REMOTE_SETUP_PORT" ]; then
+        DOMINO_REMOTE_SETUP_PORT=1352
+      fi
+
+      $DOMINO_BIN $JAVA_CONTROLLER_STRING -listen $DOMINO_REMOTE_SETUP_PORT < $DOMINO_INPUT_FILE >> $DOMINO_OUTPUT_LOG 2>&1 &
+    fi
   fi
 
   DOMINO_PID=$!
