@@ -79,6 +79,12 @@ if [ -z "$DOMINO_USER" ]; then
   export DOMINO_USER=$LOGNAME
 fi
 
+if [ -z "$NO_SUDO" ]; then
+  SUDO_BIN=sudo
+else
+  SUDO_BIN=
+fi
+
 # If no systemd is running start server directy (Docker, Podman, K8s, WSL)
 
 if [ "$LARCH" = "linux" ]; then
@@ -106,7 +112,7 @@ if [ -e /etc/systemd/system ]; then
 
     if [ "$1" = "start" ]; then
       echo Starting systemd "$DOMINO_SYSTEMD_NAME"
-      sudo systemctl start "$DOMINO_SYSTEMD_NAME"
+      $SUDO_BIN systemctl start "$DOMINO_SYSTEMD_NAME"
 
       if [ "$2" = "live" ]; then
         echo starting live console
@@ -120,11 +126,11 @@ if [ -e /etc/systemd/system ]; then
       echo
  
       if [ "$2" = "live" ]; then
-        sudo systemctl stop "$DOMINO_SYSTEMD_NAME" &
+        $SUDO_BIN systemctl stop "$DOMINO_SYSTEMD_NAME" &
         echo starting live console
         $SWITCH_MONITOR_COMMAND "$DOMINO_START_SCRIPT monitor"
       else
-        sudo systemctl stop "$DOMINO_SYSTEMD_NAME"
+        $SUDO_BIN systemctl stop "$DOMINO_SYSTEMD_NAME"
       fi
       echo
       exit 0
@@ -135,18 +141,18 @@ if [ -e /etc/systemd/system ]; then
       fi
       echo
       echo Stopping systemd "$DOMINO_SYSTEMD_NAME"
-      sudo systemctl stop "$DOMINO_SYSTEMD_NAME"
+      $SUDO_BIN systemctl stop "$DOMINO_SYSTEMD_NAME"
 
       echo
       echo Starting systemd "$DOMINO_SYSTEMD_NAME"
-      sudo systemctl start "$DOMINO_SYSTEMD_NAME"
+      $SUDO_BIN systemctl start "$DOMINO_SYSTEMD_NAME"
       echo
       exit 0
 
     elif [ "$1" = "restartcompact" ]; then
       echo
       echo Stopping systemd "$DOMINO_SYSTEMD_NAME"
-      sudo systemctl stop "$DOMINO_SYSTEMD_NAME"
+      $SUDO_BIN systemctl stop "$DOMINO_SYSTEMD_NAME"
 
       if [ "$LOGNAME" = "$DOMINO_USER" ]; then
         $DOMINO_START_SCRIPT compact
@@ -156,14 +162,14 @@ if [ -e /etc/systemd/system ]; then
 
       echo
       echo Starting systemd "$DOMINO_SYSTEMD_NAME"
-      sudo systemctl start "$DOMINO_SYSTEMD_NAME"
+      $SUDO_BIN systemctl start "$DOMINO_SYSTEMD_NAME"
       echo
       exit 0
 
     elif [ "$1" = "restartfixup" ]; then
       echo
       echo Stopping systemd "$DOMINO_SYSTEMD_NAME"
-      sudo systemctl stop "$DOMINO_SYSTEMD_NAME"
+      $SUDO_BIN systemctl stop "$DOMINO_SYSTEMD_NAME"
 
       if [ "$LOGNAME" = "$DOMINO_USER" ]; then
       $DOMINO_START_SCRIPT fixup
@@ -173,7 +179,7 @@ if [ -e /etc/systemd/system ]; then
 
       echo
       echo Starting systemd "$DOMINO_SYSTEMD_NAME"
-      sudo systemctl start "$DOMINO_SYSTEMD_NAME"
+      $SUDO_BIN systemctl start "$DOMINO_SYSTEMD_NAME"
       echo
       exit 0
 
@@ -213,12 +219,12 @@ if [ -e /etc/systemd/system ]; then
 
         on|add|enable)
           echo "Enabling Service"
-          sudo systemctl enable "$DOMINO_SYSTEMD_NAME"
+          $SUDO_BIN systemctl enable "$DOMINO_SYSTEMD_NAME"
           ;;
 
         off|del|disable)
           echo "Disabling Service"
-          sudo systemctl disable "$DOMINO_SYSTEMD_NAME"
+          $SUDO_BIN systemctl disable "$DOMINO_SYSTEMD_NAME"
           ;;
 
         *)
@@ -262,7 +268,7 @@ else
   if [ "$VERBOSE_INFO" = "yes" ]; then
     echo Switching to $DOMINO_USER
   fi
-  su - $DOMINO_USER -c "$DOMINO_START_SCRIPT '$1' '$2' '$3' '$4' '$5' '$6'"
+  $SUDO_BIN su - $DOMINO_USER -c "$DOMINO_START_SCRIPT '$1' '$2' '$3' '$4' '$5' '$6'"
 fi
 
 RETVAL=$?
