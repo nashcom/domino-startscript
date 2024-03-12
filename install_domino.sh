@@ -15,6 +15,8 @@
 # - Installs Domino with default options using silent install
 # - Sets security limits
 
+SCRIPT_NAME=$(readlink -f $0)
+SCRIPT_DIR=$(dirname $SCRIPT_NAME)
 
 # Get install options if specified
 if [ -n "$1" ]; then
@@ -867,6 +869,37 @@ must_be_root()
 }
 
 
+find_scripts()
+{
+  local SEARCH_DIR=$1
+  if [ -z "$SEARCH_DIR" ]; then
+    SEARCH_DIR=$(pwd)
+  fi
+
+  if [ -z "$INSTALL_DOMDOWNLOAD_SCRIPT" ]; then
+    INSTALL_DOMDOWNLOAD_SCRIPT=$(find "$SEARCH_DIR" -maxdepth 2 -name "domdownload.sh")
+  fi
+
+  if [ -n "$INSTALL_DOMDOWNLOAD_SCRIPT" ]; then
+    START_SCRIPT_DIR="$(dirname "$INSTALL_DOMDOWNLOAD_SCRIPT")"
+  fi
+
+  if [ -n "$START_SCRIPT_DIR" ]; then
+    INSTALL_DOMINO_SCRIPT="$START_SCRIPT_DIR/install_script"
+
+    # Search in parallel directory for Domino Container Project
+    SEARCH_DIR=$(dirname "$START_SCRIPT_DIR")/domino-container
+  fi
+
+  if [ -z "$BUILD_SCRIPT" ]; then
+    BUILD_SCRIPT=$(find "$SEARCH_DIR" -maxdepth 2 -name "build.sh")
+  fi
+
+  if [ -n "$BUILD_SCRIPT" ]; then
+    CONTAINER_SCRIPT_DIR="$(dirname $BUILD_SCRIPT)"
+  fi
+}
+
 # -- Main logic --
 
 SAVED_DIR=$(pwd)
@@ -905,30 +938,39 @@ cd "$INSTALL_TEMP_DIR"
 
 header "Download Domino Start Script Project"
 
-if [ -e "$SOFTWARE_DIR/domino-startscript.zip" ]; then
-  unzip -q "$SOFTWARE_DIR/domino-startscript.zip"
+# Check if projects exist already and determine scripts
+find_scripts "$SCRIPT_DIR"
+
+if [ -z "$START_SCRIPT_DIR" ]; then
+  if [ -e "$SOFTWARE_DIR/domino-startscript.zip" ]; then
+    unzip -q "$SOFTWARE_DIR/domino-startscript.zip"
+
+  else
+    curl -L "$DOMINO_START_SCRIPT_GIT_ZIP" -o domino-startscript.zip
+    unzip -q domino-startscript.zip
+  fi
 
 else
-  curl -L "$DOMINO_START_SCRIPT_GIT_ZIP" -o domino-startscript.zip
-  unzip -q domino-startscript.zip
+  echo "Using existing Start Script directory: $START_SCRIPT_DIR"
 fi
 
-header "Download Domino Container Project"
+if [ -z "$CONTAINER_SCRIPT_DIR" ]; then
+  header "Download Domino Container Project"
 
-if [ -e "$SOFTWARE_DIR/domino-container.zip" ]; then
-  unzip -q "$SOFTWARE_DIR/domino-container.zip"
+  if [ -e "$SOFTWARE_DIR/domino-container.zip" ]; then
+    unzip -q "$SOFTWARE_DIR/domino-container.zip"
+
+  else
+    curl -L "$DOMINO_CONTAINER_GIT_ZIP" -o domino-container.zip
+    unzip -q domino-container.zip
+  fi
 
 else
-  curl -L "$DOMINO_CONTAINER_GIT_ZIP" -o domino-container.zip
-  unzip -q domino-container.zip
+  echo "Using existing Container Domino project: $CONTAINER_SCRIPT_DIR"
 fi
 
-INSTALL_DOMDOWNLOAD_SCRIPT=$(find $(pwd) -maxdepth 2 -name "domdownload.sh")
-START_SCRIPT_DIR="$(dirname $INSTALL_DOMDOWNLOAD_SCRIPT)"
-INSTALL_DOMINO_SCRIPT="$START_SCRIPT_DIR/install_script"
-BUILD_SCRIPT=$(find $(pwd) -maxdepth 2 -name "build.sh")
-CONTAINER_SCRIPT_DIR="$(dirname $BUILD_SCRIPT)"
-
+# Check again after extract
+find_scripts
 
 if [ -z "$INSTALL_DOMDOWNLOAD_SCRIPT" ]; then
   echo "Domino Download Script not found"
