@@ -891,12 +891,12 @@ find_scripts()
     SEARCH_DIR=$(dirname "$START_SCRIPT_DIR")/domino-container
   fi
 
-  if [ -z "$BUILD_SCRIPT" ]; then
-    BUILD_SCRIPT=$(find "$SEARCH_DIR" -maxdepth 2 -name "build.sh")
+  if [ -z "$CONTAINER_SCRIPT_DIR" ]; then
+    CONTAINER_SCRIPT_DIR=$(find "$SEARCH_DIR" -type d -name "domino-container*")
   fi
 
-  if [ -n "$BUILD_SCRIPT" ]; then
-    CONTAINER_SCRIPT_DIR="$(dirname $BUILD_SCRIPT)"
+  if [ -n "$CONTAINER_SCRIPT_DIR" ]; then
+    BUILD_SCRIPT="$CONTAINER_SCRIPT_DIR/build.sh"
   fi
 }
 
