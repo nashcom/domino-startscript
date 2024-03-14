@@ -887,8 +887,8 @@ find_scripts()
   if [ -n "$START_SCRIPT_DIR" ]; then
     INSTALL_DOMINO_SCRIPT="$START_SCRIPT_DIR/install_script"
 
-    # Search in parallel directory for Domino Container Project
-    SEARCH_DIR=$(dirname "$START_SCRIPT_DIR")/domino-container
+    # Search for container porject on same level
+    SEARCH_DIR=$(dirname "$START_SCRIPT_DIR")
   fi
 
   if [ -z "$CONTAINER_SCRIPT_DIR" ]; then
@@ -1006,8 +1006,16 @@ cp -f "$CONTAINER_SCRIPT_DIR/software/current_version.txt" "$SOFTWARE_DIR"
 header "Installing Domino"
 
 if [ -z "$INSTALL_OPTIONS" ]; then
+
+  if [ "$SCRIPT_NAME" = "/tmp/bash" ] || [ "$SCRIPT_NAME" = "/tmp/sh" ]; then
+    log_error "Cannot invoke menu when running from pipe. Download script and run it manually or specify an install option via environment var 'INSTALL_OPTIONS'"
+    remove_directory "$INSTALL_TEMP_DIR"
+    exit 1
+  fi
+
   echo "Install native via menu"
   "$BUILD_SCRIPT" menu -installnative
+
 else
   echo "Install native silent"
   "$BUILD_SCRIPT" domino $INSTALL_OPTIONS -installnative
