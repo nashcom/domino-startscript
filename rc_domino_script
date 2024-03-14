@@ -2716,14 +2716,15 @@ domino_setup()
         ;;
 
       s)
-        domino_start
+        domino start
+        domino service enable
         sleep 3
         return 0
         ;;
 
       r)
 	remove_file "$DOMINO_AUTO_CONFIG_JSON_FILE"
-        domino_start
+        domino start
         sleep 3
         return 0
         ;;
@@ -2823,14 +2824,14 @@ menu()
 	  echo "Domino server already started"
 	  echo
 	else
-          domino_start
+          domino start
 	fi
 
         sleep 2
         ;;
 
       t)
-        domino_stop
+        domino stop
         sleep 2
         ;;
 
