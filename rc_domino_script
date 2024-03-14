@@ -25,6 +25,19 @@ DOMINO_SCRIPT_VERSION=3.8.1
 
 VERBOSE_INFO="yes"
 
+# Reset
+ColorOff='\033[0m'
+
+# Regular Colors
+ColorBlack='\033[0;30m'
+ColorRed='\033[0;31m'
+ColorGreen='\033[0;32m'
+ColorYellow='\033[0;33m'
+ColorBlue='\033[0;34m'
+ColorPurple='\033[0;35m'
+ColorCyan='\033[0;36m'
+ColorWhite='\033[0;37m'
+
 # Get Linux version and platform
 
 if [ -e /etc/os-release ]; then
@@ -2686,7 +2699,7 @@ domino_setup()
     echo "HCL Domino Server Configuration"
     echo "-------------------------------"
     echo
-    echo " (C)   Reconfigure Domino (OTS) before start"
+    echo " (C)   Configure Domino (OTS)"
     if [ -e "$DOMINO_AUTO_CONFIG_JSON_FILE" ]; then
       echo " (E)   Edit Domino configuration"
       echo " (S)   Start configured Domino Server"
@@ -2775,9 +2788,11 @@ menu()
   do
     domino_is_running
     if [ $? -eq 1 ]; then
-       DOMINO_STATUS=Running
+       DOMINO_STATUS="Running"
+       DOMINO_STATUS_DISPLAY="${ColorGreen}Running${ColorOff}"
     else
-       DOMINO_STATUS=Stopped
+       DOMINO_STATUS="Stopped"
+       DOMINO_STATUS_DISPLAY="${ColorRed}Stopped${ColorOff}"
     fi
 
     clear
@@ -2785,25 +2800,25 @@ menu()
     echo "HCL Domino Server"
     echo "-----------------"
     echo
-    echo " Server status:  $DOMINO_STATUS"
+    printf " Server status:  $DOMINO_STATUS_DISPLAY\n"
     echo
-    if [ "$DOMINO_STATUS" ]; then
+    if [ "$DOMINO_STATUS" = "Stopped" ]; then
       echo " (S)   Start Domino"
     else
-      echo " (T)   Stop  Domino"
+      echo " (T)   Shutdown Domino"
     fi
-    echo " (C)   Console"
-    echo " (R)   Show resources"
-    echo " (L)   Last log lines"
-    echo " (O)   Domino log (edit)"
-    echo " (A)   Archive logs"
+    echo " (C)   Domino Server Console"
+    echo " (R)   Show Domino Resources"
+    echo " (L)   Last Domino Console log messages"
+    echo " (O)   Domino log"
+    echo " (A)   Archive Domino start script logs"
     echo
     echo "Diagnostic"
     echo
     echo " (N)   NSD (Notes System Diagnostic)"
     echo " (G)   NSD Hang (3 NSDs in a row)"
-    echo " (M)   Memory dump"
-    echo " (K)   Kill/cleanup server"
+    echo " (M)   Domino Memory dump"
+    echo " (K)   Kill / Cleanup Domino server"
     echo
     echo " (H)   Help"
     echo
