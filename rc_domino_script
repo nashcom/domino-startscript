@@ -3443,7 +3443,7 @@ case "$PARAM1" in
       else
         menu
       fi
-      exit 1
+      exit 9
     fi
   
     if [ -z "$DOMINO_CUSTOM_COMMAND_BASEPATH" ]; then
@@ -3451,7 +3451,7 @@ case "$PARAM1" in
       echo 
       echo "Invalid command:" [$PARAM1]
       usage 
-      exit 1
+      exit 9
     fi
 
     DOMINO_CUSTOM_COMMAND_SCRIPT="$DOMINO_CUSTOM_COMMAND_BASEPATH/$PARAM1"
@@ -3468,7 +3468,7 @@ case "$PARAM1" in
       echo 
       echo "Invalid command:" [$PARAM1]
       usage 
-      exit 1
+      exit 9
     fi
     echo 
     exit 0
