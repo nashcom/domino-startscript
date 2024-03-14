@@ -2505,8 +2505,6 @@ domino_start()
 
   else
 
-    $DOMINO_BIN $JAVA_CONTROLLER_STRING < $DOMINO_INPUT_FILE >> $DOMINO_OUTPUT_LOG 2>&1 &
-
     # Check if server is already configured. If not start in setup listen mode on 1352
     CHECK_SERVER_SETUP=$(grep -i "ServerSetup=" $DOMINO_DATA_PATH/notes.ini)
 
