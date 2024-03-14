@@ -708,7 +708,7 @@ install_software()
   esac
 
   # install required and useful packages
-  install_packages gdb hostname tar sysstat net-tools jq gettext cpio
+  install_packages gdb-minimal hostname tar sysstat net-tools jq gettext cpio
 
   # additional packages by platform
 
@@ -924,7 +924,7 @@ header "Nash!Com Domino Installer for $LINUX_PRETTY_NAME $LINUX_VM_INFO"
 
 must_be_root
 #check_linux_update
-#install_software
+install_software
 add_notes_user
 create_directories
 glibc_lang_add
@@ -932,6 +932,10 @@ glibc_lang_add
 # Set posix locale for installing Domino to ensure the right res/C link
 export LANG=C
 
+
+if [ -z "SOFTWARE_DIR" ]; then
+  export SOFTWARE_DIR=/local/software
+fi
 
 mkdir -p "$INSTALL_TEMP_DIR"
 cd "$INSTALL_TEMP_DIR"

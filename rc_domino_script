@@ -2342,6 +2342,9 @@ cleanup_one_touch_setup()
 wait_for_key()
 {
   local SELECTED=
+  echo
+  echo "--- Press any key to continue / [Q] for quit  ---"
+  echo
   read -n1 -e SELECTED;
 
   if [ "$SELECTED" = "q" ]; then
@@ -2683,10 +2686,10 @@ domino_setup()
     echo "HCL Domino Server Configuration"
     echo "-------------------------------"
     echo
-    echo " (C)   Configure Domino"
+    echo " (C)   Reconfigure Domino (OTS) before start"
     if [ -e "$DOMINO_AUTO_CONFIG_JSON_FILE" ]; then
       echo " (E)   Edit Domino configuration"
-      echo " (S)   Start Domino Server"
+      echo " (S)   Start configured Domino Server"
     fi
     echo " (R)   Domino Remote Setup"
 
@@ -2705,25 +2708,25 @@ domino_setup()
       c)
 	remove_file "$DOMINO_AUTO_CONFIG_JSON_FILE"
         domino_ots local
-	sleep 3
+        wait_for_key
         ;;
 
       e)
         domino_ots
-	sleep 3
+        wait_for_key
         ;;
 
       s)
         domino start
         domino service enable
-        sleep 3
+        wait_for_key
         return 0
         ;;
 
       r)
 	remove_file "$DOMINO_AUTO_CONFIG_JSON_FILE"
         domino start
-        sleep 3
+        wait_for_key
         return 0
         ;;
 
@@ -2732,7 +2735,7 @@ domino_setup()
         echo
         echo " Invalid option selected: $SELECTED"
         echo -n " "
-        sleep 2
+        wait_for_key
         ;;
     esac
 
@@ -2782,8 +2785,13 @@ menu()
     echo "HCL Domino Server"
     echo "-----------------"
     echo
-    echo " (S)   Start Domino"
-    echo " (T)   Stop  Domino"
+    echo " Server status:  $DOMINO_STATUS"
+    echo
+    if [ "$DOMINO_STATUS" ]; then
+      echo " (S)   Start Domino"
+    else
+      echo " (T)   Stop  Domino"
+    fi
     echo " (C)   Console"
     echo " (R)   Show resources"
     echo " (L)   Last log lines"
@@ -2798,9 +2806,6 @@ menu()
     echo " (K)   Kill/cleanup server"
     echo
     echo " (H)   Help"
-    echo
-    echo
-    echo " Server status:  $DOMINO_STATUS"
     echo
     echo
     read -n1 -e -p " Select command,  [Q] to cancel? " SELECTED;
@@ -2825,12 +2830,12 @@ menu()
           domino start
 	fi
 
-        sleep 2
+        wait_for_key
         ;;
 
       t)
         domino stop
-        sleep 2
+        wait_for_key
         ;;
 
       c)
@@ -2880,7 +2885,7 @@ menu()
 
       a)
 	archive_logs "$PARAM2"
-	sleep 2
+        wait_for_key
         ;;
 
       h)
