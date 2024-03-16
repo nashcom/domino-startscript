@@ -94,7 +94,9 @@
   },
 
   "autoConfigPreferences": {
-    "startServerAfterConfiguration": true 
+    "startServerAfterConfiguration": true,
+    "deleteInputFileAfterProcessing": true
+
   },
 
   "appConfiguration": {

@@ -67,6 +67,7 @@
   },
 
   "autoConfigPreferences": {
+    "deleteInputFileAfterProcessing": true,
     "startServerAfterConfiguration": true 
   },
 

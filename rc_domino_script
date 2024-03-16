@@ -2815,6 +2815,7 @@ menu()
     echo
     echo "Diagnostic"
     echo
+    echo " (I)   Linux Information"
     echo " (N)   NSD (Notes System Diagnostic)"
     echo " (G)   NSD Hang (3 NSDs in a row)"
     echo " (M)   Domino Memory dump"
@@ -2845,6 +2846,13 @@ menu()
           domino start
 	fi
 
+        wait_for_key
+        ;;
+
+      i)
+        if [ -x $SCRIPT_DIR_NAME/nshinfo.sh ]; then
+          $SCRIPT_DIR_NAME/nshinfo.sh
+        fi
         wait_for_key
         ;;
 

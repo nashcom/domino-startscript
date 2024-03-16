@@ -48,6 +48,14 @@ SCRIPT_DIR=$(dirname $SCRIPT_NAME)
 
 DOMDOWNLOAD_SCRIPT_VERSION=1.0.0
 
+# Just print version and exit
+case "$1" in
+ -version|--version)
+    echo "$DOMDOWNLOAD_SCRIPT_VERSION"
+    exit 0
+    ;;
+esac
+
 ClearScreen()
 {
   if [ "$DISABLE_CLEAR_SCREEN" = "yes" ]; then
