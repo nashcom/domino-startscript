@@ -708,7 +708,15 @@ install_software()
   esac
 
   # install required and useful packages
-  install_packages gdb-minimal hostname tar sysstat net-tools jq gettext cpio
+  install_packages hostname tar sysstat net-tools jq gettext cpio
+
+  SUSE does not have gdb-minimal
+  if [ -x /usr/bin/zypper ]; then
+    install_package gdb
+  else
+    install_package gdb-minimal
+    ln -s /usr/bin/gdb.minimal /usr/bin/gdb
+  fi
 
   # additional packages by platform
 
