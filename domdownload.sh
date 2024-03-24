@@ -2,7 +2,7 @@
 
 ###########################################################################
 # Domino Software Download Script                                         #
-# Version 1.0.0 24.04.2024                                                #
+# Version 1.0.1 24.04.2024                                                #
 # Copyright Nash!Com, Daniel Nashed                                       #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #
@@ -42,11 +42,12 @@
 # 0.9.8  Performance counter for Linux but not for Mac because there is only a seconds timer in "date" and we don't want to install tools extra for this 
 # 0.9.9  Better error output for invalid refesh tokens
 # 1.0.0  Support for Alpine Linux
+# 1.0.1  Allow to be invoked if stdin is redirected. Default config changes
 
 SCRIPT_NAME=$0
 SCRIPT_DIR=$(dirname $SCRIPT_NAME)
 
-DOMDOWNLOAD_SCRIPT_VERSION=1.0.0
+DOMDOWNLOAD_SCRIPT_VERSION=1.0.1
 
 # Just print version and exit
 case "$1" in
@@ -2041,15 +2042,15 @@ CheckWriteStandardConfig()
   echo >> "$DOMDOWNLOAD_CFG_FILE"
 
   echo \#Custom download URL for local mode >> "$DOMDOWNLOAD_CFG_FILE"
-  echo DOMDOWNLOAD_CUSTOM_URL= >> "$DOMDOWNLOAD_CFG_FILE"
+  echo \#DOMDOWNLOAD_CUSTOM_URL= >> "$DOMDOWNLOAD_CFG_FILE"
   echo >> "$DOMDOWNLOAD_CFG_FILE"
 
   echo \#User for custom download in local mode >> "$DOMDOWNLOAD_CFG_FILE"
-  echo DOMDOWNLOAD_CUSTOM_USER= >> "$DOMDOWNLOAD_CFG_FILE"
+  echo \#DOMDOWNLOAD_CUSTOM_USER= >> "$DOMDOWNLOAD_CFG_FILE"
   echo >> "$DOMDOWNLOAD_CFG_FILE"
 
   echo \#Password for custom download in local mode >> "$DOMDOWNLOAD_CFG_FILE"
-  echo DOMDOWNLOAD_CUSTOM_PASSWORD= >> "$DOMDOWNLOAD_CFG_FILE"
+  echo \#DOMDOWNLOAD_CUSTOM_PASSWORD= >> "$DOMDOWNLOAD_CFG_FILE"
   echo >> "$DOMDOWNLOAD_CFG_FILE"
 }
 
