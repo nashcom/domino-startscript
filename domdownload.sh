@@ -629,6 +629,12 @@ SetRefreshToken()
     return 0
   fi
 
+  if [ -n "$DOMDOWNLOAD_TOKEN" ]; then
+    echo "$DOMDOWNLOAD_TOKEN" > "$DOMDOWNLOAD_TOKEN_FILE_NAME"
+    export DOMDOWNLOAD_TOKEN=
+    return 0
+  fi
+
   echo
   echo "My HCL Software portal requires a download token."
   echo

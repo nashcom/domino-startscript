@@ -23,6 +23,9 @@ if [ -n "$1" ]; then
   INSTALL_OPTIONS="$@"
 fi
 
+# Ensure to always read from terminal even stdin was redirected
+exec < /dev/tty
+
 if [ -n "$DOWNLOAD_FROM" ]; then
   echo "Downloading and installing software from [$DOWNLOAD_FROM]"
 
@@ -710,12 +713,14 @@ install_software()
   # install required and useful packages
   install_packages hostname tar sysstat net-tools jq gettext cpio
 
-  SUSE does not have gdb-minimal
+  # SUSE does not have gdb-minimal
   if [ -x /usr/bin/zypper ]; then
     install_package gdb
   else
     install_package gdb-minimal
-    ln -s /usr/bin/gdb.minimal /usr/bin/gdb
+    if [ ! -e /usr/bin/gdb ]; then
+      ln -s /usr/bin/gdb.minimal /usr/bin/gdb
+    fi
   fi
 
   # additional packages by platform
@@ -1018,12 +1023,6 @@ cp -f "$CONTAINER_SCRIPT_DIR/software/current_version.txt" "$SOFTWARE_DIR"
 header "Installing Domino"
 
 if [ -z "$INSTALL_OPTIONS" ]; then
-
-  if [ "$SCRIPT_NAME" = "/tmp/bash" ] || [ "$SCRIPT_NAME" = "/tmp/sh" ]; then
-    log_error "Cannot invoke menu when running from pipe. Download script and run it manually or specify an install option via environment var 'INSTALL_OPTIONS'"
-    remove_directory "$INSTALL_TEMP_DIR"
-    exit 1
-  fi
 
   echo "Install native via menu"
   "$BUILD_SCRIPT" menu -installnative
