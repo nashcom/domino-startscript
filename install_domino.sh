@@ -391,6 +391,11 @@ if [ -z "$CONTAINER_SCRIPT_DIR" ]; then
   exit 1
 fi
 
+if [ -z "$LinuxYumUpdate" ]; then
+  LinuxYumUpdate=yes
+fi
+
+
 cp -f "$CONTAINER_SCRIPT_DIR/software/software.txt" "$SOFTWARE_DIR"
 cp -f "$CONTAINER_SCRIPT_DIR/software/current_version.txt" "$SOFTWARE_DIR"
 
@@ -415,9 +420,6 @@ fi
 
 header "Installing Domino Start Script"
 "$INSTALL_DOMINO_SCRIPT"
-
-setup_notes_ini
-set_security_limits
 
 cd $SAVED_DIR
 
