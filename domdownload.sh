@@ -56,6 +56,9 @@ case "$1" in
     ;;
 esac
 
+# Ensure to always read from terminal even stdin was redirected
+exec < /dev/tty
+
 ClearScreen()
 {
   if [ "$DISABLE_CLEAR_SCREEN" = "yes" ]; then

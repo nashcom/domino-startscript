@@ -23,9 +23,6 @@ if [ -n "$1" ]; then
   INSTALL_OPTIONS="$@"
 fi
 
-# Ensure to always read from terminal even stdin was redirected
-exec < /dev/tty
-
 if [ -n "$DOWNLOAD_FROM" ]; then
   echo "Downloading and installing software from [$DOWNLOAD_FROM]"
 
