@@ -392,7 +392,7 @@ if [ -z "$CONTAINER_SCRIPT_DIR" ]; then
 fi
 
 if [ -z "$LinuxYumUpdate" ]; then
-  LinuxYumUpdate=yes
+  export LinuxYumUpdate=yes
 fi
 
 
