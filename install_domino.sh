@@ -933,7 +933,7 @@ fi
 header "Nash!Com Domino Installer for $LINUX_PRETTY_NAME $LINUX_VM_INFO"
 
 must_be_root
-#check_linux_update
+check_linux_update
 install_software
 add_notes_user
 create_directories
@@ -1016,6 +1016,10 @@ cp -f "$CONTAINER_SCRIPT_DIR/software/current_version.txt" "$SOFTWARE_DIR"
 
 # Install Domino Download Script
 "$INSTALL_DOMDOWNLOAD_SCRIPT" -connect install
+
+if [ -n "$DOMDOWNLOAD_TOKEN" ]; then
+  "$INSTALL_DOMDOWNLOAD_SCRIPT" -token "$DOMDOWNLOAD_TOKEN"
+fi
 
 header "Installing Domino"
 
