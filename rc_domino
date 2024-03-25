@@ -8,7 +8,7 @@
 # You may use and distribute the unmodified version of this script.
 # Use at your own risk. No implied or specific warranties are given.
 # You may change it for your own usage only
-# Version 3.8.1 24.02.2024
+# Version 3.9.0 24.04.2024
 ###########################################################################
 # chkconfig: 345 66 19
 # description: HCL Domino Server (notes)

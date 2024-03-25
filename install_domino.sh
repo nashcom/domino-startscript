@@ -1,11 +1,11 @@
 #!/bin/bash
 
 ############################################################################
-# Copyright Nash!Com, Daniel Nashed 2023 - APACHE 2.0 see LICENSE
+# Copyright Nash!Com, Daniel Nashed 2023-2024 - APACHE 2.0 see LICENSE
 ############################################################################
 
 # Domino on Linux installation script
-# Version 3.8.1 01.03.2024
+# Version 3.9.0 24.04.2024 
 
 # - Installs required software
 # - Adds notes:notes user and group
