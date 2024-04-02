@@ -21,7 +21,7 @@
 # limitations under the License.                                          #
 ###########################################################################
 
-DOMINO_SCRIPT_VERSION=3.9.0.
+DOMINO_SCRIPT_VERSION=3.9.0
 
 VERBOSE_INFO="yes"
 

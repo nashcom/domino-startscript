@@ -32,6 +32,9 @@ else
   echo "# Allow HCL Domino SNMP SMUX (lnsnmp)" >> "$SNMPD_CONF"
   echo "smuxpeer 1.3.6.1.4.1.334.72 NotesPasswd" >> "$SNMPD_CONF"
   echo >> "$SNMPD_CONF"
+  echo "# Define read-only community" >> "$SNMPD_CONF"
+  echo "rocommunity public" >> "$SNMPD_CONF"
+  echo >> "$SNMPD_CONF"
 
   systemctl restart snmpd
 fi
