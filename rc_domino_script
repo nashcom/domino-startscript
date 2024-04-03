@@ -2527,7 +2527,12 @@ domino_start()
     if [ -n "$CHECK_SERVER_SETUP" ]; then
       $DOMINO_BIN $JAVA_CONTROLLER_STRING < $DOMINO_INPUT_FILE >> $DOMINO_OUTPUT_LOG 2>&1 &
 
+    elif [ -n "$SetupAutoConfigureParams" ]; then
+      # Run OTS if requested
+      $DOMINO_BIN $JAVA_CONTROLLER_STRING -auto "$SetupAutoConfigureParams" < $DOMINO_INPUT_FILE >> $DOMINO_OUTPUT_LOG 2>&1 &
+
     else
+      # Fall back to listen mode if nothing else is configured
       if [ -z "$DOMINO_REMOTE_SETUP_PORT" ]; then
         DOMINO_REMOTE_SETUP_PORT=1352
       fi
