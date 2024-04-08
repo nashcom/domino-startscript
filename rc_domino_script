@@ -3,7 +3,7 @@
 
 ###########################################################################
 # Main Script Logic - Start/Stop Script for Domino on xLinux/zLinux/AIX   #
-# Version 3.9.0 24.04.2024                                                #
+# Version 3.9.1 08.04.2024                                                #
 #                                                                         #
 # (C) Copyright Daniel Nashed/NashCom 2005-2024                           #
 # Feedback domino_unix@nashcom.de                                         #
@@ -21,7 +21,7 @@
 # limitations under the License.                                          #
 ###########################################################################
 
-DOMINO_SCRIPT_VERSION=3.9.0
+DOMINO_SCRIPT_VERSION=3.9.1
 
 VERBOSE_INFO="yes"
 
@@ -253,14 +253,22 @@ Notes_ExecDirectory=$LOTUS/notes/latest/$LARCH
 LOTUS_BIN_DIR=$LOTUS/notes
 
 # Export lib search path per platform
+
 if [ ${LARCH} = "ibmpow" ]; then
-  LIBPATH=$Notes_ExecDirectory:$LIBPATH
+  if [ -z "$LIBPATH" ]; then
+    LIBPATH=$Notes_ExecDirectory
+  else
+    LIBPATH=$Notes_ExecDirectory:$LIBPATH
+  fi
   export LIBPATH
 fi
 
 if [ ${LARCH} = "linux" ]; then
-  # include ST directories
-  LD_LIBRARY_PATH=$Notes_ExecDirectory:$LD_LIBRARY_PATH:$Notes_ExecDirectory/STOpenSSL:$Notes_ExecDirectory/sticc
+  if [ -z "$LD_LIBRARY_PATH" ]; then
+    LD_LIBRARY_PATH=$Notes_ExecDirectory
+  else
+    LD_LIBRARY_PATH=$Notes_ExecDirectory:$LD_LIBRARY_PATH
+  fi
   export LD_LIBRARY_PATH
 fi
 
@@ -430,6 +438,22 @@ print_delim ()
   echo "--------------------------------------------------------------------------------"
 }
 
+header()
+{
+  echo
+  print_delim
+  echo "$1"
+  print_delim
+  echo
+}
+
+log_space()
+{
+  echo
+  echo "$@"
+  echo
+}
+
 nsd_check_set_posix_locale ()
 {
   if [ "$NSD_SET_POSIX_LC" = "yes" ]; then
@@ -489,6 +513,50 @@ remove_tempfiles_default ()
   fi
 
   return 0 
+}
+
+wait_time_or_string()
+{
+  local MAX_SECONDS=30
+  local FILE=$2
+  local SEARCH_STR=$3
+  local COUNT=1
+  local seconds=0
+  local found=
+
+  if [ -n "$1" ]; then
+    MAX_SECONDS=$1
+  fi
+
+  if [ -n "$4" ]; then
+    COUNT=$4
+  fi
+
+  echo
+
+  if [ -z "$FILE" ] || [ -z "$SEARCH_STR" ]; then
+    echo "Waiting for $MAX_SECONDS seconds ..."
+    sleep $MAX_SECONDS
+    return 0
+  fi
+
+  DebugText "Waiting for [$SEARCH_STR] in [$FILE] (max: $MAX_SECONDS sec, count: $COUNT)"
+
+  while [ "$seconds" -lt "$MAX_SECONDS" ]; do
+
+    found=$(grep -e "$SEARCH_STR" "$FILE" 2>/dev/null | wc -l)
+
+    if [ "$found" -ge "$COUNT" ]; then
+      return 0
+    fi
+
+    sleep 1
+    seconds=$(expr $seconds + 1)
+    if [ $(expr $seconds % 10) -eq 0 ]; then
+      echo " ... waiting $seconds seconds"
+    fi
+
+  done
 }
 
 show_version ()
@@ -864,7 +932,7 @@ check_log_db_age()
     return 1
   fi
 
-  last_log_db_date=`cat $DOMINO_LAST_LOG_DB_FILE`
+  last_log_db_date=$(cat $DOMINO_LAST_LOG_DB_FILE)
   DebugText "last_log_db_date: $last_log_db_date"
 
   if [ -z "$last_log_db_date" ]; then
@@ -905,7 +973,7 @@ check_domlog_db_age()
     return 1
   fi
 
-  last_domlog_db_date=`cat $DOMINO_LAST_DOMLOG_DB_FILE`
+  last_domlog_db_date=$(cat $DOMINO_LAST_DOMLOG_DB_FILE)
   DebugText "last_domlog_db_date: $last_domlog_db_date"
 
   if [ -z "$last_domlog_db_date" ]; then
@@ -1070,10 +1138,18 @@ check_domlog_db_rename()
 
 domino_is_running ()
 {
-  DOMINO_RUNNING=`$PS_COMMAND -fu $DOMINO_USER | grep "$LOTUS_BIN_DIR" | grep "server" | grep -v " -jc"`
+  DOMINO_RUNNING=$($PS_COMMAND -fu $DOMINO_USER | grep "$LOTUS_BIN_DIR" | grep "server" | grep -v " -jc")
+  local LOGASIO_RUNNING=$($PS_COMMAND -fu $DOMINO_USER | grep "$LOTUS_BIN_DIR" | grep "logasio")
 
   DebugText "DOMINO_USER:" $DOMINO_USER 
   DebugText "DOMINO_RUNNING:" $DOMINO_RUNNING 
+  DebugText "LOGASIO_RUNNING:" $LOGASIO_RUNNING
+
+  if [ -n "$LOGASIO__RUNNING" ]; then
+     DOMINO_TRANSLOG_ACTIVE=1
+  else
+     DOMINO_TRANSLOG_ACTIVE=0
+  fi
 
   if [ -n "$DOMINO_RUNNING" ]; then
     DebugText "Domino is running"
@@ -1088,7 +1164,7 @@ domino_is_running ()
 
 get_tika_status ()
 {
-  TIKA_PROCESS=`$PS_COMMAND -fu $DOMINO_USER | grep "$Notes_ExecDirectory/jvm/bin/java" | grep "tika-server.jar" | awk '{ print $2 }'`
+  TIKA_PROCESS=$($PS_COMMAND -fu $DOMINO_USER | grep "$Notes_ExecDirectory/jvm/bin/java" | grep "tika-server.jar" | awk '{ print $2 }')
   DebugText "Tika-Process: [$TIKA_PROCESS]"
 }
 
@@ -1105,7 +1181,7 @@ tika_server ()
       else
         echo "Stopping Tika processes"
 
-        for pid in `$PS_COMMAND -fu $DOMINO_USER | grep "$Notes_ExecDirectory/jvm/bin/java" | grep "tika-server.jar" | awk '{ print $2 }'`; do
+	for pid in $($PS_COMMAND -fu $DOMINO_USER | grep "$Notes_ExecDirectory/jvm/bin/java" | grep "tika-server.jar" | awk '{ print $2 }'); do
           echo "Killing Tika pid #" $pid
           kill -s 15 $pid
         done
@@ -1119,7 +1195,7 @@ tika_server ()
       else
         echo "Terminating Tika processes"
 
-        for pid in `$PS_COMMAND -fu $DOMINO_USER | grep "$Notes_ExecDirectory/jvm/bin/java" | grep "tika-server.jar" | awk '{ print $2 }'`; do
+	for pid in $($PS_COMMAND -fu $DOMINO_USER | grep "$Notes_ExecDirectory/jvm/bin/java" | grep "tika-server.jar" | awk '{ print $2 }'); do
           echo "Killing Tika pid #" $pid
           kill -9 $pid
         done
@@ -1139,15 +1215,48 @@ tika_server ()
     esac
 }
 
+
+check_domino_status()
+{
+  local LOGASIO_RUNNING=$($PS_COMMAND -fu $DOMINO_USER | grep "$LOTUS_BIN_DIR" | grep "logasio")
+  local DOMINO_RUNNING=$($PS_COMMAND -fu $DOMINO_USER | grep "$LOTUS_BIN_DIR" | grep "server" | grep -v " -jc")
+
+
+  if [ -z "$DOMINO_RUNNING" ]; then
+
+     DOMINO_STATUS="Stopped"
+     DOMINO_STATUS_DISPLAY="${ColorRed}Stopped${ColorOff}"
+    return 0
+  fi
+
+  if [ -n "$LOGASIO_RUNNING" ]; then
+    DOMINO_STATUS="Running"
+    DOMINO_STATUS_DISPLAY="${ColorGreen}Running${ColorOff}"
+    return 0
+  fi
+
+  case "$DOMINO_RUNNING" in
+    *-auto*)
+     DOMINO_STATUS="Configuring"
+     DOMINO_STATUS_DISPLAY="${ColorYellow}Configuring${ColorOff}"
+     return 0
+  esac
+
+  DOMINO_STATUS="Running"
+  DOMINO_STATUS_DISPLAY="${ColorYellow}Running (without Translog)${ColorOff}"
+  return 0
+}
+
+
 check_shutdown_delayed_commands()
 {
-  if [ ! -z "$DOMINO_TIKA_SHUTDOWN_TERM_SECONDS" ]; then
+  if [ -n "$DOMINO_TIKA_SHUTDOWN_TERM_SECONDS" ]; then
     if [ "$1" -ge "$DOMINO_TIKA_SHUTDOWN_TERM_SECONDS" ]; then
       tika_server kill 
     fi
   fi
 
-  if [ ! -z "$DOMINO_SHUTDOWN_DELAYED_SCRIPT" ]; then
+  if [ -n "$DOMINO_SHUTDOWN_DELAYED_SCRIPT" ]; then
     if [ -z "$SHUTDOWN_DELAY_CHECKED" ]; then
       if [ "$1" -ge "$DOMINO_SHUTDOWN_DELAYED_SECONDS" ]; then
         DebugText "Invoking ShutDownDleayedScript [$DOMINO_SHUTDOWN_DELAYED_SCRIPT]"
@@ -1161,6 +1270,7 @@ check_shutdown_delayed_commands()
     fi
   fi
 }
+
 
 domino_status_check ()
 {
@@ -2373,7 +2483,7 @@ domino_ots()
   if [ -e "$SCRIPT_DIR_NAME/DominoOneTouchSetup.sh" ]; then
     . "$SCRIPT_DIR_NAME/DominoOneTouchSetup.sh" "$PARAM2" "$PARAM3" "$PARAM4" "$PARAM5"
   else
-    echo "Domino One-Touch Setup not available!"
+    log_space "Domino One-Touch Setup not available!"
   fi
   echo
 }
@@ -2691,6 +2801,142 @@ run_memcheck()
   echo
 }
 
+remove_ots_setup_files()
+{
+  remove_file "$DOMINO_DATA_PATH/DominoAutoConfigDefault.env"
+  remove_file "$DOMINO_DATA_PATH/DominoAutoConfig.env"
+  remove_file "$DOMINO_DATA_PATH/DominoAutoConfig.json"
+  remove_file "$DOMINO_DATA_PATH/DominoAutoConfigTemplate.json"
+}
+
+check_ots_setup_complete()
+{
+  local OTS_SUCCESS=$(grep "Application configuration completed successfully" "$DOMINO_DATA_PATH/IBM_TECHNICAL_SUPPORT/autoconfigure.log" | wc -l)
+
+  if [ "$OTS_SUCCESS" = "1" ]; then
+    log_space "HCL Domino One Touch Configuration was successful"
+    return 0
+  fi
+
+  clear
+  header "HCL Domino One Touch Configuration failed"
+  cat  "$DOMINO_DATA_PATH/IBM_TECHNICAL_SUPPORT/autoconfigure.log"
+  echo
+  header "HCL Domino One Touch Configuration failed"
+
+  printf "Please check OTS Log printed above for details: ${ColorYellow}$DOMINO_DATA_PATH/IBM_TECHNICAL_SUPPORT/autoconfigure.log${ColorOff} \n\n"
+  exit 1
+}
+
+domino_setup_start_server()
+{
+  header "Starting HCL Domino Server Configuration"
+
+  domino start
+
+  wait_time_or_string 60 $DOMINO_DATA_PATH/IBM_TECHNICAL_SUPPORT/console.log "Server started on physical node"
+
+  sleep 10
+  check_ots_setup_complete
+  sleep 10
+
+  header "Restarting configured server"
+  remove_ots_setup_files
+
+  domino restart
+  sleep 5
+  domino service enable
+}
+
+#! /bin/bash
+
+
+domino_process_monitor()
+{
+  local running=0
+  local line=
+  local pid=
+  local task=
+  local status=
+  local tasks=
+
+  while IFS= read -r line; do
+
+    status=$(echo "$line" | cut -d' ' -f1)
+    pid=$(echo "$line" | cut -d' ' -f2)
+    task=$(echo "$line" | cut -d' ' -f4)
+
+    if [ "$status" = "1" ]; then
+
+      if [ "$task" = "nsd.sh" ]; then
+        status=0
+      else
+        running=$(expr $running + 1)
+        tasks="${tasks} [X]  $task\n"
+      fi
+    else
+      tasks="${tasks} [ ]  $task\n"
+    fi
+
+  done < "$DOMINO_DATA_PATH//pid.nbf"
+
+  if [ "$1" = "1" ]; then
+    clear
+    printf "\nDomino Server Process Status\n----------------------------\n\n$tasks"
+  fi
+
+  return $running
+}
+
+
+domino_shutdown_monitor()
+{
+  local seconds=0
+  local timeout=300
+  local BREAK=
+
+  if [ -n "$1" ]; then
+    timeout=$1
+  fi
+
+  domino_process_monitor
+
+  if  [ "$?" = "0" ]; then
+    printf "\nDomino Server not running\n\n"
+    return 0
+  fi
+
+  domino_process_monitor 1
+  while [ ! "$?" = "0" ]; do
+
+    read -n1 -t 1 BREAK;
+
+    if [ "$?" = "0" ]; then
+      echo
+      return 0
+    fi
+
+    seconds=$(expr $seconds + 1)
+    if [ $seconds -ge $timeout ]; then
+      printf "\nDomino Server did NOT shutdown after $seconds seconds\n\n"
+      return 1
+    fi
+
+    if [ "$(expr $seconds "%" 3)" = "0" ]; then
+      log=1
+    else
+      log=0
+    fi
+
+    domino_process_monitor "$log"
+  done
+
+  clear
+  printf "\nDomino Server shutdown successfully after $seconds seconds\n\n"
+
+  return 0
+}
+
 
 domino_setup()
 {
@@ -2709,7 +2955,7 @@ domino_setup()
       echo " (E)   Edit Domino configuration"
       echo " (S)   Start configured Domino Server"
     fi
-    echo " (R)   Domino Remote Setup"
+    #echo " (R)   Domino Remote Setup"
 
     echo
     read -n1 -e -p " Select command,  [Q] to cancel? " SELECTED;
@@ -2717,6 +2963,9 @@ domino_setup()
     clear
 
     case $(echo "$SELECTED" | awk '{print tolower($0)}') in
+
+      "")
+	;;
 
       0|q)
         echo
@@ -2735,9 +2984,7 @@ domino_setup()
         ;;
 
       s)
-        domino start
-        domino service enable
-        wait_for_key
+        domino_setup_start_server
         return 0
         ;;
 
@@ -2791,15 +3038,7 @@ menu()
 
   while [ 1 ];
   do
-    domino_is_running
-    if [ $? -eq 1 ]; then
-       DOMINO_STATUS="Running"
-       DOMINO_STATUS_DISPLAY="${ColorGreen}Running${ColorOff}"
-    else
-       DOMINO_STATUS="Stopped"
-       DOMINO_STATUS_DISPLAY="${ColorRed}Stopped${ColorOff}"
-    fi
-
+    check_domino_status
     clear
     echo
     echo "HCL Domino Server"
@@ -2807,16 +3046,22 @@ menu()
     echo
     printf " Server status:  $DOMINO_STATUS_DISPLAY\n"
     echo
+
     if [ "$DOMINO_STATUS" = "Stopped" ]; then
       echo " (S)   Start Domino"
     else
       echo " (T)   Shutdown Domino"
     fi
-    echo " (C)   Domino Server Console"
+
+    if [ "$DOMINO_STATUS" = "Running" ]; then
+      echo " (C)   Domino Server Console"
+    fi
+
     echo " (R)   Show Domino Resources"
     echo " (L)   Last Domino Console log messages"
     echo " (O)   Domino log"
     echo " (A)   Archive Domino start script logs"
+    echo " (P)   Show processes"
     echo
     echo "Diagnostic"
     echo
@@ -2835,6 +3080,9 @@ menu()
 
     case $(echo "$SELECTED" | awk '{print tolower($0)}') in
 
+      "")
+	;;
+
       0|q)
         clear
         echo
@@ -2848,10 +3096,11 @@ menu()
 	  echo "Domino server already started"
 	  echo
 	else
+	  echo
           domino start
 	fi
 
-        wait_for_key
+	sleep 3
         ;;
 
       i)
@@ -2862,13 +3111,31 @@ menu()
         ;;
 
       t)
+	log_space "Waiting for server shutdown, please wait ..."
         domino stop
+        ;;
+
+      w)
+        log_space "Waiting for server shutdown, please wait ..."
+        domino stop &
+	sleep 3
+	domino_shutdown_monitor
+	wait_for_key
+        ;;
+
+      p)
+        domino_process_monitor 1
         wait_for_key
         ;;
 
       c)
-	DOMINO_CONSOLE_NO_EXIT=yes
-        run_monitor
+        if [ "$DOMINO_STATUS" = "Running" ]; then
+          DOMINO_CONSOLE_NO_EXIT=yes
+          run_monitor
+	else
+	  log_space "Server live console not available in status: $DOMINO_STATUS"
+	  wait_for_key
+	fi
         ;;
 
       l)
@@ -3414,6 +3681,18 @@ case "$PARAM1" in
   resetstlogs)
 
     reset_sametime_logs
+    ;;
+
+  proc)
+    domino_process_monitor 1
+    echo
+    exit 0
+    ;;
+
+  mon)
+    domino_shutdown_monitor
+    echo
+    exit 0
     ;;
 
   about)
