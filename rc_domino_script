@@ -2878,7 +2878,7 @@ domino_process_monitor()
       tasks="${tasks} [ ]  $task\n"
     fi
 
-  done < "$DOMINO_DATA_PATH//pid.nbf"
+  done < "$DOMINO_DATA_PATH/pid.nbf"
 
   if [ "$1" = "1" ]; then
     clear
@@ -2922,7 +2922,7 @@ domino_shutdown_monitor()
       return 1
     fi
 
-    if [ "$(expr $seconds "%" 3)" = "0" ]; then
+    if [ "$(expr $seconds "%" 2)" = "0" ]; then
       log=1
     else
       log=0
