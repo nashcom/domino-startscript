@@ -32,7 +32,7 @@ ColorOff='\033[0m'
 ColorBlack='\033[0;30m'
 ColorRed='\033[0;31m'
 ColorGreen='\033[0;32m'
-ColorYellow='\033[0;33m'
+ColorYellow='\033[1;33m'
 ColorBlue='\033[0;34m'
 ColorPurple='\033[0;35m'
 ColorCyan='\033[0;36m'
@@ -2518,9 +2518,9 @@ domino_start()
   fi
 
   DOMINO_ARCHIVE_LOG_BACKGROUND="yes"
+  check_create_directories
   archive_logs
   startup_remove_file_check
-  check_create_directories
 
   check_one_touch_setup
 
