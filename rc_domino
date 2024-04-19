@@ -109,7 +109,7 @@ SUDO()
 # If no systemd is running start server directy (Docker, Podman, K8s, WSL)
 
 if [ "$LARCH" = "linux" ]; then
-  if [ -z "$( ps -p 1 -o cmd= | grep systemd)" ]; then
+  if [ -z "$(ps --no-headers -o comm 1 | grep systemd)" ]; then
 
     if [ "$LOGNAME" = "$DOMINO_USER" ]; then
       $DOMINO_START_SCRIPT "$1" "$2" "$3" "$4" "$5" "$6"
