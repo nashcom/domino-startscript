@@ -61,23 +61,34 @@ header ()
 
 install_package()
 {
- if [ -x /usr/bin/zypper ]; then
-   zypper install -y "$@"
+  if [ -x /usr/bin/zypper ]; then
+    /usr/bin/zypper install -y "$@"
 
- elif [ -x /usr/bin/dnf ]; then
-   dnf install -y "$@"
+  elif [ -x /usr/bin/dnf ]; then
+    /usr/bin/dnf install -y "$@"
 
- elif [ -x /usr/bin/yum ]; then
-   yum install -y "$@"
+  elif [ -x /usr/bin/tdnf ]; then
+    /usr/bin/tdnf install -y "$@"
 
- elif [ -x /usr/bin/apt-get ]; then
-   apt-get install -y "$@"
+  elif [ -x /usr/bin/microdnf ]; then
+    /usr/bin/microdnf install -y "$@"
 
- else
-   echo "No package manager found!"
-   exit 1
- fi
+  elif [ -x /usr/bin/yum ]; then
+    /usr/bin/yum install -y "$@"
 
+  elif [ -x /usr/bin/apt-get ]; then
+    /usr/bin/apt-get install -y "$@"
+
+  elif [ -x /usr/bin/pacman ]; then
+    /usr/bin/pacman --noconfirm -Sy "$@"
+
+  elif [ -x /sbin/apk ]; then
+    /sbin/apk add "$@"
+
+  else
+    log_error "No package manager found!"
+    exit 1
+  fi
 }
 
 install_packages()

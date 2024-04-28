@@ -124,6 +124,46 @@ remove_directory()
   return 0
 }
 
+install_package()
+{
+  if [ -x /usr/bin/zypper ]; then
+    /usr/bin/zypper install -y "$@"
+
+  elif [ -x /usr/bin/dnf ]; then
+    /usr/bin/dnf install -y "$@"
+
+  elif [ -x /usr/bin/tdnf ]; then
+    /usr/bin/tdnf install -y "$@"
+
+  elif [ -x /usr/bin/microdnf ]; then
+    /usr/bin/microdnf install -y "$@"
+
+  elif [ -x /usr/bin/yum ]; then
+    /usr/bin/yum install -y "$@"
+
+  elif [ -x /usr/bin/apt-get ]; then
+    /usr/bin/apt-get install -y "$@"
+
+  elif [ -x /usr/bin/pacman ]; then
+    /usr/bin/pacman --noconfirm -Sy "$@"
+
+  elif [ -x /sbin/apk ]; then
+    /sbin/apk add "$@"
+
+  else
+    log_error "No package manager found!"
+    exit 1
+  fi
+}
+
+install_packages()
+{
+  local PACKAGE=
+  for PACKAGE in $*; do
+    install_package $PACKAGE
+  done
+}
+
 
 config_firewall()
 {
@@ -329,6 +369,11 @@ fi
 
 mkdir -p "$INSTALL_TEMP_DIR"
 cd "$INSTALL_TEMP_DIR"
+
+
+header "Installing required software"
+
+install_package unzip
 
 header "Download Domino Start Script Project"
 
