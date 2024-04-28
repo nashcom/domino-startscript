@@ -373,7 +373,7 @@ cd "$INSTALL_TEMP_DIR"
 
 header "Installing required software"
 
-install_package unzip
+install_packages unzip ncurses jq
 
 header "Download Domino Start Script Project"
 

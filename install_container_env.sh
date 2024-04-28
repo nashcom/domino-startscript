@@ -325,7 +325,7 @@ install_software()
   esac
 
   # install required and useful packages
-  install_packages tar sysstat net-tools jq gettext git
+  install_packages tar sysstat net-tools jq gettext git ncurses unzip
 
   # additional packages by platform
 
