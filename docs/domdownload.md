@@ -28,7 +28,7 @@ The script is also leveraged in the container build script in the [HCL Domino Co
 # Functionality
 
 - Navigate the My HCL Software via command line to download or list software
-- Navigate the [autoupdate.jwt](https://ds_infolib.hcltechsw.com/software.jwt) data to download or list software
+- Navigate the [software.jwt](https://ds_infolib.hcltechsw.com/software.jwt) data to download or list software
 - Determine the latest version of a product via [product.jwt](https://ds_infolib.hcltechsw.com/software.jwt).
 - "**local mode**": Download software from an own internal server leveraging software.jwt.
   Can be also downloaded manually in an air gap environment.
