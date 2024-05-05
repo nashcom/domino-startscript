@@ -187,7 +187,7 @@ else
 fi
 
 if [ -z "$LARCH" ]; then
-  echo "Unknown platform `uname`"
+  echo "Unknown platform $(uname)"
   exit 1
 fi
 
@@ -579,7 +579,7 @@ get_notes_ini_var ()
     return 0 
   fi 
 
-  ret_ini_var=`awk -F '(=| =)' -v SEARCH_STR="$2" '{if (tolower($1) == tolower(SEARCH_STR)) print $2}' $1 | xargs` 
+  ret_ini_var=$(awk -F '(=| =)' -v SEARCH_STR="$2" '{if (tolower($1) == tolower(SEARCH_STR)) print $2}' $1 | xargs)
   return 0 
 }
 
@@ -689,7 +689,7 @@ run_external_script ()
   if [ -z "$EXECUTE_SCRIPT_CHECK_OWNER" ]; then
     DebugText "not checking script owner for [$1]" 
   else
-    SCRIPT_OWNER=`stat -c %U $1`  
+    SCRIPT_OWNER=$(stat -c %U $1)
     if [ "$SCRIPT_OWNER" = "$EXECUTE_SCRIPT_CHECK_OWNER" ]; then
       DebugText "execution check script [$1] OK -- Owner: $SCRIPT_OWNER" 
     else
@@ -1033,7 +1033,7 @@ move_database()
     return 1
   fi
 
-  directory=`dirname $2`
+  directory=$(dirname $2)
   DebugText "dirname for rename [$directory]"
   check_create_dir "$directory" "Database Log Dir"
   
@@ -1085,7 +1085,7 @@ check_log_db_rename()
 
       check_create_dir "$DOMINO_LOG_DB_BACKUP_DIR" "Domino LogDbBackup Dir"
 
-      DOMINO_LOG_DB_BACKUP="$DOMINO_LOG_DB_BACKUP_DIR/log_"`LANG=C date +"%Y%m%d"`".nsf"
+      DOMINO_LOG_DB_BACKUP="$DOMINO_LOG_DB_BACKUP_DIR/log_"$(LANG=C date +"%Y%m%d")".nsf"
     else
       # create directory anyway if configured. log file might need it
       check_create_dir "$DOMINO_LOG_DB_BACKUP_DIR" "Domino LogDbBackup Dir"
@@ -1124,7 +1124,7 @@ check_domlog_db_rename()
 
       check_create_dir "$DOMINO_DOMLOG_DB_BACKUP_DIR" "Domino LogDbBackup Dir"
       
-      DOMINO_DOMLOG_DB_BACKUP="$DOMINO_DOMLOG_DB_BACKUP_DIR/log_"`LANG=C date +"%Y%m%d"`".nsf"
+      DOMINO_DOMLOG_DB_BACKUP="$DOMINO_DOMLOG_DB_BACKUP_DIR/log_"$(LANG=C date +"%Y%m%d")".nsf"
     else
       # create directory anyway if configured. log file might need it
       check_create_dir "$DOMINO_DOMLOG_DB_BACKUP_DIR" "Domino LogDbBackup Dir"
@@ -1600,10 +1600,10 @@ usage_extension_commands ()
     if [ -x "$DOMINO_CUSTOM_COMMAND_BASEPATH" ]; then
       echo
       custom_commands=
-      ALL_SCRIPTS=`find $DOMINO_CUSTOM_COMMAND_BASEPATH/* -maxdepth 1`
+      ALL_SCRIPTS=$(find $DOMINO_CUSTOM_COMMAND_BASEPATH/* -maxdepth 1)
       for script_name in $ALL_SCRIPTS; do
         if [ -x "$script_name" ]; then
-          custom_command=`basename $script_name`
+          custom_command=$(basename $script_name)
           if [ -z "$custom_commands" ]; then
             custom_commands=$custom_command
           else
@@ -1625,7 +1625,7 @@ usage ()
   echo 
   show_version
   echo
-  echo "Usage: `basename $SCRIPT_NAME` { start | stop | restart | status | console (monitor) | quit}"
+  echo "Usage: $(basename $SCRIPT_NAME) { start | stop | restart | status | console (monitor) | quit}"
   echo "{ start live | stop live | restart live | compact | restartcompact | compactnextstart}"
   echo "{ cmd <command> <n>}"
   echo "{ about(+) |version | help}"
@@ -2168,7 +2168,7 @@ shutdown_java_controller ()
   
   while [ $? -eq 1 ]; do
     sleep 10
-    count=`expr $count + 1`
+    count=$(expr $count + 1)
     if [ $count -ge 10 ]; then
       # kill java controller and lock file
       cleanup_java_controller
@@ -2530,7 +2530,7 @@ domino_start()
   echo
   echo "Starting Domino for $PLATFORM_NAME ($DOMINO_SERVER)"
 
-  DOMINO_START_DATETIME=`date`
+  DOMINO_START_DATETIME=$(date)
   echo "---- Starting at $DOMINO_START_DATETIME  ----" >> $DOMINO_OUTPUT_LOG
   echo >> $DOMINO_OUTPUT_LOG
   echo "---- environment info ----" >> $DOMINO_OUTPUT_LOG

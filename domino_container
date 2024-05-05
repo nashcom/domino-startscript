@@ -557,10 +557,10 @@ upload_image ()
 
   DOMINO_IMAGE_NAME=domino-docker
   local CURRENT_SOFTWARE=$(grep "^$DOMINO_IMAGE_NAME|" $SOFTWARE_FILE | head -1)
-  DOMINO_VERSION=`echo $CURRENT_SOFTWARE|cut -d'|' -f2`
-  DOMINO_IMAGE_FILE_NAME=`echo $CURRENT_SOFTWARE|cut -d'|' -f3`
-  DOMINO_IMAGE_VERSION=`echo $CURRENT_SOFTWARE|cut -d'|' -f4`
-  DOMINO_IMAGE_HASH=`echo $CURRENT_SOFTWARE|cut -d'|' -f5`
+  DOMINO_VERSION=$(echo $CURRENT_SOFTWARE|cut -d'|' -f2)
+  DOMINO_IMAGE_FILE_NAME=$(echo $CURRENT_SOFTWARE|cut -d'|' -f3)
+  DOMINO_IMAGE_VERSION=$(echo $CURRENT_SOFTWARE|cut -d'|' -f4)
+  DOMINO_IMAGE_HASH=$(echo $CURRENT_SOFTWARE|cut -d'|' -f5)
 
   if [ -z "$DOMINO_IMAGE_FILE_NAME" ]; then
     log_and_exit "No container image name configured!"
@@ -600,7 +600,7 @@ upload_image ()
   fi
 
   if [ -n "$DOMINO_IMAGE_HASH" ]; then
-    local HASH=`sha256sum "$DOMINO_IMAGE_FILE_PATH" -b | cut -d" " -f1`
+    local HASH=$(sha256sum "$DOMINO_IMAGE_FILE_PATH" -b | cut -d" " -f1)
 
     if [ ! "$DOMINO_IMAGE_HASH" = "$HASH" ]; then
       log_and_exit "Software image was not downloaded correctly! Checksum for [$DOMINO_IMAGE_FILE_PATH] does not match!"

@@ -42,7 +42,7 @@ DOMINO_SYSTEMD_NAME=domino.service
 # . /etc/sysconfig/rc_domino_config
 
 # Optional get the name from script name e.g. 'domino_myuser1"
-# DOMINO_USER=`basename $0 | cut -f 2 -d _`
+# DOMINO_USER=$(basename $0 | cut -f 2 -d _)
 
 # VERBOSE_INFO="yes"
 

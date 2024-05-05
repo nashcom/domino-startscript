@@ -69,22 +69,6 @@ DebugText()
   return 0
 }
 
-check_file_busy()
-{
-  if [ ! -e "$1" ]; then
-    return 0
-  fi
-
-  local TARGET_REAL_BIN=`readlink -f $1`
-  local FOUND_TARGETS=`lsof "$TARGET_REAL_BIN" 2>/dev/null | grep "$TARGET_REAL_BIN"`
-
-  if [ -n "$FOUND_TARGETS" ]; then
-    return 1
-  else
-    return 0
-  fi
-}
-
 nsh_cmp()
 {
   if [ -z "$1" ]; then
@@ -108,8 +92,8 @@ nsh_cmp()
     return $?
   fi
 
-  HASH1=`sha256sum "$1" | cut -d" " -f1`
-  HASH2=`sha256sum "$2" | cut -d" " -f1`
+  HASH1=$(sha256sum "$1" | cut -d" " -f1)
+  HASH2=$(sha256sum "$2" | cut -d" " -f1)
 
   if [ "$HASH1" = "$HASH2" ]; then
     return 0
@@ -144,14 +128,12 @@ install_file()
       return 1
     fi
 
-    check_file_busy "$TARGET_FILE"
-
-    if [ $? -eq 1 ]; then
-      echo "[$TARGET_FILE] Error - Can not update file -- Binary in use"
-      return 1
-    fi
   fi
   
+  if [ -e "$TARGET_FILE" ]; then
+    unlink "$TARGET_FILE"
+  fi
+
   cp -f "$SOURCE_FILE" "$TARGET_FILE"
  
   if [ ! -z "$OWNER" ]; then

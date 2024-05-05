@@ -481,7 +481,7 @@ print_runtime()
   echo
 
   # the following line does not work on OSX
-  # echo "Completed in" `date -d@$SECONDS -u +%T`
+  # echo "Completed in" $(date -d@$SECONDS -u +%T)
 
   hours=$((SECONDS / 3600))
   seconds=$((SECONDS % 3600))

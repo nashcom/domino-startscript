@@ -38,7 +38,7 @@ LINUX_ID=$(cat /etc/os-release | grep "^ID="| cut -d= -f2 | xargs)
 
 # in docker environment the LOGNAME is not set
 if [ -z "$LOGNAME" ]; then
-  export LOGNAME=`whoami`
+  export LOGNAME=$(whoami)
 fi
 
 stop_server ()
