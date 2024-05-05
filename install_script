@@ -2,7 +2,7 @@
 
 ###########################################################################
 # Install Script - Start/Stop Script for Domino on xLinux/zLinux/AIX      #
-# Version  3.9.1 08.04.2024                                               #
+# Version  3.9.2 05.01:2024                                               #
 #                                                                         #
 # (C) Copyright Daniel Nashed/NashCom 2005-2024                           #
 # Feedback domino_unix@nashcom.de                                         #
@@ -32,7 +32,7 @@ DOMINO_DOCKER_SCRIPT=entrypoint.sh
 DONT_TOUCH_THIS_NASHCOM_PATH=/opt/nashcom/startscript
 DONT_TOUCH_THIS_STANDARD_USER=notes
 
-DOMINO_SCRIPT_VERSION=3.9.1
+DOMINO_SCRIPT_VERSION=3.9.2
 
 # if you really really need to, change this and all files will be patched
 
@@ -409,6 +409,7 @@ if [ -e "$OLD_RC_DOMINO_SCRIPT_LOCATION" ]; then
   echo link for legacy start script location created [$OLD_RC_DOMINO_SCRIPT_LOCATION]
 fi
 
+# In a container environment install entrypoint.sh
 detect_container_env
 
 if [ -n "$CONTAINER_ENV" ]; then
@@ -416,7 +417,7 @@ if [ -n "$CONTAINER_ENV" ]; then
   if [ "$CONTAINER_ENV" = "other" ]; then
     header "Container environment detected!"
   else
-    header "${CONTAINER_ENV^} container environment detected!"
+    header "${CONTAINER_ENV} container environment detected!"
   fi
   
   if [ "$PARAM1" = "upd" ]; then
@@ -424,34 +425,29 @@ if [ -n "$CONTAINER_ENV" ]; then
   else
     install_file_noupdate "$START_SCRIPT_DIR/$DOMINO_DOCKER_SCRIPT" "/$DOMINO_DOCKER_SCRIPT" $ROOT_USER $ROOT_GROUP 755
   fi
+fi
 
-elif [ -n "$(uname -r|grep microsoft)" ]; then
-  # WSL does not support systemd
-  header "WSL detected"
+# Configure systemd in available
+if [ ${LARCH} = "linux" ]; then
+  if [ -e /etc/systemd/system ]; then
 
-else
-
-  if [ ${LARCH} = "linux" ]; then
-    if [ -e /etc/systemd/system ]; then
-
-      if [ "$PARAM1" = "upd" ]; then
-        install_file $START_SCRIPT_DIR/domino.service /etc/systemd/system/$DOMINO_SYSTEMD_NAME $ROOT_USER $ROOT_GROUP 644
-      else
-        install_file_noupdate $START_SCRIPT_DIR/domino.service /etc/systemd/system/$DOMINO_SYSTEMD_NAME $ROOT_USER $ROOT_GROUP 644
-      fi
-
-      if [ $? -eq 2 ]; then
-        systemctl daemon-reload
-      fi
+    if [ "$PARAM1" = "upd" ]; then
+      install_file $START_SCRIPT_DIR/domino.service /etc/systemd/system/$DOMINO_SYSTEMD_NAME $ROOT_USER $ROOT_GROUP 644
+    else
+      install_file_noupdate $START_SCRIPT_DIR/domino.service /etc/systemd/system/$DOMINO_SYSTEMD_NAME $ROOT_USER $ROOT_GROUP 644
     fi
 
-    patch_install_dir "/etc/systemd/system/$DOMINO_SYSTEMD_NAME"
-    patch_user_name "/etc/systemd/system/$DOMINO_SYSTEMD_NAME"
-
-    # add domino service (systemd/init.d)
-    $DOMINO_SCRIPT_BIN service add
-
+    if [ $? -eq 2 ]; then
+      systemctl daemon-reload
+    fi
   fi
+
+  patch_install_dir "/etc/systemd/system/$DOMINO_SYSTEMD_NAME"
+  patch_user_name "/etc/systemd/system/$DOMINO_SYSTEMD_NAME"
+
+  # add domino service (systemd/init.d)
+  $DOMINO_SCRIPT_BIN service add
+
 fi
 
 if [ -e "$DOMINO_SCRIPT_BIN" ]; then
