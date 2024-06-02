@@ -2,7 +2,7 @@
 
 ###########################################################################
 # Domino Software Download Script                                         #
-# Version 1.0.1 24.04.2024                                                #
+# Version 1.0.2 02.05.2024                                                #
 # Copyright Nash!Com, Daniel Nashed                                       #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #
@@ -43,11 +43,12 @@
 # 0.9.9  Better error output for invalid refesh tokens
 # 1.0.0  Support for Alpine Linux
 # 1.0.1  Allow to be invoked if stdin is redirected. Default config changes
+# 1.0.2  Add redirect support for custom download option
 
 SCRIPT_NAME=$0
 SCRIPT_DIR=$(dirname $SCRIPT_NAME)
 
-DOMDOWNLOAD_SCRIPT_VERSION=1.0.1
+DOMDOWNLOAD_SCRIPT_VERSION=1.0.2
 
 # Just print version and exit
 case "$1" in
@@ -827,7 +828,7 @@ DownloadCustom()
   fi
 
   PerfTimerBegin
-  $CURL_DOWNLOAD_CMD "$DOWNLOAD_URL" -o "$OUTFILE_FULLPATH" "$DOWNLOAD_BASIC_AUTH_CMD" "$DOWNLOAD_BASIC_AUTH"
+  $CURL_DOWNLOAD_CMD -L "$DOWNLOAD_URL" -o "$OUTFILE_FULLPATH" "$DOWNLOAD_BASIC_AUTH_CMD" "$DOWNLOAD_BASIC_AUTH"
   PerfTimerEnd $PERF_MAX_CURL "$OUTFILE_FULLPATH"
 
   if [ ! -e "$OUTFILE_FULLPATH" ]; then

@@ -375,6 +375,12 @@ header "Installing required software"
 
 install_packages unzip ncurses jq
 
+# Install sudo if not present. It's required for systemd
+if [ ! -e /usr/bin/sudo ]; then
+  install_package sudo
+fi
+
+
 header "Download Domino Start Script Project"
 
 # Check if projects exist already and determine scripts

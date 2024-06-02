@@ -92,7 +92,7 @@ The standard name and group used is `notes:notes`.
 It is strongly recommended to stay with the defaults provided. It simplifies your environment and ensures additional software installes seamless.  
 
 ```
-adduser notes -U
+useradd notes -U -m
 ```
 
 In case your user should login directly, you can set a password.  
