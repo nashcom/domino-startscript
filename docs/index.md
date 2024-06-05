@@ -62,22 +62,92 @@ Obviously **backup** should always be a separate mount point.
 ```
 {: .fh-default }
 
-## Download the start script tar file
+
+
+## Recommented installation: Clone the start script repository
+
+If you can directly access GitHub from your Linux machine, the recommended way is to clone the GitHub repository.
+Cloning the repository allows to resync to the latest version when it is updated without manually downloading.
+
+
+### Install Git client on Linux
+
+
+Redhat/CentOS based platforms
+
+```
+yum install git
+```
+
+Ubuntu / Debian based platforms
+
+
+```
+apt get install git
+
+```
+
+### Create a new directory and switch to it
+
+
+```
+mkdir -p /local/github
+cd /local/github
+```
+
+### Clone the repository
+
+Cloning the repository makes it available locally.
+
+```
+git clone https://github.com/nashcom/domino-startscript.git
+```
+
+Switch to the new directory and invoke the installer 
+
+```
+cd domino-startscript
+./install_script
+```
+
+### Resyncing the repository to the latest version (pull)
+
+If the remote repository changed, the local clone can be updated with a sinlge command.
+
+
+```
+git pull
+```
+
+Note: If the local repository changed, the pull will not work and you might need to undo local changes.
+
+First check which files have changed and what changed to undestand what changed and what you might want to keep.
+
+```
+git status
+git diff
+```
+
+If nothing needs to be safed, discard all changes before trying to pull again.
+
+```
+git checkout *
+```
+
+If the pull operation changed the start script, use the `install_script` command to update it.
+
+
+## Alternate option: Download the start script tar file
 
 Check the [Release Page](https://github.com/nashcom/domino-startscript/releases) for the current version.  
 You can either download the start script tar file manually or leverage for example curl for automated downloads.
 
-Example to download the file directly to a Linux machine:
-
-```
-curl -LO https://github.com/nashcom/domino-startscript/releases/download/v3.7.0/domino-startscript_v3.7.0.tar
-```
 
 ## Extract the tar file
 
 
 ```
-tar -xf domino-startscript_v3.7.0.tar
+tar -xf domino-startscript_latest.tar
 ```
 
 Tip: You can download the latest version using a special curl command:
@@ -86,11 +156,13 @@ Tip: You can download the latest version using a special curl command:
 curl -L $(curl -sL https://raw.githubusercontent.com/nashcom/domino-startscript/main/latest.txt) -o domino-startscript_latest.tar
 ```
 
+
 ## Use install_script for automated installation
 
 The Domino Start Script comes with an installation script, which installs automatically using the most common defaults.
 
-Switch to the start script directory and run the `install script`.  
+Switch to the start script directory and run the `install script`.
+
 Note: The install script can also be used to update existing scripts.
 
 ```

@@ -576,6 +576,7 @@ CheckConnection()
     echo "$MYHCL_PORTAL_URL"
     echo "$MYHCL_API_URL"
     echo "$HCL_AUTOUPDATE_URL"
+    echo "$MYHCL_CDN_URL"
     echo "$GITHUB_URL"
     echo
     echo
@@ -2249,6 +2250,9 @@ fi
 if [ -z "$MYHCL_PORTAL_URL" ]; then
   MYHCL_PORTAL_URL=https://my.hcltechsw.com
 fi
+
+MYHCL_CDN_URL=https://d1rvrben0dw4ya.cloudfront.net
+
 
 MYHCL_CATALOG_URL=$MYHCL_PORTAL_URL/catalog/domino
 
