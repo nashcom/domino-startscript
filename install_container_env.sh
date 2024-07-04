@@ -1,11 +1,11 @@
 #!/bin/bash
 
 ############################################################################
-# Copyright Nash!Com, Daniel Nashed 2022 - APACHE 2.0 see LICENSE
+# Copyright Nash!Com, Daniel Nashed 2022-2024 - APACHE 2.0 see LICENSE
 ############################################################################
 
 # Container environment installation script
-# Version 1.0.0 1212.2022
+# Version 1.0.1 04.07.2024
 
 # - Installs required software
 # - Adds notes:notes user and group
@@ -13,7 +13,11 @@
 # - Clones HCL Domino container project and Domino start script project
 # - Installs NashCom Domino container script (dominoctl)
 # - Sets security limits
+# - Configure NRPC, HTTP and HTTPS if firewalld is configured
 
+SCRIPT_NAME=$0
+PARAM1=$1
+START_SCRIPT_DIR=$(dirname $0)
 
 SPECIAL_CURL_ARGS=
 CURL_CMD="curl --fail --location --connect-timeout 15 --max-time 300 $SPECIAL_CURL_ARGS"
@@ -254,13 +258,13 @@ config_firewall()
   fi
 
   # Add well known NRPC port
-  cp "local/github/domino_startscript/extra/firewalld/nrpc.xml" /etc/firewalld/services/
+  cp "/local/github/domino-startscript/extra/firewalld/nrpc.xml" /etc/firewalld/services/
 
   # Reload just in case to let firewalld notice the change
   firewall-cmd --reload
 
   # enable NRPC, HTTP, HTTPS and SMTP in firewall
-  firewall-cmd --zone=public --permanent --add-service={nrpc,http,https,smtp}
+  firewall-cmd --zone=public --permanent --add-service={nrpc,http,https}
 
   # reload firewall changes
   firewall-cmd --reload
@@ -538,7 +542,7 @@ create_directories
 
 install
 set_security_limits
-#config_firewall
+config_firewall
 
 detect_container_env
 

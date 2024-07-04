@@ -101,6 +101,9 @@ print_infos()
   get_entry CPU_MHZ /proc/cpuinfo "cpu MHz"
   get_entry CPU_CACHE_SIZE /proc/cpuinfo "cache size"
 
+  CPU_COUNT=$(grep "^model name" /proc/cpuinfo | wc -l)
+  CPU_INFO=$(grep "^model name"  /proc/cpuinfo | cut -f2 -d":" | sort | uniq -c | xargs)
+
   get_entry MEM_TOTAL  /proc/meminfo "MemTotal"     ":" mem
   get_entry MEM_AVAIL  /proc/meminfo "MemAvailable" ":" mem
   get_entry MEM_CACHED /proc/meminfo "Cached"       ":" mem
@@ -163,7 +166,7 @@ print_infos()
 
   printf "\n"
 
-  printf "CPU Model     :      $CPU_MODEL\n"
+  printf "CPU Info      :      $CPU_INFO\n"
   printf "CPU MHz       :      $CPU_MHZ\n"
   printf "CPU Cache     :      $CPU_CACHE_SIZE\n"
 
