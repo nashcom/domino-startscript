@@ -1,4 +1,5 @@
 #!/bin/bash
+#!/bin/bash
 
 ###########################################################################
 # Install Script - Domino Container Script                                #
@@ -240,4 +241,3 @@ fi
 header Done
 
 exit 0
-
