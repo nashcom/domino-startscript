@@ -2445,9 +2445,18 @@ check_one_touch_setup()
     return 0
   fi
 
-  DOMINO_AUTO_CONFIG_ENV_FILE=$DOMINO_DATA_PATH/DominoAutoConfig.env
-  DOMINO_AUTO_CONFIG_JSON_FILE=$DOMINO_DATA_PATH/DominoAutoConfig.json
-  DOMINO_AUTO_CONFIG_TEMPLATE_JSON_FILE=$DOMINO_DATA_PATH/DominoAutoConfigTemplate.json
+  if [ -z "$DOMINO_AUTO_CONFIG_ENV_FILE" ]; then
+    DOMINO_AUTO_CONFIG_ENV_FILE=$DOMINO_DATA_PATH/DominoAutoConfig.env
+  fi
+
+  if [ -z "$DOMINO_AUTO_CONFIG_JSON_FILE" ]; then
+    DOMINO_AUTO_CONFIG_JSON_FILE=$DOMINO_DATA_PATH/DominoAutoConfig.json
+  fi
+
+  if [ -z "$DOMINO_AUTO_CONFIG_TEMPLATE_JSON_FILE" ]; then
+    DOMINO_AUTO_CONFIG_TEMPLATE_JSON_FILE=$DOMINO_DATA_PATH/DominoAutoConfigTemplate.json
+  fi
+
 
   # Replace template file variables only if no configuration file present
   if [ ! -e "$DOMINO_AUTO_CONFIG_JSON_FILE" ]; then
