@@ -2,7 +2,7 @@
 
 ###########################################################################
 # Domino Software Download Script                                         #
-# Version 1.0.2 02.05.2024                                                #
+# Version 1.0.3 21.07.2024                                                #
 # Copyright Nash!Com, Daniel Nashed                                       #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #
@@ -44,11 +44,12 @@
 # 1.0.0  Support for Alpine Linux
 # 1.0.1  Allow to be invoked if stdin is redirected. Default config changes
 # 1.0.2  Add redirect support for custom download option
+# 1.0.3  Add support for direct download specifying -filename & -fileid and -hash
 
 SCRIPT_NAME=$0
 SCRIPT_DIR=$(dirname $SCRIPT_NAME)
 
-DOMDOWNLOAD_SCRIPT_VERSION=1.0.2
+DOMDOWNLOAD_SCRIPT_VERSION=1.0.3
 
 # Just print version and exit
 case "$1" in
@@ -2153,6 +2154,11 @@ Usage()
   echo "-ver=<version>          Version to find"
   echo "-download               Download file after find else print file name"
   echo
+  echo " The following 3 parameters need to be specified for a direct download from My HCLSoftware (MHS)"
+  echo "-fileid=<file ID>       MHS ID for direct download"
+  echo "-filename=<filename>    File name to download download"
+  echo "-hash=<SHA256>          Hash of file to download"
+  echo
   echo "-connect                Confirm internet connection"
   echo "-token                  Prompt for new download token"
   echo "-token=<value>          Set new download token"
@@ -2323,6 +2329,18 @@ for a in "$@"; do
       DOWNLOAD_SELECTED=yes
       ;;
 
+    -fileid=*)
+      FILE_ID=$(echo "$a" | /usr/bin/cut -f2 -d= -s)
+      ;;
+
+    -filename=*)
+      FILE_NAME=$(echo "$a" | /usr/bin/cut -f2 -d= -s)
+      ;;
+
+    -hash=*)
+      FILE_CHECKSUM_SHA256=$(echo "$a" | /usr/bin/cut -f2 -d= -s)
+      ;;
+
     -software)
       SOFTWARE_FILE=software.txt
       ;;
@@ -2478,6 +2496,17 @@ else
     mkdir -p "$SOFTWARE_DIR"
   fi
 fi
+
+
+# Direct download if all information is passed
+if [ -n "$FILE_ID" ] && [ -n "$FILE_NAME" ]  && [ -n "$FILE_CHECKSUM_SHA256" ]; then
+
+  LogMessageIfNotSilent "Downloading WebKit $FILE_NAME ..."
+  DownloadSoftware "$FILE_ID" "$FILE_NAME" "$FILE_CHECKSUM_SHA256"
+  exit 0
+
+fi
+
 
 if [ -n "$SEARCH_PRODUCT_NAME" ] && [ -n "$PRODUCT_VERSION" ] && [ -n "$SEARCH_PLATFORM" ]; then
 
