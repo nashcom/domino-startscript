@@ -39,7 +39,7 @@
 #        Caching access token for 40 minutes to avoid round trips got get a new access token (token is valid for 60 minutes)
 # 0.9.6  Bug fixes
 # 0.9.7  Fit & Finish changes
-# 0.9.8  Performance counter for Linux but not for Mac because there is only a seconds timer in "date" and we don't want to install tools extra for this 
+# 0.9.8  Performance counter for Linux but not for Mac because there is only a seconds timer in "date" and we don't want to install tools extra for this
 # 0.9.9  Better error output for invalid refesh tokens
 # 1.0.0  Support for Alpine Linux
 # 1.0.1  Allow to be invoked if stdin is redirected. Default config changes
@@ -656,7 +656,7 @@ SetRefreshToken()
 
   if [ -z "$REFRESH_TOKEN" ]; then
     LogError "No download token specified"
-    LogMessage "Info: To set a token, please invoke: 'domdownload -token'" 
+    LogMessage "Info: To set a token, please invoke: 'domdownload -token'"
     exit 1
   fi
 
@@ -1253,7 +1253,7 @@ GetDownloadFromPortal()
       echo
       SELECTED=
       while [ -z "$SELECTED" ];
-      do 
+      do
         read -p "Select [1-$N] 0 to cancel, x to go back? " SELECTED;
       done
       echo
@@ -1385,7 +1385,7 @@ DownloadFileDataJSON()
 
   CheckConnection
 
-  # If online download file and parse. In local mode check if file is already parsed 
+  # If online download file and parse. In local mode check if file is already parsed
   if [ "$DOMDOWNLOAD_MODE" = "online" ]; then
 
     DebugText "Downloading: $DOWNLOAD_URL -> $DOWNLOAD_FILE"
@@ -1521,9 +1521,18 @@ GetSoftwareConfig()
   fi
 
   # cut is faster to than JQ and is a very simple operation
-  MYHCL_TOKEN_URL=$(echo "$CONFIG" | /usr/bin/cut -d"|" -f1)
-  MYHCL_DOWNLOAD_URL_PREFIX=$(echo "$CONFIG" | /usr/bin/cut -d"|" -f2)
-  MYHCL_DOWNLOAD_URL_SUFFIX=$(echo "$CONFIG" | /usr/bin/cut -d"|" -f3)
+
+  if [ -z "$MYHCL_TOKEN_URL" ]; then
+    MYHCL_TOKEN_URL=$(echo "$CONFIG" | /usr/bin/cut -d"|" -f1)
+  fi
+
+  if [ -z "$MYHCL_DOWNLOAD_URL_PREFIX" ]; then
+    MYHCL_DOWNLOAD_URL_PREFIX=$(echo "$CONFIG" | /usr/bin/cut -d"|" -f2)
+  fi
+
+  if [ -z "$MYHCL_DOWNLOAD_URL_SUFFIX" ]; then
+    MYHCL_DOWNLOAD_URL_SUFFIX=$(echo "$CONFIG" | /usr/bin/cut -d"|" -f3)
+  fi
 
   DebugText "Token URL:      " $MYHCL_TOKEN_URL
   DebugText "Download Prefix:" $MYHCL_DOWNLOAD_URL_PREFIX
@@ -1693,7 +1702,7 @@ GetDownloadFromSoftwareJSON()
     echo
     SELECTED=
     while [ -z "$SELECTED" ];
-    do 
+    do
       read -p "Select Product [1-$N] 0 to cancel? " SELECTED;
     done
     echo
@@ -1747,7 +1756,7 @@ GetDownloadFromSoftwareJSON()
     echo
     SELECTED=
     while [ -z "$SELECTED" ];
-    do 
+    do
       read -p "Select Type [1-$N] 0 to cancel? " SELECTED;
     done
     echo
@@ -1801,7 +1810,7 @@ GetDownloadFromSoftwareJSON()
     echo
     SELECTED=
     while [ -z "$SELECTED" ];
-    do 
+    do
       read -p "Select Platform [1-$N] 0 to cancel? " SELECTED;
     done
     echo
@@ -1855,7 +1864,7 @@ GetDownloadFromSoftwareJSON()
     echo
     SELECTED=
     while [ -z "$SELECTED" ];
-    do 
+    do
       read -p "Select Version [1-$N] 0 to cancel? " SELECTED;
     done
     echo
@@ -1910,7 +1919,7 @@ GetDownloadFromSoftwareJSON()
     echo
       SELECTED=
       while [ -z "$SELECTED" ];
-      do 
+      do
         read -p "Select Language [1-$N] 0 to cancel? " SELECTED;
       done
       echo
@@ -1965,7 +1974,7 @@ GetDownloadFromSoftwareJSON()
     echo
     SELECTED=
     while [ -z "$SELECTED" ];
-    do 
+    do
       read -p "Select WebKit [1-$N] 0 to cancel? " SELECTED;
     done
     echo
@@ -1997,9 +2006,9 @@ GetDownloadFromSoftwareJSON()
 
 TranslatePlatform()
 {
- 
+
  local PLATFORM_LOWERCASE=$(echo "$SEARCH_PLATFORM" | /usr/bin/awk '{print tolower($0)}')
- 
+
  case "$PLATFORM_LOWERCASE" in
 
     linux|tux)
@@ -2257,10 +2266,13 @@ if [ -z "$MYHCL_PORTAL_URL" ]; then
   MYHCL_PORTAL_URL=https://my.hcltechsw.com
 fi
 
-MYHCL_CDN_URL=https://d1rvrben0dw4ya.cloudfront.net
+if [ -z "$MYHCL_CDN_URL" ]; then
+  MYHCL_CDN_URL=https://d1rvrben0dw4ya.cloudfront.net
+fi
 
-
-MYHCL_CATALOG_URL=$MYHCL_PORTAL_URL/catalog/domino
+if [ -z "$MYHCL_CATALOG_URL" ]; then
+  MYHCL_CATALOG_URL=$MYHCL_PORTAL_URL/catalog/domino
+fi
 
 if [ -z "$MYHCL_API_URL" ]; then
   MYHCL_API_URL=https://api.hcltechsw.com
