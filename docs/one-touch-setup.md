@@ -56,8 +56,8 @@ local/notesdata/DominoAutoConfig.env
 If present during first server start, the start script leverages One-touch Domino setup.
 If both files are present the JSON configuration is preferred.
 
-Refer to the Domino V12 documentation for details:  
-https://help.hcltechsw.com/domino/12.0.0/admin/wn_one-touch_domino_setup.html
+Refer to the [Domino OTS documentation](https://help.hcltechsw.com/domino/12.0.0/admin/wn_one-touch_domino_setup.html) for details.
+
 
 ## Setup files deleted after configuration
 

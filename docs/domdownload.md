@@ -83,5 +83,5 @@ For HTTPS requests the [Curl package is used](https://curl.se/). Curl should be 
 # My HCL Software Download Token
 
 Production and software information can be queried without authentication.
-For Download a My HCL Software download token is required. It can be requested directly from https://my.hcltechsw.com/tokens
+For Download a My HCL Software download token is required. It can be requested directly from [My HCLSoftware download portal]( https://my.hcltechsw.com/tokens).
 The token is a rotating refresh token, which is stored locally by the script.
