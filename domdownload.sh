@@ -45,11 +45,12 @@
 # 1.0.1  Allow to be invoked if stdin is redirected. Default config changes
 # 1.0.2  Add redirect support for custom download option
 # 1.0.3  Add support for direct download specifying -filename & -fileid and -hash
+# 1.0.4  Add error checks for fileURL results specially for license accept returned errors
 
 SCRIPT_NAME=$0
 SCRIPT_DIR=$(dirname $SCRIPT_NAME)
 
-DOMDOWNLOAD_SCRIPT_VERSION=1.0.3
+DOMDOWNLOAD_SCRIPT_VERSION=1.0.4
 
 # Just print version and exit
 case "$1" in
@@ -128,6 +129,17 @@ DebugDump()
     echo
     echo "-------------------- $1 --------------------"
     echo "$2"
+    echo "-------------------- $1 --------------------"
+    echo
+  fi
+}
+
+DebugDumpFile()
+{
+  if [ "$DOMDOWNLOAD_DEBUG" = "yes" ]; then
+    echo
+    echo "-------------------- $1 --------------------"
+    cat "$2"
     echo "-------------------- $1 --------------------"
     echo
   fi
@@ -911,14 +923,28 @@ DownloadSoftware()
 
   DebugText "Request: ${MYHCL_DOWNLOAD_URL_PREFIX}$1${MYHCL_DOWNLOAD_URL_SUFFIX}"
 
+  RESULT_TEMP_FILE="$OUTFILE_FULLPATH.error"
+
   PerfTimerBegin
-  DOWNLOAD_FILE_URL=$($CURL_CMD -s --write-out "%{redirect_url}\n" --output /dev/null "${MYHCL_DOWNLOAD_URL_PREFIX}$1${MYHCL_DOWNLOAD_URL_SUFFIX}" -H "Authorization: Bearer $ACCESS_TOKEN" -o "$OUTFILE_FULLPATH")
+  DOWNLOAD_FILE_URL=$($CURL_CMD -s --write-out "%{redirect_url}\n" --output "$RESULT_TEMP_FILE" "${MYHCL_DOWNLOAD_URL_PREFIX}$1${MYHCL_DOWNLOAD_URL_SUFFIX}" -H "Authorization: Bearer $ACCESS_TOKEN" -o "$OUTFILE_FULLPATH")
   PerfTimerEnd $PERF_MAX_CURL "MyHCL-API-FileURL"
 
+  DebugDumpFile "FileURL Result" "$RESULT_TEMP_FILE"
+
   if [ -z "$DOWNLOAD_FILE_URL" ]; then
-    LogError "No download URL returned"
+
+    ERROR_TEXT=$(cat "$RESULT_TEMP_FILE" | $JQ_CMD -r .summary)
+    if [ -z "$ERROR_TEXT" ]; then
+        LogError "No download URL returned"
+    else
+      LogError "$ERROR_TEXT"
+    fi
+
+    remove_file "$RESULT_TEMP_FILE"
     return 1
   fi
+
+  remove_file "$RESULT_TEMP_FILE"
 
   if [ "$PRINT_DOWNLOAD_CURL_CMD" = "yes" ]; then
 
@@ -972,6 +998,7 @@ DownloadSoftware()
     ERROR_TXT=$(cat "$OUTFILE_FULLPATH" | $JQ_CMD .summary)
 
     LogError "Failed to download ($1 -> $OUTFILE_FULLPATH): [$ERROR_TXT]"
+    remove_file "$OUTFILE_FULLPATH"
     return 1
   fi
 
@@ -2584,8 +2611,11 @@ if [ -n "$DOWNLOAD_WEB_KIT_NAME" ]; then
     if [ "$FORCE_DOWNLOAD" = "yes" ]; then
       DebugText "WebKit [$DOWNLOAD_WEB_KIT_NAME] already exists, but download was forced: [$OUTFILE_WEBKIT_FULLPATH]"
     else
-      LogMessageIfNotSilent "Info: File already exists [$OUTFILE_WEBKIT_FULLPATH]"
-      exit 0
+
+      if [ ! "$PRINT_DOWNLOAD_CURL_CMD" = "yes" ]; then
+        LogMessageIfNotSilent "Info: File already exists [$OUTFILE_WEBKIT_FULLPATH]"
+        exit 0
+      fi
     fi
   fi
 
