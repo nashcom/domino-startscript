@@ -915,7 +915,6 @@ inspect_container ()
       CONTAINER_IMAGE_ID="$TMP_ID"
     else
       CONTAINER_IMAGE_ID="$($CONTAINER_CMD inspect --format "{{.ID}}" $TMP_ID 2>/dev/null | cut -d":" -f2 )"
-      echo "Test1 - CONTAINER_IMAGE_ID: [$CONTAINER_IMAGE_ID]"
     fi
   fi
 

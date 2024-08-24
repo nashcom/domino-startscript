@@ -5,7 +5,7 @@
 ############################################################################
 
 # Container environment installation script
-# Version 1.0.1 04.07.2024
+# Version 1.0.2 24.08.2024
 
 # - Installs required software
 # - Adds notes:notes user and group
@@ -464,7 +464,12 @@ install_container_env()
     install_package "$CNT"
   else
     if [ -x /usr/bin/apt-get ]; then
-      install_packages docker.io docker-buildx docker-compose-v2
+ 
+      # On Ubuntu the standard Docker package is too old
+      install_package curl
+      curl -fsSL https://get.docker.com | bash -
+
+      # install_packages docker.io docker-buildx docker-compose-v2
 
     else
       # Assume Redhat/CentOS compatible environments
