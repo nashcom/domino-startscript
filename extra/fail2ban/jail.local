@@ -1,4 +1,5 @@
 # Fail2Ban filter default configuration for HCL Domino (HTTP, SMTP, LDAP, POP3, IMAP)
+# Redhat/CentOS and clones with Firewalld
 # Date  : 20.03.2022
 # Author: Daniel Nashed (Nash!Com)
 
@@ -12,6 +13,7 @@ bantime  = 600
 maxretry = 8
 loglevel = 4
 ignoreip = 127.0.0.1/8
+port     = 0:65535
 
 # Override /etc/fail2ban/jail.d/00-firewalld.conf:
 banaction = iptables-multiport
@@ -30,7 +32,6 @@ filter   = domino
 logpath  = /local/notesdata/notes.log
 backend  = polling
 
-#port    = 80,443
 port     = 0:65535
 findtime = 300
 bantime  = 300

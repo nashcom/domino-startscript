@@ -15,6 +15,12 @@ Blocking IP addresses after a couple of login failures is an effective way to in
 It uses iptable firewall rules to block IP addresses once an application has reported login failures.
 There are filters for many applications already included.
 
+## Supported environments
+
+- Redhat/CentOS and clones with Firewalld
+- Ubuntu with UFW
+
+
 ## How does fail2ban work with Domino?
 
 Domino logs authentication errors in a standardized way for all internet protocols.  

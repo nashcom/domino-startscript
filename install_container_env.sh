@@ -183,6 +183,7 @@ linux_update()
   elif [ -x /sbin/apk ]; then
     header "Updating Linux via apk"
     apk update
+    apk upgrade
 
   fi
 }
@@ -346,7 +347,7 @@ install_software()
     install_package bind9-utils
 
   elif [ -x /sbin/apk ]; then
-    install_packages bash outils-sha256 curl gettext gawk openssl shadow
+    install_packages bash outils-sha256 curl gettext gawk openssl shadow procps
 
   else
 

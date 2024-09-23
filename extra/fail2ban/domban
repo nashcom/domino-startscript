@@ -27,21 +27,6 @@
 # Blocking based on TLS/SSL errors with an additional filter string
 #
 
-check_file_busy()
-{
-  if [ ! -e "$1" ]; then
-    return 0
-  fi
-
-  local TARGET_REAL_BIN=$(readlink -f $1)
-  local FOUND_TARGETS=$(lsof "$TARGET_REAL_BIN" 2>/dev/null | grep "$TARGET_REAL_BIN")
-
-  if [ -n "$FOUND_TARGETS" ]; then
-    return 1
-  else
-    return 0
-  fi
-}
 
 nsh_cmp()
 {
@@ -102,8 +87,6 @@ install_file()
       return 1
     fi
 
-    check_file_busy "$TARGET_FILE"
-
     if [ $? -eq 1 ]; then
       echo "[$TARGET_FILE] Error - Can not update file -- File in use"
       return 1
@@ -137,6 +120,94 @@ log_err()
   echo $@
   echo
 }
+
+
+install_fail2ban_firewalld()
+{
+
+  if [ ! -x /usr/sbin/firewalld ]; then
+    log_err "Firewalld not installed - Skipping configuration!"
+    exit 1
+  fi
+
+  echo
+  echo "Firewalld detected"
+  echo
+
+  dnf install epel-release -y
+  dnf install fail2ban -y
+
+}
+
+install_fail2ban_ufw()
+{
+
+  if [ ! -x /usr/sbin/ufw ]; then
+    log_err "UFW not installed - Skipping configuration!"
+    exit 1
+  fi
+
+  echo
+  echo "UFW detected"
+  echo
+
+   apt update
+   apt install fail2ban -y
+
+}
+
+
+install_fail2ban()
+{
+  local JAIL_LOCAL=
+
+  if [ "$EUID" != "0" ]; then
+    log_err "Please swith to 'root' user for installation!"
+    exit 1
+  fi
+
+  if [ -x /usr/bin/dnf ]; then
+
+    install_fail2ban_firewalld
+    JAIL_LOCAL="$SCRIPT_DIR/jail.local"
+
+  elif [ -x /usr/bin/apt-get ]; then
+
+    install_fail2ban_ufw
+    JAIL_LOCAL="$SCRIPT_DIR/jail.local.ufw"
+
+  else
+
+    log_err "Unsupported Linux distribution"
+    exit 1
+  fi
+
+  install_file "$SCRIPT_DIR/domino.conf" "/etc/fail2ban/filter.d/domino.conf" root root 644
+  install_file "$SCRIPT_DIR/domban" "/usr/bin/domban" root root 755
+
+  if [ -e /etc/fail2ban/jail.local ]; then
+
+    if [ "$2" = "upd" ]; then
+      install_file "$JAIL_LOCAL" "/etc/fail2ban/jail.local" root root 644
+    else
+      log_err "Please review '/etc/fail2ban/jail.local' or use 'install upd' to overwrite existing config!"
+    fi
+  else
+    install_file "$JAIL_LOCAL" "/etc/fail2ban/jail.local" root root 644
+  fi
+
+  systemctl enable fail2ban
+  systemctl restart fail2ban
+
+  if [ -x /usr/sbin/getenforce ]; then
+    SELINUX_STATUS=$(getenforce)
+    if [ "$SELINUX_STATUS" = "Enforcing" ]; then
+      echo "Info: SELinux is set to enforced!"
+      echo "Ensure fail2ban can read the Domino log file!"
+    fi
+  fi
+}
+
 
 fail2ban()
 {
@@ -197,42 +268,7 @@ fail2ban()
   fi
 
   if [ "$1" = "install" ]; then
-
-    if [ "$EUID" != "0" ]; then
-      log_err "Please swith to 'root' user for installation!"
-      return 1
-    fi
-
-    # Install fail2box
-    yum install epel-release 
-    yum install fail2ban
-
-
-    install_file "$SCRIPT_DIR/domino.conf" "/etc/fail2ban/filter.d/domino.conf" root root 644
-    install_file "$SCRIPT_DIR/domban" "/usr/bin/domban" root root 755
-
-    if [ -e /etc/fail2ban/jail.local ]; then
-
-      if [ "$2" = "upd" ]; then
-        install_file "$SCRIPT_DIR/jail.local" "/etc/fail2ban/jail.local" root root 644
-      else
-        log_err "Please review '/etc/fail2ban/jail.local' or use 'install upd' to overwrite existing config!"
-      fi  
-    else
-      install_file "$SCRIPT_DIR/jail.local" "/etc/fail2ban/jail.local" root root 644
-    fi
-
-    systemctl enable fail2ban
-    systemctl restart fail2ban
-
-    if [ -x /usr/sbin/getenforce ]; then
-      SELINUX_STATUS=$(getenforce)
-      if [ "$SELINUX_STATUS" = "Enforcing" ]; then
-        echo "Info: SELinux is set to enforced!"
-        echo "Ensure fail2ban can read the Domino log file!"
-      fi
-    fi
-
+    install_fail2ban
     return 0
   fi
 
