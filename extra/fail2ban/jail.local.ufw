@@ -1,0 +1,37 @@
+# Fail2Ban filter default configuration for HCL Domino (HTTP, SMTP, LDAP, POP3, IMAP)
+# Ubuntu with UFW
+# Date  : 22.09.2024
+# Author: Daniel Nashed (Nash!Com)
+
+# Set meaningful defaults and override per protocol
+
+[DEFAULT]
+# Ban hosts and find time for 10 minutes:
+findtime = 600
+bantime  = 600
+maxretry = 8
+loglevel = 4
+ignoreip = 127.0.0.1/8
+
+banaction = ufw[application=$(app), blocktype=reject]
+
+port = 0:65535
+
+[sshd]
+
+# To use more aggressive sshd modes set filter parameter "mode" in jail.local:
+# normal (default), ddos, extra or aggressive (combines all).
+# See "tests/files/logs/sshd" or "filter.d/sshd.conf" for usage example and details.
+
+mode    = normal
+port    = ssh
+logpath = %(sshd_log)s
+backend = %(sshd_backend)s
+
+
+[domino]
+enabled  = true
+filter   = domino
+logpath  = /local/notesdata/notes.log
+backend  = polling
+
