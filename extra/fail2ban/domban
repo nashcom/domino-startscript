@@ -147,17 +147,20 @@ install_fail2ban_ufw()
     exit 1
   fi
 
-  if [ ! -e /etc/fail2ban/action.d/ufw.conf ]; then
-    log_err "UFW Fail2Ban action not found - Skipping configuration!"
-    exit 1
-  fi
-
   echo
   echo "UFW detected"
   echo
 
-   apt update
-   apt install fail2ban -y
+  apt update
+  apt install fail2ban -y
+
+   
+  # Check if UFW block action is present
+  if [ ! -e /etc/fail2ban/action.d/ufw.conf ]; then
+
+    log_err "UFW Fail2Ban action not found - Skipping configuration!"
+    exit 1
+  fi
 
 }
 
