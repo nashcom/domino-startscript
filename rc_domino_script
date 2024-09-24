@@ -1806,9 +1806,9 @@ cleanup_domino_server_os_level()
   fi
 
   # Remove PID file if present
-  if [ -e $DOMINO_PID_FILE ]; then
+  if [ -e "$DOMINO_PID_FILE" ]; then
     echo "Removing $DOMINO_PID_FILE"
-    rm $DOMINO_PID_FILE
+    remove_file "$DOMINO_PID_FILE"
   fi
 
   # Remove shared mem, semaphores and message-queues
@@ -2167,10 +2167,7 @@ shutdown_domino_server()
   done
 
   # Remove PID file if present
-  if [ -e $DOMINO_PID_FILE ]; then
-    rm $DOMINO_PID_FILE
-  fi
-
+  remove_file "$DOMINO_PID_FILE"
 
   if [ "$DOMINO_ARCHIVE_LOGS_SHUTDOWN" = "yes" ]; then
     archive_logs
