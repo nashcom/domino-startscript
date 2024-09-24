@@ -386,7 +386,7 @@ cd "$INSTALL_TEMP_DIR"
 
 header "Installing required software"
 
-install_packages unzip ncurses jq
+install_packages unzip ncurses jq procps
 
 # Install sudo if not present. It's required for systemd
 if [ ! -e /usr/bin/sudo ]; then

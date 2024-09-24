@@ -230,7 +230,11 @@ fail2ban()
   
   # Get configuration first
   DOMINO_CONFIG_FILE=/etc/sysconfig/rc_domino_config
-  . $DOMINO_CONFIG_FILE 
+  if [ -e "$DOMINO_CONFIG_FILE" ]; then
+    . $DOMINO_CONFIG_FILE
+  else
+    echo "Info: No Domino configuration file: $DOMINO_CONFIG_FILE"
+  fi
 
   if [ -z "$EDIT_COMMAND" ]; then
     EDIT_COMMAND=vi
