@@ -335,6 +335,14 @@ if [ -n "$(ps --no-headers -o comm 1 | grep systemd)" ]; then
   else
     DOMINO_SYSTEMD_NAME=$(/usr/bin/ps -o'unit' --no-headers "$DOMINO_PID")
   fi
+
+else
+  case "$DOMINO_PID_FILE" in
+    /run/*)
+      DOMINO_PID_FILE=/tmp/domino.pid
+      ;;
+  esac
+
 fi
 
 
