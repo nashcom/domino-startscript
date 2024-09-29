@@ -2,7 +2,7 @@
 
 ###########################################################################
 # Domino Fail2Ban integration management script                           #
-# Version 1.1.0 15.06.2022                                                #
+# Version 1.1.1 30.09.2024                                                #
 #                                                                         #
 # (C) Copyright Daniel Nashed/NashCom 2022                                #
 # Feedback domino_unix@nashcom.de                                         #
@@ -21,11 +21,17 @@
 ###########################################################################
 
 # Change history
+# --------------
 
 # Version 1.1.0 15.06.2022
 # ------------------------
-# Blocking based on TLS/SSL errors with an additional filter string
-#
+# - Blocking based on TLS/SSL errors with an additional filter string
+
+# Version 1.1.1 30.09.2024
+# ------------------------
+# - Support for Ubuntu UFW
+# - Simplified jail.local + stricter defaults for SSH
+# - 'reload' command
 
 
 nsh_cmp()
@@ -264,6 +270,7 @@ fail2ban()
     echo "cfg              Configure fail2ban jail.local. Editor: vi. Use e.g. export EDIT_COMMAND=nano"
     echo "log [lines]      List fail2ban log (default: last 100 lines)"
     echo "status           Show systemd fail2ban status"
+    echo "relaod           Reload configuration"
     echo "restart          Restart fail2ban service"
     echo "systemd [cmd]    Pass commands to systemd"
     echo "install [upd]    Install fail2ban and 'domban' script - 'upd' overwrites existing 'jail.local'"
@@ -334,7 +341,18 @@ fail2ban()
     return 0
   fi
 
-  # systemd status
+  # reload
+  if [ "$1" = "reload" ]; then
+      echo
+      print_delim
+      $SUDO fail2ban-client reload
+      print_delim
+      echo
+
+      return 0
+  fi
+
+   # systemd status
   if [ "$1" = "status" ]; then
       echo
       print_delim
@@ -344,7 +362,6 @@ fail2ban()
 
       return 0
   fi
-
 
   # systemd commands
   if [ "$1" = "systemd" ]; then

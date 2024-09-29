@@ -1,6 +1,6 @@
 # Fail2Ban filter default configuration for HCL Domino (HTTP, SMTP, LDAP, POP3, IMAP)
 # Redhat/CentOS and clones with Firewalld
-# Date  : 20.03.2022
+# Date  : 30.09.2024
 # Author: Daniel Nashed (Nash!Com)
 
 
@@ -8,8 +8,8 @@
 
 [DEFAULT]
 # Ban hosts and find time for 10 minutes:
-findtime = 600
-bantime  = 600
+findtime = 300
+bantime  = 300
 maxretry = 8
 loglevel = 4
 ignoreip = 127.0.0.1/8
@@ -20,20 +20,12 @@ banaction = iptables-multiport
 
 [sshd]
 enabled  = true
-findtime = 300
-bantime  = 300
 maxretry = 8
-ignoreip = 127.0.0.1/8
-
+bantime  = 3600
 
 [domino]
 enabled  = true
 filter   = domino
 logpath  = /local/notesdata/notes.log
 backend  = polling
-
-port     = 0:65535
-findtime = 300
 bantime  = 300
-maxretry = 8
-ignoreip = 127.0.0.1/8

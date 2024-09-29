@@ -122,7 +122,10 @@ Once installed all operations can be performed invoking the `domban` management 
   List fail2ban log (default: last 100 lines)
 
 - **status**  
-  Show systemd fail2bank status
+  Show systemd fail2ban status
+
+- **reload**
+  Reloads fail2ban configuration
 
 - **restart**  
   Restart fail2ban service
