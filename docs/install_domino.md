@@ -6,9 +6,9 @@ description: "Domino V12 automated Installation on Linux"
 has_children: false
 ---
 
-# Domino V12 Installation
+# Domino V14 Installation
 
-The following short instruction helps you to install HCL Domino V12 on your Linux box.  
+The following short instruction helps you to install HCL Domino V14 on your Linux box.  
 It will help you to perform all essential steps to be up and running.  
 
 Leveraging the Nash!Com Domino start script, Domino can be automatically started with an automatically installed `systemd` service.  
@@ -201,7 +201,7 @@ cd /local/software
 
 Download the latest version of the Domino Start script from the offical GitHub repository [release page](https://github.com/nashcom/domino-startscript/releases).
 
-If you want to download the software directly to your Linux machine, Curl is a very conventient way to download software.
+If you want to download the software directly to your Linux machine, Curl is a very convenient way to download software.
 
 Example for Version 3.7.0
 
@@ -256,3 +256,12 @@ Check your current configuration
 ```
 firewall-cmd --list-services
 ```
+
+### Updating Dominio
+
+The install script is mainly intended to setup a new server. It is built based on the Domino Container image installer.
+In a container software is installed from scratch. In a native installation the installation can be updated by removing the binary directory `/opt/hcl/domino`.
+This will also ensure a clean update of your server.
+Fixpack updates should be performed manually. The automated install will always install the full release along with fixpack and interim fix.
+
+Starting with Domino 14.5 AutoInstall allows to automate installation on Windows and Linux.
