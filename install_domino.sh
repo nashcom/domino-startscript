@@ -209,6 +209,19 @@ config_firewall()
 
 }
 
+config_sudo()
+{
+
+  if [ -n "$(cat /etc/sudoers | grep "notes" |grep "/usr/bin/systemctl")" ]; then
+    echo "sudo for 'notes' to execute systemctl is already configured"
+    return 0
+  fi
+
+  echo "%notes ALL= NOPASSWD: /usr/bin/systemctl *" >> /etc/sudoers
+  echo "sudo for 'notes' to execute systemctl configured"
+
+}
+
 
 add_notes_user()
 {
@@ -262,14 +275,14 @@ create_directories()
 
   # creates local directory structure with the right owner
 
-  create_directory /local           $DOMINO_USER $DOMINO_GROUP $DIR_PERM
+  create_directory /local           $DOMINO_USER $DOMINO_GROUP 777
+  create_directory "$SOFTWARE_DIR"  $DOMINO_USER $DOMINO_GROUP 777
   create_directory /local/notesdata $DOMINO_USER $DOMINO_GROUP $DIR_PERM
   create_directory /local/translog  $DOMINO_USER $DOMINO_GROUP $DIR_PERM
   create_directory /local/daos      $DOMINO_USER $DOMINO_GROUP $DIR_PERM
   create_directory /local/nif       $DOMINO_USER $DOMINO_GROUP $DIR_PERM
   create_directory /local/ft        $DOMINO_USER $DOMINO_GROUP $DIR_PERM
   create_directory /local/backup    $DOMINO_USER $DOMINO_GROUP $DIR_PERM
-  create_directory "$SOFTWARE_DIR"  $DOMINO_USER $DOMINO_GROUP $DIR_PERM
 }
 
 
@@ -373,7 +386,7 @@ cd "$INSTALL_TEMP_DIR"
 
 header "Installing required software"
 
-install_packages unzip ncurses jq
+install_packages unzip ncurses jq procps
 
 # Install sudo if not present. It's required for systemd
 if [ ! -e /usr/bin/sudo ]; then
@@ -471,6 +484,8 @@ fi
 
 header "Installing Domino Start Script"
 "$INSTALL_DOMINO_SCRIPT"
+
+config_sudo
 
 cd $SAVED_DIR
 

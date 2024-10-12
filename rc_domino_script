@@ -3,7 +3,7 @@
 
 ###########################################################################
 # Main Script Logic - Start/Stop Script for Domino on xLinux/zLinux/AIX   #
-# Version  4.0.0 16.07.2024                                               #
+# Version  4.0.1 07.08:2024                                               #
 #                                                                         #
 # (C) Copyright Daniel Nashed/NashCom 2005-2024                           #
 # Feedback domino_unix@nashcom.de                                         #
@@ -21,7 +21,7 @@
 # limitations under the License.                                          #
 ###########################################################################
 
-DOMINO_SCRIPT_VERSION=4.0.0
+DOMINO_SCRIPT_VERSION=4.0.1
 
 if [ -z "$DOMINO_SCRIPT_VERBOSE_INFO" ]; then
   DOMINO_SCRIPT_VERBOSE_INFO="yes"
@@ -335,6 +335,14 @@ if [ -n "$(ps --no-headers -o comm 1 | grep systemd)" ]; then
   else
     DOMINO_SYSTEMD_NAME=$(/usr/bin/ps -o'unit' --no-headers "$DOMINO_PID")
   fi
+
+else
+  case "$DOMINO_PID_FILE" in
+    /run/*)
+      DOMINO_PID_FILE=/tmp/domino.pid
+      ;;
+  esac
+
 fi
 
 
@@ -1806,9 +1814,9 @@ cleanup_domino_server_os_level()
   fi
 
   # Remove PID file if present
-  if [ -e $DOMINO_PID_FILE ]; then
+  if [ -e "$DOMINO_PID_FILE" ]; then
     echo "Removing $DOMINO_PID_FILE"
-    rm $DOMINO_PID_FILE
+    remove_file "$DOMINO_PID_FILE"
   fi
 
   # Remove shared mem, semaphores and message-queues
@@ -2167,10 +2175,7 @@ shutdown_domino_server()
   done
 
   # Remove PID file if present
-  if [ -e $DOMINO_PID_FILE ]; then
-    rm $DOMINO_PID_FILE
-  fi
-
+  remove_file "$DOMINO_PID_FILE"
 
   if [ "$DOMINO_ARCHIVE_LOGS_SHUTDOWN" = "yes" ]; then
     archive_logs

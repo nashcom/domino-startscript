@@ -2,7 +2,7 @@
 
 ###########################################################################
 # Domino Software Download Script                                         #
-# Version 1.0.3 21.07.2024                                                #
+# Version 1.0.5 22.09.2024                                                #
 # Copyright Nash!Com, Daniel Nashed                                       #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #
@@ -46,11 +46,12 @@
 # 1.0.2  Add redirect support for custom download option
 # 1.0.3  Add support for direct download specifying -filename & -fileid and -hash
 # 1.0.4  Add error checks for fileURL results specially for license accept returned errors
+# 1.0.5  Support for Alpine Linux
 
 SCRIPT_NAME=$0
 SCRIPT_DIR=$(dirname $SCRIPT_NAME)
 
-DOMDOWNLOAD_SCRIPT_VERSION=1.0.4
+DOMDOWNLOAD_SCRIPT_VERSION=1.0.5
 
 # Just print version and exit
 case "$1" in
@@ -300,8 +301,8 @@ install_package()
 
     $SUDO /usr/bin/apt-get install -y "$@"
 
-  elif [ -x /sbin/apk]; then
-    $SUDO  /sbin/apk add "$@"
+  elif [ -x /sbin/apk ]; then
+    $SUDO /sbin/apk add "$@"
 
   else
 
@@ -471,13 +472,17 @@ CheckEnvironment()
 
   else
 
-    CHECKSUM_VERSION=$(sha256sum --version 2>/dev/null | head -1)
-    CHECKSUM_CMD="sha256sum"
+    if [ -x /usr/bin/sha256sum ]; then
+      CHECKSUM_CMD="/usr/bin/sha256sum"
+    elif [ -x /usr/local/bin/sha256sum ]; then
+      CHECKSUM_CMD="/usr/local/bin/sha256sum"
+    fi
 
-    if [ -z "$CHECKSUM_VERSION" ]; then
+    if [ -z "$CHECKSUM_CMD" ]; then
       LogError "No sha256sum found"
       exit 1
     fi
+
   fi
 
   if [ -e /usr/bin/curl ]; then

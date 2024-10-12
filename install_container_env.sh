@@ -1,11 +1,11 @@
-#!/bin/bash
+#!/bin/sh
 
 ############################################################################
 # Copyright Nash!Com, Daniel Nashed 2022-2024 - APACHE 2.0 see LICENSE
 ############################################################################
 
 # Container environment installation script
-# Version 1.0.1 04.07.2024
+# Version 1.0.3 22.09.2024
 
 # - Installs required software
 # - Adds notes:notes user and group
@@ -180,6 +180,11 @@ linux_update()
 
     apt-get upgrade -y
 
+  elif [ -x /sbin/apk ]; then
+    header "Updating Linux via apk"
+    apk update
+    apk upgrade
+
   fi
 }
 
@@ -341,6 +346,9 @@ install_software()
     # Ubuntu needs different packages and doesn't provide some others
     install_package bind9-utils
 
+  elif [ -x /sbin/apk ]; then
+    install_packages bash outils-sha256 curl gettext gawk openssl shadow procps
+
   else
 
     # RHEL/CentOS/Fedora
@@ -464,7 +472,30 @@ install_container_env()
     install_package "$CNT"
   else
     if [ -x /usr/bin/apt-get ]; then
-      install_packages docker.io docker-buildx docker-compose-v2
+ 
+      # On Ubuntu the standard Docker package is too old
+      install_package curl
+      curl -fsSL https://get.docker.com | bash -
+
+      # install_packages docker.io docker-buildx docker-compose-v2
+
+    elif [ -x /sbin/apk ]; then
+
+      # Alpine Linux Docker install
+      install_package docker
+
+      header "Enabling and starting Docker"
+
+      if [ -x /sbin/openrc ]; then
+        header "Enabling and starting Docker"
+        openrc default
+        rc-service docker start
+
+        rc-update add docker default
+        openrc default
+      fi
+
+      return 0
 
     else
       # Assume Redhat/CentOS compatible environments
@@ -504,6 +535,10 @@ print_runtime()
 must_be_root()
 {
   if [ "$EUID" = "0" ]; then
+    return 0
+  fi
+
+  if [ "$(id -u)" = "0" ]; then
     return 0
   fi
 
