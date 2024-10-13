@@ -3,9 +3,9 @@
 # dominoctl                                                               #
 # ---------                                                               #
 # Nash!Com Domino Container Management Script                             #
-# Version 1.4.0 20.12.2023                                                #
+# Version 1.4.1 14.10.2024                                                #
 #                                                                         #
-# (C) Copyright Daniel Nashed/NashCom 2021-2023                           #
+# (C) Copyright Daniel Nashed/NashCom 2021-2024                           #
 # Feedback domino_unix@nashcom.de                                         #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #
@@ -57,7 +57,7 @@ DOWNLOAD_LINK_FLEXNET="https://hclsoftware.flexnetoperations.com/flexnet/operati
 DOWNLOAD_LINK_FLEXNET_OPTIONS="+&resultType=Files&sortBy=eff_date&listButton=Search"
 
 
-CONTAINER_SCRIPT_VERSION=1.4.0
+CONTAINER_SCRIPT_VERSION=1.4.1
 
 if [ "$1" == "--version" ]; then
   echo $CONTAINER_SCRIPT_VERSION
@@ -694,6 +694,7 @@ inspect_image_native ()
   fi
 
   IMAGE_DOMINO_ADDONS="$($CONTAINER_CMD inspect --format "{{ index .Config.Labels \"DominoContainer.addons\" }}" $CONTAINER_IMAGE 2>/dev/null)"
+  IMAGE_DOMINO_CUSTOM_ADDONS="$($CONTAINER_CMD inspect --format "{{ index .Config.Labels \"DominoContainer.custom-addons\" }}" $CONTAINER_IMAGE 2>/dev/null)"
 
   return 0
 }
@@ -745,6 +746,7 @@ inspect_image ()
   fi
 
   IMAGE_DOMINO_ADDONS="$(echo "$JSON" | jq -r '.Config.Labels."DominoContainer.addons"' | sed "s/null//")"
+  IMAGE_DOMINO_CUSTOM_ADDONS="$(echo "$JSON" | jq -r '.Config.Labels."DominoContainer.custom-addons"' | sed "s/null//")"
 
   return 0
 }
@@ -839,6 +841,7 @@ inspect_container_native ()
   fi
 
   CONTAINER_DOMINO_ADDONS="$($CONTAINER_CMD inspect --format "{{ index .Config.Labels \"DominoContainer.addons\" }}" $CONTAINER_KEY 2>/dev/null)"
+  CONTAINER_DOMINO_CUSTOM_ADDONS="$($CONTAINER_CMD inspect --format "{{ index .Config.Labels \"DominoContainer.custom-addons\" }}" $CONTAINER_KEY 2>/dev/null)"
 
   STARTDATE="$($CONTAINER_CMD inspect --format "{{ .State.StartedAt }}" $CONTAINER_KEY | cut -f1 -d+ 2>/dev/null)"
 
@@ -968,6 +971,7 @@ inspect_container ()
   fi
 
   CONTAINER_DOMINO_ADDONS=$(echo "$JSON" | jq -r '.Config.Labels."DominoContainer.addons"' | sed "s/null//")
+  CONTAINER_DOMINO_CUSTOM_ADDONS=$(echo "$JSON" | jq -r '.Config.Labels."DominoContainer.custom-addons"' | sed "s/null//")
 
   STARTDATE=$(echo "$JSON" | jq -r .State.StartedAt | sed "s/null//" | cut -f1 -d+ 2>/dev/null)
   CONTAINER_STARTED_AT=$(date +"%d.%m.%Y %H:%M:%S" -d "$STARTDATE" 2>/dev/null)
@@ -1092,11 +1096,22 @@ container_show_inspect ()
     echo " Domino Ver IMG :  $IMAGE_DOMINO_VERSION"
   fi
 
-  if [ "$CONTAINER_DOMINO_ADDONS" = "$IMAGE_DOMINO_ADDONS" ]; then
-    echo " Add-ons        :  $CONTAINER_DOMINO_ADDONS"
-  else
-    echo " Add-ons CNT    :  $CONTAINER_DOMINO_ADDONS"
-    echo " Add-ons IMG    :  $IMAGE_DOMINO_ADDONS"
+  if [ -n "$CONTAINER_DOMINO_ADDONS$IMAGE_DOMINO_ADDONS" ]; then
+    if [ "$CONTAINER_DOMINO_ADDONS" = "$IMAGE_DOMINO_ADDONS" ]; then
+      echo " Add-ons        :  $CONTAINER_DOMINO_ADDONS"
+    else
+      echo " Add-ons CNT    :  $CONTAINER_DOMINO_ADDONS"
+      echo " Add-ons IMG    :  $IMAGE_DOMINO_ADDONS"
+    fi
+  fi
+
+  if [ -n "$CONTAINER_DOMINO_CUSTOM_ADDONS$IMAGE_DOMINO_CUSTOM_ADDONS" ]; then
+    if [ "$CONTAINER_DOMINO_CUSTOM_ADDONS" = "$IMAGE_DOMINO_CUSTOM_ADDONS" ]; then
+      echo " CustAdd-ons    :  $CONTAINER_DOMINO_CUSTOM_ADDONS"
+    else
+      echo " CustAdd-ons CNT:  $CONTAINER_DOMINO_CUSTOM_ADDONS"
+      echo " CustAdd-ons IMG:  $IMAGE_DOMINO_CUSTOM_ADDONS"
+    fi
   fi
 
   if [ "$IMAGE_BUILDTIME" = "$CONTAINER_BUILDTIME" ]; then 
