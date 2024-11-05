@@ -2,7 +2,7 @@
 layout: default
 title: Domino One-Touch Installer 
 nav_order: 3
-description: "Domino V12 automated Installation on Linux"
+description: "Domino V14 automated Installation on Linux"
 has_children: false
 ---
 
@@ -19,6 +19,7 @@ There is also an automated one touch installation script available performing al
 The following describes all the manual steps the installation script would perform automatically for you.
 
 A very fast way to install your Domino server would be the following installation script, which is now part of the start script repository.
+The following steps provide a manual way to perform similar operations as a documentation which steps to perform.
 
 ```
 curl -sL https://raw.githubusercontent.com/nashcom/domino-startscript/main/install_domino.sh | bash -
@@ -103,10 +104,10 @@ passwd notes
 
 ## Create directory structure for Domino data
 
-The only required directory is the data diretory. However in larger infrastructures separating the different parts of your Domino server data. 
-Standardizing on the following structure similifies your deployment. 
+The only required directory is the data directory. However in larger infrastructures separating the different parts of your Domino server data. 
+Standardizing on the following file system structure. 
 
-In larger environments all those directories would leverge a separate mount point.  
+In larger environments all those directories would leverage a separate mount point.  
 For small environments a single `/local` mount point should be sufficient.
 
 It is strongly recommended to have at least one separate file-system (mount point e.g. /local) separating data from your system data.  
@@ -130,17 +131,20 @@ Ensure the your Domino application user `notes` is the owner of all directories 
 chown -R notes:notes /local
 ```
 
-## Download the Domino web kit from Flexnet
+## Download the Domino web kit from MyHCL Software portal (MHS)
 
-Domino as a commercial software package is currently only available via the HCL Flexnet software portal.  
+Domino as a commercial software product is currently only available via the MyHCL Software portal (MHS) software portal.  
 An account and an active subscription is required to download current Domino software.  
 
-Depending on the type of account (customer/partner) the software is listed in different sections.  
-Entry point for the download portal: https://hclsoftware.flexnetoperations.com
+The entry point for the download portal: [https://my.hcltechsw.com/](https://my.hcltechsw.com/).
 
+There is a new Domino download script, which is also part of this repository.
+It can be used to download Domino and companion products automatically from MHS.
 
-The following example uses Domino V12.0 `Domino_12.0_Linux_English.tar`.  
-Flexnet customer accounts allow you to search for software including the name of the download file.  
+The download script requires an API key, which can also be downloaded from the portal.
+Refere to the Domino download documentation for details.
+
+The following example uses Domino V14.0 `Domino_14.0_Linux_English.tar`.  
 The automated installer comes with a list of current software packages and points you to the right download file.
 
 Create an directory and download the software
@@ -153,7 +157,7 @@ cd /local/software
 Extract the Domino server web kit
 
 ```
-tar xf Domino_12.0_Linux_English.tar
+tar xf Domino_14.0_Linux_English.tar
 ```
 
 Switch to the extracted directory
@@ -209,7 +213,7 @@ Example for Version 3.7.0
 curl -sLO https://github.com/nashcom/domino-startscript/releases/download/v3.7.0/domino-startscript_v3.7.0.taz
 ```
 
-Extact the downloaded tar file
+Extract the downloaded tar file
 
 ```
 tar -xf domino-startscript_v3.7.0.taz

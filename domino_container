@@ -3,7 +3,7 @@
 # dominoctl                                                               #
 # ---------                                                               #
 # Nash!Com Domino Container Management Script                             #
-# Version 1.4.1 14.10.2024                                                #
+# Version 1.4.2 06.11.2024                                                #
 #                                                                         #
 # (C) Copyright Daniel Nashed/NashCom 2021-2024                           #
 # Feedback domino_unix@nashcom.de                                         #
@@ -52,12 +52,8 @@ CONTAINER_ENV_FILE=
 # Shutdown timeout increased for Domino proper shutdown
 DOMINO_SHUTDOWN_TIMEOUT=120
 
-# Flexnet download links and current software defaults
-DOWNLOAD_LINK_FLEXNET="https://hclsoftware.flexnetoperations.com/flexnet/operationsportal/DownloadSearchPage.action?search="
-DOWNLOAD_LINK_FLEXNET_OPTIONS="+&resultType=Files&sortBy=eff_date&listButton=Search"
-
-
-CONTAINER_SCRIPT_VERSION=1.4.1
+CONTAINER_SCRIPT_VERSION=1.4.2
+MYHCL_DOWNLOAD_URL=https://my.hcltechsw.com/
 
 if [ "$1" == "--version" ]; then
   echo $CONTAINER_SCRIPT_VERSION
@@ -591,10 +587,9 @@ upload_image ()
   fi
 
   if [ -z "$DOMINO_IMAGE_FILE_PATH" ]; then
-    CURRENT_DOWNLOAD_URL="$DOWNLOAD_LINK_FLEXNET$DOMINO_IMAGE_FILE_NAME$DOWNLOAD_LINK_FLEXNET_OPTIONS"
     echo
-    echo "Please download container image from Flexnet:"
-    echo "$CURRENT_DOWNLOAD_URL"
+    echo "Please download container image from MyHCL Software portal"
+    echo "$MYHCL_DOWNLOAD_URL"
     echo
     log_and_exit "Container image file not found!"
   fi

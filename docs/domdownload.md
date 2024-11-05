@@ -11,9 +11,9 @@ has_children: false
 HCL Domino V14 introduces a new "autoupdate" functionality to automatically download software controlled by a modern Notes UI directly into a domain wide replicated database.
 The new functionality in Domino leverages the new [My HCL Software download portal](https://my.hcltechsw.com/) with a new download API.
 
-My HCL Software download portal will replace the existing Flexnet download functionality.
+My HCL Software download portal replaced the existing Flexnet download functionality.
 The new offering is dramatically easier, faster to navigate and provides a more modern interface.
-It is the new recommended browser based download functionality operating with the same credentials used for Flexnet download.
+It is the new recommended browser based download functionality operating with the same credentials.
 Log into [https://my.hcltechsw.com/](https://my.hcltechsw.com/) to browse and download all software you are entitled to.
 
 The Domino Download Script combines components from both offerings to provide a complementary command-line download interface, which can be used for automation flows:
