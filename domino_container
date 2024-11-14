@@ -3,7 +3,7 @@
 # dominoctl                                                               #
 # ---------                                                               #
 # Nash!Com Domino Container Management Script                             #
-# Version 1.4.2 06.11.2024                                                #
+# Version 1.4.3 14.11.2024                                                #
 #                                                                         #
 # (C) Copyright Daniel Nashed/NashCom 2021-2024                           #
 # Feedback domino_unix@nashcom.de                                         #
@@ -52,7 +52,7 @@ CONTAINER_ENV_FILE=
 # Shutdown timeout increased for Domino proper shutdown
 DOMINO_SHUTDOWN_TIMEOUT=120
 
-CONTAINER_SCRIPT_VERSION=1.4.2
+CONTAINER_SCRIPT_VERSION=1.4.3
 MYHCL_DOWNLOAD_URL=https://my.hcltechsw.com/
 
 if [ "$1" == "--version" ]; then
@@ -936,7 +936,7 @@ inspect_container ()
   if [ -z "$CONTAINER_NETWORK_NAME" ]; then
     CONTAINER_IPADDRESS=$(echo "$JSON" | jq -r .NetworkSettings.IPAddress | sed "s/null//")
   else
-    CONTAINER_IPADDRESS=$(echo "$JSON" | jq -r .NetworkSettings.Networks.$CONTAINER_NETWORK_NAME.IPAddress | sed "s/null//")
+    CONTAINER_IPADDRESS=$(echo "$JSON" | jq -r .NetworkSettings.Networks.\"$CONTAINER_NETWORK_NAME\".IPAddress | sed "s/null//")
   fi
 
   if [ "$CONTAINER_IPADDRESS" = "<no value>" ]; then
@@ -980,7 +980,6 @@ inspect_container ()
     CONTAINER_RESTART_POLICY="$(echo "$JSON" | jq -r .HostConfig.RestartPolicy.Name | sed "s/null//")"
     CONTAINER_RESTART_POLICY_MAX_RETRY="$(echo "$JSON" | jq -r .HostConfig.RestartPolicy.MaximumRetryCount | sed "s/null//")"
   fi
-
 
   return 0
 }
@@ -1145,8 +1144,16 @@ container_show_inspect ()
   if [ ! -z "$CONTAINER_IMAGE_ID" ]; then
 
     echo " Image Size     :  $IMAGE_SIZE_MB MB"
-    echo " NetworkMode    :  $CONTAINER_NETWORKMODE"
+
+    if [ -n "$CONTAINER_NETWORK_NAME" ]; then
+      echo " Network Name   :  $CONTAINER_NETWORK_NAME"
+    fi
+
     echo " Driver         :  $CONTAINER_DRIVER"
+
+    if [ -n "$CONTAINER_IPADDRESS" ]; then
+      echo " IP Address     :  $CONTAINER_IPADDRESS"
+    fi
 
     # echo " Container OS   :  $CONTAINER_OS_VERSION"
     # echo " Kernel         :  $CONTAINER_OS_KERNEL"
