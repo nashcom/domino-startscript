@@ -2592,6 +2592,18 @@ domino_start()
   echo "---- umask ----" >> $DOMINO_OUTPUT_LOG
   echo >> $DOMINO_OUTPUT_LOG
   umask >> $DOMINO_OUTPUT_LOG
+  echo >> $DOMINO_OUTPUT_LOG
+
+
+  echo "---- time info ----" >> $DOMINO_OUTPUT_LOG
+  echo >> $DOMINO_OUTPUT_LOG
+
+  if [ -n "$(ps --no-headers -o comm 1 | grep systemd)" ] || [ -x /usr/bin/timedatectl ]; then
+    /usr/bin/timedatectl >> $DOMINO_OUTPUT_LOG
+  else
+    echo "timezone: $(date +"%Z %z")" >> $DOMINO_OUTPUT_LOG
+  fi
+  echo >> $DOMINO_OUTPUT_LOG
 
   if [ ${LARCH} = "ibmpow" ]; then
 
@@ -2611,6 +2623,7 @@ domino_start()
     echo "---- no info ----" >> $DOMINO_OUTPUT_LOG
     echo >> $DOMINO_OUTPUT_LOG
     no -a >> $DOMINO_OUTPUT_LOG
+    echo >> $DOMINO_OUTPUT_LOG
   fi
 
   if [ ${LARCH} = "linux" ]; then
@@ -2624,6 +2637,7 @@ domino_start()
     echo "---- ulimit hard info ----" >> $DOMINO_OUTPUT_LOG
     echo >> $DOMINO_OUTPUT_LOG
     ulimit -a -H >> $DOMINO_OUTPUT_LOG
+    echo >> $DOMINO_OUTPUT_LOG
   fi
 
   echo >> $DOMINO_OUTPUT_LOG

@@ -2,7 +2,7 @@
 
 ###########################################################################
 # Domino Software Download Script                                         #
-# Version 1.0.5 22.09.2024                                                #
+# Version 1.0.6 06.12.2024                                                #
 # Copyright Nash!Com, Daniel Nashed                                       #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #
@@ -47,11 +47,12 @@
 # 1.0.3  Add support for direct download specifying -filename & -fileid and -hash
 # 1.0.4  Add error checks for fileURL results specially for license accept returned errors
 # 1.0.5  Support for Alpine Linux
+# 1.0.6  Allow custom download without authentication. Support for custom authentication
 
 SCRIPT_NAME=$0
 SCRIPT_DIR=$(dirname $SCRIPT_NAME)
 
-DOMDOWNLOAD_SCRIPT_VERSION=1.0.5
+DOMDOWNLOAD_SCRIPT_VERSION=1.0.6
 
 # Just print version and exit
 case "$1" in
@@ -841,13 +842,18 @@ DownloadCustom()
 
   LogMessage "Downloading from $DOWNLOAD_URL ..."
 
-  if [ -n "$DOMDOWNLOAD_CUSTOM_USER" ] && [ -n "$DOMDOWNLOAD_CUSTOM_PASSWORD" ]; then
-    DOWNLOAD_BASIC_AUTH="$DOMDOWNLOAD_CUSTOM_USER:$DOMDOWNLOAD_CUSTOM_PASSWORD"
-    DOWNLOAD_BASIC_AUTH_CMD="--user"
+  PerfTimerBegin
+
+  if [ -n "$DOMDOWNLOAD_CUSTOM_AUTHORIZATION" ]; then
+    $CURL_DOWNLOAD_CMD -L "$DOWNLOAD_URL" -o "$OUTFILE_FULLPATH" -H "Authorization: $DOMDOWNLOAD_CUSTOM_AUTHORIZATION"
+
+  elif [ -n "$DOMDOWNLOAD_CUSTOM_USER" ] && [ -n "$DOMDOWNLOAD_CUSTOM_PASSWORD" ]; then
+    $CURL_DOWNLOAD_CMD -L "$DOWNLOAD_URL" -o "$OUTFILE_FULLPATH" --user "$DOMDOWNLOAD_CUSTOM_USER:$DOMDOWNLOAD_CUSTOM_PASSWORD"
+
+  else
+    $CURL_DOWNLOAD_CMD -L "$DOWNLOAD_URL" -o "$OUTFILE_FULLPATH"
   fi
 
-  PerfTimerBegin
-  $CURL_DOWNLOAD_CMD -L "$DOWNLOAD_URL" -o "$OUTFILE_FULLPATH" "$DOWNLOAD_BASIC_AUTH_CMD" "$DOWNLOAD_BASIC_AUTH"
   PerfTimerEnd $PERF_MAX_CURL "$OUTFILE_FULLPATH"
 
   if [ ! -e "$OUTFILE_FULLPATH" ]; then
@@ -2095,6 +2101,10 @@ CheckWriteStandardConfig()
 
   echo \#Password for custom download in local mode >> "$DOMDOWNLOAD_CFG_FILE"
   echo \#DOMDOWNLOAD_CUSTOM_PASSWORD= >> "$DOMDOWNLOAD_CFG_FILE"
+  echo >> "$DOMDOWNLOAD_CFG_FILE"
+
+  echo \#Authentication token  >> "$DOMDOWNLOAD_CFG_FILE"
+  echo \#DOMDOWNLOAD_CUSTOM_AUTHORIZATION=\"Bearer xyz\" >> "$DOMDOWNLOAD_CFG_FILE"
   echo >> "$DOMDOWNLOAD_CFG_FILE"
 }
 

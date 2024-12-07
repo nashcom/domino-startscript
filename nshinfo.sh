@@ -121,6 +121,8 @@ print_infos()
   printf "Linux OS      :      $LINUX_PRETTY_NAME\n"
   printf "Linux Version :      $LINUX_VERSION\n"
   printf "Kernel        :      $LINUX_KERNEL\n"
+  printf "Timezone      :      $(date +"%Z %z")\n"
+
 
   if [ -n "$LINUX_VIRT" ]; then
     printf "Virt          :      $LINUX_VIRT\n"
