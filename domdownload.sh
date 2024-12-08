@@ -48,11 +48,12 @@
 # 1.0.4  Add error checks for fileURL results specially for license accept returned errors
 # 1.0.5  Support for Alpine Linux
 # 1.0.6  Allow custom download without authentication. Support for custom authentication
+# 1.0.7  Run Curl with silent option if -silent is specified. use only basename if download file has a slash
 
 SCRIPT_NAME=$0
 SCRIPT_DIR=$(dirname $SCRIPT_NAME)
 
-DOMDOWNLOAD_SCRIPT_VERSION=1.0.6
+DOMDOWNLOAD_SCRIPT_VERSION=1.0.7
 
 # Just print version and exit
 case "$1" in
@@ -2338,12 +2339,6 @@ fi
 
 CheckEnvironment
 
-CURL_CMD="$CURL_BIN --max-redirs 10 --connect-timeout 15 --max-time 300 $SPECIAL_CURL_ARGS"
-CURL_DOWNLOAD_CMD="$CURL_BIN --max-redirs 10 --fail --connect-timeout 15 --max-time $CURL_DOWNLOAD_TIMEOUT $SPECIAL_CURL_ARGS"
-
-if [ -z "$MAX_JSON_FILE_AGE_MIN" ]; then
-  MAX_JSON_FILE_AGE_MIN=10
-fi
 
 PRODUCT_JSON_FILE=$DOMDOWNLOAD_CFG_DIR/product.json
 SOFTWARE_JSON_FILE=$DOMDOWNLOAD_CFG_DIR/software.json
@@ -2482,7 +2477,15 @@ for a in "$@"; do
       ;;
 
     -silent)
+
       SILENT_MODE=yes
+
+      if [ -z "$SPECIAL_CURL_ARGS" ]; then
+        SPECIAL_CURL_ARGS=-s
+      else
+	SPECIAL_CURL_ARGS="$SPECIAL_CURL_ARGS -s"
+      fi
+
       ;;
 
     -debug)
@@ -2538,6 +2541,15 @@ for a in "$@"; do
   esac
 
 done
+
+
+CURL_CMD="$CURL_BIN --max-redirs 10 --connect-timeout 15 --max-time 300 $SPECIAL_CURL_ARGS"
+CURL_DOWNLOAD_CMD="$CURL_BIN --max-redirs 10 --fail --connect-timeout 15 --max-time $CURL_DOWNLOAD_TIMEOUT $SPECIAL_CURL_ARGS"
+
+if [ -z "$MAX_JSON_FILE_AGE_MIN" ]; then
+  MAX_JSON_FILE_AGE_MIN=10
+fi
+
 
 PerfTimerLogSession
 GetSoftwareConfig
@@ -2619,6 +2631,13 @@ if [ -n "$SOFTWARE_FILE" ]; then
 fi
 
 if [ -n "$DOWNLOAD_WEB_KIT_NAME" ]; then
+
+  # Also work when invoked with a full path or URL
+  case "$DOWNLOAD_WEB_KIT_NAME" in
+   */*)
+      DOWNLOAD_WEB_KIT_NAME=$(basename $DOWNLOAD_WEB_KIT_NAME)
+      ;;
+  esac
 
   OUTFILE_WEBKIT_FULLPATH="$SOFTWARE_DIR/$DOWNLOAD_WEB_KIT_NAME"
   if [ -e "$OUTFILE_WEBKIT_FULLPATH" ]; then
