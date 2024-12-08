@@ -2125,7 +2125,7 @@ InstallScript()
     CURRENT_VERSION=$($TARGET_FILE --version)
 
     if [ "$DOMDOWNLOAD_SCRIPT_VERSION" = "$CURRENT_VERSION" ]; then
-      LogMessage "Latest version $CURRENT_VERSION already installed"
+      LogMessage "Requested version $CURRENT_VERSION already installed"
       exit 0
     fi
   fi
@@ -2337,8 +2337,6 @@ if [ -z $CURL_DOWNLOAD_TIMEOUT ]; then
   CURL_DOWNLOAD_TIMEOUT=900
 fi
 
-CheckEnvironment
-
 
 PRODUCT_JSON_FILE=$DOMDOWNLOAD_CFG_DIR/product.json
 SOFTWARE_JSON_FILE=$DOMDOWNLOAD_CFG_DIR/software.json
@@ -2481,11 +2479,10 @@ for a in "$@"; do
       SILENT_MODE=yes
 
       if [ -z "$SPECIAL_CURL_ARGS" ]; then
-        SPECIAL_CURL_ARGS=-s
+        SPECIAL_CURL_ARGS="--silent"
       else
-	SPECIAL_CURL_ARGS="$SPECIAL_CURL_ARGS -s"
+	SPECIAL_CURL_ARGS="$SPECIAL_CURL_ARGS --silent"
       fi
-
       ;;
 
     -debug)
@@ -2507,10 +2504,7 @@ for a in "$@"; do
       ;;
 
     -install|install)
-      InstallScript "$2" "$3"
-      CheckEnvironment
-      CheckConnection
-      exit 0
+      ACTION=install
       ;;
 
     perf)
@@ -2542,12 +2536,22 @@ for a in "$@"; do
 
 done
 
+CheckEnvironment
 
 CURL_CMD="$CURL_BIN --max-redirs 10 --connect-timeout 15 --max-time 300 $SPECIAL_CURL_ARGS"
 CURL_DOWNLOAD_CMD="$CURL_BIN --max-redirs 10 --fail --connect-timeout 15 --max-time $CURL_DOWNLOAD_TIMEOUT $SPECIAL_CURL_ARGS"
 
+DebugText "CURL_BIN: $CURL_BIN"
+DebugText "CURL_CMD: $CURL_CMD"
+
 if [ -z "$MAX_JSON_FILE_AGE_MIN" ]; then
   MAX_JSON_FILE_AGE_MIN=10
+fi
+
+if [ "$ACTION" = "install" ]; then
+  InstallScript "$2" "$3"
+  CheckConnection
+  exit 0
 fi
 
 
