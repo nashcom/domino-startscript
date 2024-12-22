@@ -49,11 +49,12 @@
 # 1.0.5  Support for Alpine Linux
 # 1.0.6  Allow custom download without authentication. Support for custom authentication
 # 1.0.7  Run Curl with silent option if -silent is specified. use only basename if download file has a slash
+# 1.0.8  Use temp files for download and rename them when verified
 
 SCRIPT_NAME=$0
 SCRIPT_DIR=$(dirname $SCRIPT_NAME)
 
-DOMDOWNLOAD_SCRIPT_VERSION=1.0.7
+DOMDOWNLOAD_SCRIPT_VERSION=1.0.8
 
 # Just print version and exit
 case "$1" in
@@ -62,9 +63,6 @@ case "$1" in
     exit 0
     ;;
 esac
-
-# Ensure to always read from terminal even stdin was redirected
-exec < /dev/tty
 
 ClearScreen()
 {
@@ -816,6 +814,7 @@ DownloadCustom()
   local DOWNLOAD_BASIC_AUTH=
   local DOWNLOAD_BASIC_AUTH_CMD=
   local OUTFILE_FULLPATH=$SOFTWARE_DIR/$1
+  local OUTFILE_FULLPATH_TEMP=$SOFTWARE_DIR/$1.download
 
   if [ "$PRINT_INFO_ONLY" = "yes" ]; then
     exit 0
@@ -846,18 +845,18 @@ DownloadCustom()
   PerfTimerBegin
 
   if [ -n "$DOMDOWNLOAD_CUSTOM_AUTHORIZATION" ]; then
-    $CURL_DOWNLOAD_CMD -L "$DOWNLOAD_URL" -o "$OUTFILE_FULLPATH" -H "Authorization: $DOMDOWNLOAD_CUSTOM_AUTHORIZATION"
+    $CURL_DOWNLOAD_CMD -L "$DOWNLOAD_URL" -o "$OUTFILE_FULLPATH_TEMP" -H "Authorization: $DOMDOWNLOAD_CUSTOM_AUTHORIZATION"
 
   elif [ -n "$DOMDOWNLOAD_CUSTOM_USER" ] && [ -n "$DOMDOWNLOAD_CUSTOM_PASSWORD" ]; then
-    $CURL_DOWNLOAD_CMD -L "$DOWNLOAD_URL" -o "$OUTFILE_FULLPATH" --user "$DOMDOWNLOAD_CUSTOM_USER:$DOMDOWNLOAD_CUSTOM_PASSWORD"
+    $CURL_DOWNLOAD_CMD -L "$DOWNLOAD_URL" -o "$OUTFILE_FULLPATH_TEMP" --user "$DOMDOWNLOAD_CUSTOM_USER:$DOMDOWNLOAD_CUSTOM_PASSWORD"
 
   else
-    $CURL_DOWNLOAD_CMD -L "$DOWNLOAD_URL" -o "$OUTFILE_FULLPATH"
+    $CURL_DOWNLOAD_CMD -L "$DOWNLOAD_URL" -o "$OUTFILE_FULLPATH_TEMP"
   fi
 
   PerfTimerEnd $PERF_MAX_CURL "$OUTFILE_FULLPATH"
 
-  if [ ! -e "$OUTFILE_FULLPATH" ]; then
+  if [ ! -e "$OUTFILE_FULLPATH_TEMP" ]; then
     LogError "Cannot download file from $DOWNLOAD_URL"
     exit 1
   fi
@@ -867,8 +866,21 @@ DownloadCustom()
     exit 0
   fi
 
-  CheckDownloadedFile "$OUTFILE_FULLPATH"
-  LogMessage "$OUTFILE_FULLPATH"
+  # Checking file hash if specified
+  CheckDownloadedFile "$OUTFILE_FULLPATH_TEMP"
+
+  # Rename temp file to download
+  if [ -e "$OUTFILE_FULLPATH_TEMP" ]; then
+
+    mv -f "$OUTFILE_FULLPATH_TEMP" "$OUTFILE_FULLPATH"
+
+    LogMessage "$OUTFILE_FULLPATH"
+
+  else
+    LogMessage "Download failed: $OUTFILE_FULLPATH"
+    exit 0
+  fi
+
 }
 
 
@@ -1223,6 +1235,9 @@ GetDownloadFromPortal()
   if [ -z "$1" ]; then
     return 1
   fi
+
+  # For menus ensure to always read from terminal even stdin was redirected
+  exec < /dev/tty
 
   while [ -z "$SELECTED" ];
   do
@@ -1714,6 +1729,9 @@ GetDownloadFromSoftwareJSON()
 
   CURRENT_JSON=$(cat "$SOFTWARE_JSON_FILE")
 
+  # For menus ensure to always read from terminal even stdin was redirected
+  exec < /dev/tty
+
   ClearScreen
   header "My HCL Software Download (AutoUpdate Navigation)"
 
@@ -2069,6 +2087,25 @@ TranslatePlatform()
   esac
 }
 
+MapFileID()
+{
+  local FILE_ID=$1
+
+  if [ -z "$1" ]; then
+    return 0
+  fi
+
+  DownloadFileDataJSON "$1" "$CATALOG_JSON_FILE" "files"
+
+  case "$1" in
+
+    /v1/files/*/download)
+      FILE_ID=$(echo $1 | cut -f4 -d'/')
+      ;;
+  esac
+
+  cat "$CATALOG_JSON_FILE" | $JQ_CMD --arg key "$FILE_ID" -r 'select(.id==$key) | .name' | tr -d '\n'
+}
 
 CheckWriteStandardConfig()
 {
@@ -2117,7 +2154,7 @@ InstallScript()
   local SUDO=
   local CURRENT_VERSION=
 
-  if [ "$2" = "debug" ]; then
+  if [ "$1" = "debug" ]; then
     DOMDOWNLOAD_DEBUG=yes
   fi
 
@@ -2125,8 +2162,13 @@ InstallScript()
     CURRENT_VERSION=$($TARGET_FILE --version)
 
     if [ "$DOMDOWNLOAD_SCRIPT_VERSION" = "$CURRENT_VERSION" ]; then
-      LogMessage "Requested version $CURRENT_VERSION already installed"
-      exit 0
+ 
+      if [ "$1" = "-force" ]; then
+        LogMessage "Forcing update to version $DOMDOWNLOAD_SCRIPT_VERSION"
+      else
+        LogMessage "Requested version $CURRENT_VERSION already installed"
+        exit 0
+      fi
     fi
   fi
 
@@ -2438,6 +2480,14 @@ for a in "$@"; do
       SEARCH_LANG=$(echo "$a" | /usr/bin/cut -f2 -d= -s | /usr/bin/awk '{print toupper($0)}')
       ;;
 
+    -mapfileid=*)
+      MAP_FILE_ID=$(echo "$a" | /usr/bin/cut -f2 -d= -s)
+      ;;
+
+    software.jwt)
+      SOFTWARE_JWT_REQ=1
+      ;;
+
     -out=*)
       OUT_FILE_NAME=$(echo "$a" | /usr/bin/cut -f2 -d= -s)
       ;;
@@ -2568,13 +2618,25 @@ else
 fi
 
 
+if [ -n "$MAP_FILE_ID" ]; then
+  MapFileID "$MAP_FILE_ID"
+  exit 0
+fi
+
+
+if [ "$SOFTWARE_JWT_REQ" = "1" ]; then
+   $CURL_DOWNLOAD_CMD -sL "$SOFTWARE_URL" -o "$SOFTWARE_DIR/software.jwt.temp"
+   mv "$SOFTWARE_DIR/software.jwt.temp" "$SOFTWARE_DIR/software.jwt"
+   exit 0
+fi
+
+
 # Direct download if all information is passed
 if [ -n "$FILE_ID" ] && [ -n "$FILE_NAME" ]  && [ -n "$FILE_CHECKSUM_SHA256" ]; then
 
   LogMessageIfNotSilent "Downloading WebKit $FILE_NAME ..."
   DownloadSoftware "$FILE_ID" "$FILE_NAME" "$FILE_CHECKSUM_SHA256"
   exit 0
-
 fi
 
 
