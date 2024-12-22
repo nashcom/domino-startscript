@@ -1,0 +1,555 @@
+#/bin/bash
+
+############################################################################
+# Copyright Nash!Com, Daniel Nashed 2024 - APACHE 2.0 see LICENSE
+############################################################################
+
+
+DOMDOWNLOAD_SERVER_VERSION=0.9.0
+
+SCRIPT_NAME="$0"
+PARAM1="$1"
+PARAM2="$2"
+
+
+usage ()
+{
+  echo
+  echo
+  echo Domino Download Server $DOMDOWNLOAD_SERVER_VERSION
+  echo
+  echo "Usage: $(basename $SCRIPT_NAME) { start | stop | rm | log | cfg | info | space | adduser [http user] | access [lines] }"
+  echo
+
+  return 0
+}
+
+
+log_space()
+{
+  echo
+  echo "$@"
+  echo
+}
+
+
+log_error()
+{
+  echo
+  echo "ERROR - $@"
+  echo
+}
+
+
+delim()
+{
+  echo  "------------------------------------------------------------"
+}
+
+
+header()
+{
+  echo
+  delim
+  echo "$@"
+  delim
+  echo
+}
+
+
+get_container_environment()
+{
+  # If specified use specified command. Else find out the platform.
+
+  if [ -n "$CONTAINER_CMD" ]; then
+    return 0
+  fi
+
+  if [ -n "$USE_DOCKER" ]; then
+    CONTAINER_CMD=docker
+    return 0
+  fi
+
+  if [ -x /usr/bin/podman ]; then
+    CONTAINER_CMD=podman
+    return 0
+  fi
+
+  if [ -n "$(which nerdctl 2> /dev/null)" ]; then
+    CONTAINER_CMD=nerdctl
+    return 0
+  fi
+
+  CONTAINER_CMD=docker
+
+  return 0
+}
+
+
+container_status()
+{
+  STATUS="$($CONTAINER_CMD inspect --format '{{ .State.Status }}' $CONTAINER_NAME 2>/dev/null)"
+}
+
+
+container_start()
+{
+  # Check if we already have this container in status exited
+  container_status
+
+  if [ -z "$STATUS" ]; then
+
+    echo "Creating Docker container: $CONTAINER_NAME"
+
+    if [ -z "$CONTAINER_NETWORK_NAME" ]; then
+      CONTAINER_NETWORK="-p $CONTAINER_HTTPS_PORT:8888"
+
+    elif [ "$CONTAINER_NETWORK_NAME" = "host" ]; then
+      CONTAINER_NETWORK="--network=host"
+
+    else
+      CONTAINER_NETWORK="--network=$CONTAINER_NETWORK_NAME -p $CONTAINER_HTTPS_PORT:8888"
+    
+    fi
+
+    $CONTAINER_CMD run -d --name "$CONTAINER_NAME" --hostname=$CONTAINER_HOSTNAME --stop-timeout 1 $CONTAINER_NETWORK -v $DOMDOWNLOADSRV_LOG:/tmp/nginx:Z -v $SOFTWARE_DIR:/local/software:Z -v $DOMDOWNLOADSRV_DIR:/etc/nginx/conf.d:Z -v $DOMDOWNLOADSRV_DIR:/home/nginx/.DominoDownload:Z "$CONTAINER_IMAGE"
+
+  elif [ "$STATUS" = "exited" ] ; then 
+    echo "Starting existing Docker container: $CONTAINER_NAME"
+    $CONTAINER_CMD start $CONTAINER_NAME
+  fi
+
+  return 0
+}
+
+
+container_stop()
+{
+  container_status
+
+  if [ -z "$STATUS" ]; then
+    return 0
+  fi
+
+  if [ "$STATUS" = "exited" ] ; then 
+    return 0
+  fi 
+
+  $CONTAINER_CMD stop $CONTAINER_NAME
+  return 0
+}
+
+
+container_rm()
+{
+  container_status
+
+  if [ -z "$STATUS" ]; then
+    return 0
+  fi
+
+  container_stop
+
+  $CONTAINER_CMD rm $CONTAINER_NAME
+  return 0
+}
+
+
+container_bash()
+{
+  container_status
+
+  if [ "$STATUS" != "running" ] ; then
+    echo "Container not running: $STATUS"
+    return 0
+  fi
+
+  if [ "$1" = "root" ]; then
+    $CONTAINER_CMD exec -it -u 0  $CONTAINER_NAME /bin/bash
+  else
+    $CONTAINER_CMD exec -it $CONTAINER_NAME /bin/bash
+  fi
+
+  return 0
+}
+
+
+http_add_user()
+{
+  container_status
+
+  if [ "$STATUS" != "running" ] ; then
+    return 0
+  fi
+
+  if [ -z "$1" ]; then
+    echo "No user specified!"
+    return 0
+  fi
+
+  if [ -e "$DOMDOWNLOADSRV_DIR/htpasswd" ]; then
+    $CONTAINER_CMD exec -it $CONTAINER_NAME htpasswd -B /etc/nginx/conf.d/htpasswd "$1" 
+  else
+    $CONTAINER_CMD exec -it $CONTAINER_NAME htpasswd -B -c /etc/nginx/conf.d/htpasswd "$1" 
+  fi
+
+  return 0
+}
+
+
+container_logs()
+{
+  container_status
+
+  if [ -z "$STATUS" ]; then
+    return 0
+  fi
+
+  $CONTAINER_CMD logs $CONTAINER_NAME
+  return 0
+}
+
+
+set_owner()
+{
+  if [ -z "$1" ]; then
+    log_error "No file specified when setting owner"
+    return 0;
+  fi
+
+  if [ ! -e "$1" ]; then
+    log_error "File does not exist when setting owner: $1"
+    return 0;
+  fi
+  
+  if [ "$(id -u)" = "1000" ]; then
+    return 0
+  fi
+
+  if [ "$(id -u)" = "0" ]; then
+    chown 1000:1000 "$1"
+  else
+    sudo chown 1000:1000 "$1"
+  fi
+}
+
+
+nginx_access_log()
+{
+  container_status
+
+  if [ "$STATUS" != "running" ]; then
+    echo "Container not running"
+    return 0
+  fi
+
+  if [ -z "$1" ]; then
+    tail "$DOMDOWNLOADSRV_LOG/access.log" 
+  else
+    tail -$1 "$DOMDOWNLOADSRV_LOG/access.log"
+  fi
+}
+
+
+nginx_reload()
+{
+  container_status
+
+  if [ "$STATUS" != "running" ]; then
+    echo "Container not running"
+    return 0
+  fi
+
+  $CONTAINER_CMD exec -it $CONTAINER_NAME nginx -s reload
+}
+
+
+InstallScript()
+{
+  local TARGET_FILE="/usr/local/bin/domdownloadsrv"
+  local INSTALL_FILE=
+  local SUDO=
+  local CURRENT_VERSION=
+
+  if [ -x "$TARGET_FILE" ]; then
+    CURRENT_VERSION=$($TARGET_FILE --version)
+
+    if [ "$DOMDOWNLOAD_SERVER_VERSION" = "$CURRENT_VERSION" ]; then
+      log_space "Requested version $CURRENT_VERSION already installed"
+      exit 0
+    fi
+  fi
+
+  if [ "$SCRIPT_NAME" = "bash" ]; then
+    if [ -n "$1" ]; then
+      INSTALL_FILE=$1
+    else
+      log_error "Installation failed - Running in bash pipe without script file specified"
+      exit 1
+    fi
+  else
+    INSTALL_FILE=$SCRIPT_NAME
+  fi
+
+  if [ ! -r "$INSTALL_FILE" ]; then
+    log_error "Installation failed - Cannot read file: $INSTALL_FILE"
+    exit 1
+  fi
+
+  header "Install Domino Download Server Script"
+
+  if [ ! -w "/usr/local/bin" ]; then
+    log_error "Info: Need root permissions to install $TARGET_FILE (you might get prompted for sudo permissions)"
+    SUDO=sudo
+  fi
+
+  $SUDO cp "$INSTALL_FILE" "$TARGET_FILE"
+
+  if [ ! "$?" = "0" ]; then
+    log_error "Installation failed - Cannot copy [$INSTALL_FILE] to [$TARGET_FILE]"
+    exit 1
+  fi
+
+  $SUDO chmod +x "$TARGET_FILE"
+
+  if [ ! "$?" = "0" ]; then
+    log_error "Installation failed - Cannot change permissions for [$TARGET_FILE]"
+    exit 1
+  fi
+
+  if [ "$SCRIPT_NAME" = "bash" ]; then
+    remove_file "$INSTALL_FILE"
+  fi
+
+  if [ -z "$CURRENT_VERSION" ]; then
+    log_space "Successfully installed version $DOMDOWNLOAD_SERVER_VERSION to $TARGET_FILE"
+  else
+    log_space "Successfully updated from version $CURRENT_VERSION to $DOMDOWNLOAD_SERVER_VERSION"
+  fi
+
+  return 0
+}
+
+
+check_space()
+{
+  if [ -x /usr/bin/ncdu ]; then
+    ncdu "$SOFTWARE_DIR"
+  else
+    header "Space used - $SOFTWARE_DIR"
+    du -h "$SOFTWARE_DIR"
+    echo
+  fi
+}
+
+
+show_config()
+{
+  container_status
+
+  if [ "$STATUS" = "running" ] ; then
+    NGINX_VER=$($CONTAINER_CMD exec -it $CONTAINER_NAME nginx -v | cut -f2 -d':' | xargs)
+    LINUX_VER=$($CONTAINER_CMD exec -it $CONTAINER_NAME cat /etc/os-release | grep "PRETTY_NAME="| cut -d= -f2 | xargs)
+  fi
+
+  echo
+  delim
+  echo "Status        :  $STATUS"
+  echo "LINUX         :  $LINUX_VER"
+  echo "NGINX         :  $NGINX_VER"
+  echo "Version       :  $DOMDOWNLOAD_SERVER_VERSION"
+  echo
+  echo "Hostname      :  $CONTAINER_HOSTNAME"
+  echo "Container     :  $CONTAINER_NAME"
+  echo "Image         :  $CONTAINER_IMAGE"
+  echo
+  echo "Software      :  $SOFTWARE_DIR"
+  echo "Directory     :  $DOMDOWNLOADSRV_DIR"
+  echo "Config        :  $DOMDOWNLOADSRV_CFG"
+  echo
+  echo "Network       :  $CONTAINER_NETWORK_NAME"
+
+  if [ "$CONTAINER_NETWORK_NAME" != "host" ]; then
+    echo "HTTP port     :  $CONTAINER_HTTPS_PORT"
+  fi
+
+  delim
+  echo
+}
+
+
+# --- Main ---
+
+if [ -z "$DOMDOWNLOADSRV_CFG_DIR" ]; then
+
+  if [ -e .DominoDownloadServer ]; then
+    DOMDOWNLOADSRV_CFG_DIR=$(pwd)/.DominoDownloadServer
+  else
+    DOMDOWNLOADSRV_CFG_DIR=~/.DominoDownloadServer
+  fi
+fi
+
+
+# Load config if present
+
+DOMDOWNLOADSRV_CFG="$DOMDOWNLOADSRV_CFG_DIR/domdownloadserver.cfg"
+
+if [ ! -e "$DOMDOWNLOADSRV_CFG_DIR" ]; then
+  mkdir -p "$DOMDOWNLOADSRV_CFG_DIR"
+fi
+
+if [ -e "$DOMDOWNLOADSRV_CFG" ]; then
+  . "$DOMDOWNLOADSRV_CFG"
+else
+   echo "# Domino Download Server configuration" >> "$DOMDOWNLOADSRV_CFG"
+   echo  >> "$DOMDOWNLOADSRV_CFG"
+
+   echo  "CONTAINER_NETWORK_NAME=host" >> "$DOMDOWNLOADSRV_CFG"
+   echo  >> "$DOMDOWNLOADSRV_CFG"
+
+   echo  "CONTAINER_HTTPS_PORT=443" >> "$DOMDOWNLOADSRV_CFG"
+   echo  >> "$DOMDOWNLOADSRV_CFG"
+fi
+
+
+# The Domino Server directory is used inside the container to store Domino Download script information.
+# User 1000:1000 on host should be the owner of the directory
+
+if [ -z "$DOMDOWNLOADSRV_DIR" ]; then
+  DOMDOWNLOADSRV_DIR=/local/domdownloadsrv
+fi
+
+
+if [ -z "$DOMDOWNLOADSRV_LOG" ]; then
+  DOMDOWNLOADSRV_LOG=/var/log/domdownloadsrv
+fi
+
+
+# Ensure a Domino Download Server directory is pesent and has the right permissions
+
+if [ ! -e "$DOMDOWNLOADSRV_DIR" ]; then
+  echo "Info: Creating directory: $DOMDOWNLOADSRV_DIR"
+  mkdir -p "$DOMDOWNLOADSRV_DIR"
+  set_owner "$DOMDOWNLOADSRV_DIR"
+fi
+
+
+if [ ! -e "$DOMDOWNLOADSRV_LOG" ]; then
+  echo "Info: Creating directory: $DOMDOWNLOADSRV_LOG"
+  mkdir -p "$DOMDOWNLOADSRV_LOG"
+  set_owner "$DOMDOWNLOADSRV_LOG"
+fi
+
+
+# Set defaults for all required parameters
+
+if [ -z "$CONTAINER_NAME" ]; then
+  CONTAINER_NAME=domdownload
+fi
+
+if [ -z "$CONTAINER_IMAGE" ]; then
+  CONTAINER_IMAGE=nashcom/dominodownload:latest
+fi
+
+if [ -z "$CONTAINER_NETWORK_NAME" ]; then
+  # Currently the default is empty
+  CONTAINER_NETWORK_NAME=
+fi
+
+if [ -z "$CONTAINER_HOSTNAME" ]; then
+  CONTAINER_HOSTNAME=$(hostname -f)
+fi
+
+if [ -z "$CONTAINER_HTTPS_PORT" ]; then
+  CONTAINER_HTTPS_PORT=443
+fi
+
+if [ -z "$SOFTWARE_DIR" ]; then
+  SOFTWARE_DIR=/local/software
+fi
+
+if [ -z "$EDIT_COMMAND" ]; then
+  EDIT_COMMAND="vi"
+fi
+
+
+get_container_environment
+
+
+case "$PARAM1" in
+	
+  start)
+    container_start 
+    ;;
+
+  stop)
+    container_stop
+    ;;
+
+  rm)
+    container_rm
+    ;;
+
+  bash)
+    container_bash "$PARAM2"
+    ;;
+
+  log|logs)
+    container_logs
+    ;;
+
+  restart)
+    container_stopremove
+    container_start 
+    ;;
+
+  adduser)
+    http_add_user "$PARAM2"
+    ;;
+
+  reload)
+    nginx_reload
+    ;;
+
+  access)
+    nginx_access_log "$PARAM2"
+    ;;
+
+  space|ncdu|du)
+    check_space 
+    ;;
+
+  config|cfg)
+    $CONTAINER_SUDO $EDIT_COMMAND "$DOMDOWNLOADSRV_CFG"
+    ;;
+
+  ver|version|--version)
+    echo $DOMDOWNLOAD_SERVER_VERSION
+    exit 0
+    ;;
+
+  install)
+    InstallScript
+    exit 0
+    ;;
+
+  info|about)
+    show_config
+    ;;
+
+  *)
+
+    if [ -z "$PARAM1" ]; then
+      usage 
+    else
+      echo
+      echo "Invalid command:" [$PARAM1]
+      usage 
+    fi
+    ;;
+
+esac
+
+echo 
+exit 0
+
