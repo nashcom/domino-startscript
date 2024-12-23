@@ -120,6 +120,40 @@ show_cert()
 }
 
 
+# --- Main ---
+
+# Configure defaults
+
+if [ -z "$NGINX_LOG_LEVEL" ]; then
+  export NGINX_LOG_LEVEL=notice
+fi
+
+if [ -z "$NGINX_PORT" ]; then
+  export NGINX_PORT=8888
+fi
+
+if [ -z "$DOMDOWNLOADSRV_HOST" ]; then
+  export DOMDOWNLOADSRV_HOST=$(hostname -f)
+fi
+
+
+# Substistute variables and create configuration
+
+
+# Names which need to stay untranslated
+
+export name='$name'
+export request_uri='$request_uri'
+
+envsubst < /etc/nginx/domdownloadsrv.cfg > /etc/nginx/conf.d/domdownloadsrv.conf
+
+if [ -e /etc/nginx/conf.d/hcltechsw.cfg ]; then
+  envsubst < /etc/nginx/conf.d/hcltechsw.cfg > /etc/nginx/conf.d/hcltechsw.conf 
+fi
+
+export name=
+export request_uri=
+
 LINUX_PRETTY_NAME=$(cat /etc/os-release | grep "PRETTY_NAME="| cut -d= -f2 | xargs)
 
 # Set more paranoid umask to ensure files can be only read by user
@@ -170,10 +204,34 @@ if [ -e /etc/nginx/conf.d/hcltechsw.conf ]; then
   echo
 fi
 
+if [ -e /etc/nginx/conf.d/ca_cert.pem ]; then
+  header "MicroCA Root Certificate"
+  openssl x509 -in /etc/nginx/conf.d/ca_cert.pem -noout -subject | cut -d '=' -f 2-
+  echo
+  cat /etc/nginx/conf.d/ca_cert.pem
+  echo
+fi
+
+echo
+echo
+echo NGINX Domino Download Server
+delim
+echo $LINUX_PRETTY_NAME
+nginx -v
+echo
+echo $SERVER_HOSTNAME:$NGINX_PORT
 echo
 echo
 
 nginx -g 'daemon off;'
+
+# Dump configurations if start failed. Else we are killed before dumping
+sleep 2
+header "/etc/nginx/nginx.conf"
+cat /etc/nginx/nginx.conf
+
+header "/etc/nginx/conf.d"
+cat /etc/nginx/conf.d/*
 
 exit 0
 

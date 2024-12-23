@@ -374,6 +374,7 @@ show_config()
   echo "Software      :  $SOFTWARE_DIR"
   echo "Directory     :  $DOMDOWNLOADSRV_DIR"
   echo "Config        :  $DOMDOWNLOADSRV_CFG"
+  echo "Logs          :  $DOMDOWNLOADSRV_LOG"
   echo
   echo "Network       :  $CONTAINER_NETWORK_NAME"
 
