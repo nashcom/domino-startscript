@@ -18,7 +18,7 @@ usage ()
   echo
   echo Domino Download Server $DOMDOWNLOAD_SERVER_VERSION
   echo
-  echo "Usage: $(basename $SCRIPT_NAME) { start | stop | rm | log | cfg | info | space | adduser [http user] | access [lines] }"
+  echo "Usage: $(basename $SCRIPT_NAME) { start | stop | rm | log | cfg | info | du | allow | adduser [http user] | access [lines] }"
   echo
 
   return 0
@@ -333,11 +333,19 @@ InstallScript()
 
 check_space()
 {
-  if [ -x /usr/bin/ncdu ]; then
-    ncdu "$SOFTWARE_DIR"
+  local USE_NCDU=
+
+  if [ "$1" != "du" ]; then
+    if [ -x /usr/bin/ncdu ]; then
+      USE_NCDU=1
+    fi
+  fi
+
+  if [ "$USE_NCDU" = "1" ]; then
+      ncdu "$SOFTWARE_DIR"
   else
     header "Space used - $SOFTWARE_DIR"
-    du -h "$SOFTWARE_DIR"
+    du -hs "$SOFTWARE_DIR"
     echo
   fi
 }
@@ -516,11 +524,15 @@ case "$PARAM1" in
     ;;
 
   space|ncdu|du)
-    check_space 
+    check_space "$PARAM1"
     ;;
 
   config|cfg)
     $CONTAINER_SUDO $EDIT_COMMAND "$DOMDOWNLOADSRV_CFG"
+    ;;
+
+  allow)
+    $CONTAINER_SUDO $EDIT_COMMAND "$DOMDOWNLOADSRV_DIR/allow.access"
     ;;
 
   ver|version|--version)

@@ -8,7 +8,7 @@ USER root
 COPY install_dir/* / 
 RUN /install.sh
 
-# Expose Ports HTTP HTTPS
+# Expose Ports HTTPS
 EXPOSE 8888 
 
 ENTRYPOINT ["/entrypoint.sh"]
