@@ -89,6 +89,8 @@ create_local_ca_cert()
 
    # NOTE: Copying extensions can be dangerous! Requests should be checked
   openssl x509 -req -days 365 -in $SERVER_CSR -CA $CA_CRT -CAkey $CA_KEY -out $SERVER_CRT -CAcreateserial -CAserial $CA_SEQ -copy_extensions copy > /dev/null 2>&1
+
+  rm -f "SERVER_CSR"
 }
 
 
@@ -156,13 +158,13 @@ echo
 delim
 echo
 
-if [ -e /etc/nginx/conf.d/myhclapi.conf ]; then
+if [ -e /etc/nginx/conf.d/hcltechsw.conf ]; then
 
-  create_local_ca_cert api.hcltechsw.com myhclapi
+  create_local_ca_cert "*.hcltechsw.com" hcltechsw
   create_local_ca_cert localhost localhost
 
   header "MyHCLDownload Integration"
-  show_cert /etc/nginx/conf.d/myhclapi_cert.pem
+  show_cert /etc/nginx/conf.d/hcltechsw_cert.pem
   echo
   delim
   echo

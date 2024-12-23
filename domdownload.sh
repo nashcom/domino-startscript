@@ -2485,7 +2485,11 @@ for a in "$@"; do
       ;;
 
     software.jwt)
-      SOFTWARE_JWT_REQ=1
+      JWT_REQ=software.jwt
+      ;;
+
+    product.jwt)
+      JWT_REQ=product.jwt
       ;;
 
     -out=*)
@@ -2624,9 +2628,9 @@ if [ -n "$MAP_FILE_ID" ]; then
 fi
 
 
-if [ "$SOFTWARE_JWT_REQ" = "1" ]; then
-   $CURL_DOWNLOAD_CMD -sL "$SOFTWARE_URL" -o "$SOFTWARE_DIR/software.jwt.temp"
-   mv "$SOFTWARE_DIR/software.jwt.temp" "$SOFTWARE_DIR/software.jwt"
+if [ -n "$JWT_REQ" ]; then
+   $CURL_DOWNLOAD_CMD -sL "$SOFTWARE_URL" -o "$SOFTWARE_DIR/$JWT_REQ.temp"
+   mv "$SOFTWARE_DIR/$JWT_REQ.temp" "$SOFTWARE_DIR/$JWT_REQ"
    exit 0
 fi
 
