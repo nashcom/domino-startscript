@@ -61,7 +61,8 @@ create_local_ca_cert()
   local MAX_CERT_DAYS=365
 
   if [ -z "$1" ]; then
-    SERVER_HOST=$(hostname -f)  
+    echo "Cannot create certficate: No host specified"
+    return 0
   fi
 
   if [ -n "$2" ]; then
@@ -102,10 +103,16 @@ create_local_ca_cert()
 
   openssl req -new -key $SERVER_KEY -out $SERVER_CSR -subj "/O=$CERT_ORG/CN=$SERVER_HOST" -addext "subjectAltName = DNS:$SERVER_HOST" -addext extendedKeyUsage=serverAuth > /dev/null 2>&1
 
-  echo "Creating certificate: $SERVER_CRT"
+  echo "Creating certificate: [$SERVER_HOST] -> [$SERVER_CRT]"
 
    # NOTE: Copying extensions can be dangerous! Requests should be checked
   openssl x509 -req -days $MAX_CERT_DAYS -in $SERVER_CSR -CA $CA_CRT -CAkey $CA_KEY -out $SERVER_CRT -CAcreateserial -CAserial $CA_SEQ -copy_extensions copy > /dev/null 2>&1
+
+  # A missing certificate will fail NGINX
+  if [ ! -e "$SERVER_CRT" ]; then
+    log_error "Cannot create certificate for: $SERVER_CRT"
+    exit 1
+  fi
 
   remove_file "$SERVER_CSR"
 }
@@ -150,7 +157,7 @@ if [ -z "$NGINX_PORT" ]; then
 fi
 
 if [ -z "$DOMDOWNLOADSRV_HOST" ]; then
-  export DOMDOWNLOADSRV_HOST=$(hostname -f)
+  export DOMDOWNLOADSRV_HOST=$(hostname)
 fi
 
 
@@ -195,8 +202,9 @@ echo
 nginx -V
 echo
 
+
 if [ -z "$SERVER_HOSTNAME" ]; then
-  SERVER_HOSTNAME=$(hostname -f)  
+  SERVER_HOSTNAME=$(hostname)  
 fi
 
 # Use custom certificate or create one on via MicroCA at every start
@@ -209,6 +217,7 @@ else
   create_local_ca_cert "$SERVER_HOSTNAME"
 fi
 
+echo "Final SERVER_HOSTNAME: [$SERVER_HOSTNAME]"
 
 if [ -e /etc/nginx/conf.d/hcltechsw.conf ]; then
 
@@ -250,12 +259,14 @@ echo
 nginx -g 'daemon off;'
 
 # Dump configurations if start failed. Else we are killed before dumping
+
 sleep 2
+
 header "/etc/nginx/nginx.conf"
 cat /etc/nginx/nginx.conf
 
-header "/etc/nginx/conf.d"
-cat /etc/nginx/conf.d/*
+header "/etc/nginx/conf.d/*.conf"
+cat /etc/nginx/conf.d/*.conf
 
 exit 0
 
