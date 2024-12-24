@@ -5,7 +5,7 @@
 ############################################################################
 
 
-DOMDOWNLOAD_SERVER_VERSION=0.9.0
+DOMDOWNLOAD_SERVER_VERSION=0.9.1
 
 SCRIPT_NAME="$0"
 PARAM1="$1"
@@ -20,19 +20,21 @@ usage ()
   echo
   echo "Usage: $(basename $SCRIPT_NAME) [Options]"
   echo
-  echo "start      start the container"
-  echo "stop       stop the container"
-  echo "bash       start a bash in the container with the standard 'nginx' user"
-  echo "bash root  start a bash with root"
-  echo "rm         remove the container (even when running)"
+  echo "start        Start the container"
+  echo "stop         Stop the container"
+  echo "bash         Start a bash in the container with the standard 'nginx' user"
+  echo "bash root    Start a bash with root"
+  echo "rm           Remove the container (even when running)"
   echo
-  echo "log        show the NGINX server log (container output)"
-  echo "cfg        edit configuration"
-  echo "info       show information about the configuration"
-  echo "du|ncdu    snow the space used SOFTWARE_DIR. Either a 'du' summary or 'ncdu'"
-  echo "allow      edit the allow list"
-  echo "adduser    add a new HTTP user"
-  echo "access     show access lines. Optionally specify the number of lines or 'f' to follow the log"
+  echo "log          Show the NGINX server log (container output)"
+  echo "cfg          Edit configuration"
+  echo "info/about   Show information about the configuration"
+  echo "du|ncdu      Snow the space used SOFTWARE_DIR. Either a 'du' summary or 'ncdu'"
+  echo "allow        Edit the allow list"
+  echo "reload       Reload NGINX config. For example when you added an allow entry"
+  echo "adduser      Add a new HTTP user"
+  echo "access       Show access lines. Optionally specify the number of lines or 'f' to follow the log"
+  echo "version      Prints the version"
   echo
 
   return 0
@@ -280,7 +282,7 @@ nginx_reload()
 
 InstallScript()
 {
-  local TARGET_FILE="/usr/local/bin/domdownloadsrv"
+  local TARGET_FILE="/usr/local/bin/domdownloadctl"
   local INSTALL_FILE=
   local SUDO=
   local CURRENT_VERSION=
@@ -289,8 +291,10 @@ InstallScript()
     CURRENT_VERSION=$($TARGET_FILE --version)
 
     if [ "$DOMDOWNLOAD_SERVER_VERSION" = "$CURRENT_VERSION" ]; then
-      log_space "Requested version $CURRENT_VERSION already installed"
-      exit 0
+      if [ "$1" != "-force" ]; then
+        log_space "Requested version $CURRENT_VERSION already installed"
+        exit 0
+      fi
     fi
   fi
 
@@ -556,7 +560,7 @@ case "$PARAM1" in
     ;;
 
   install)
-    InstallScript
+    InstallScript "$PARAM2"
     exit 0
     ;;
 

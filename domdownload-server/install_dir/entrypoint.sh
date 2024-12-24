@@ -38,10 +38,27 @@ header()
 }
 
 
+remove_file()
+{
+  if [ -z "$1" ]; then
+    return 1
+  fi
+
+  if [ ! -e "$1" ]; then
+    return 2
+  fi
+
+  rm -f "$1"
+  return 0
+}
+
+
 create_local_ca_cert()
 {
   local SERVER_HOST="$1"  
   local PREFIX=
+  local MAX_CA_DAYS=3650
+  local MAX_CERT_DAYS=365
 
   if [ -z "$1" ]; then
     SERVER_HOST=$(hostname -f)  
@@ -74,7 +91,7 @@ create_local_ca_cert()
 
   if [ ! -e "$CA_CRT" ]; then
     echo "Create CA certificate: $CA_CRT"
-    openssl req -new -x509 -days 3650 -key $CA_KEY -out $CA_CRT -subj "/O=$CERT_ORG/CN=$CA_CN" > /dev/null 2>&1
+    openssl req -new -x509 -days $MAX_CA_DAYS -key $CA_KEY -out $CA_CRT -subj "/O=$CERT_ORG/CN=$CA_CN" > /dev/null 2>&1
   fi
 
   # Create server key
@@ -85,12 +102,12 @@ create_local_ca_cert()
 
   openssl req -new -key $SERVER_KEY -out $SERVER_CSR -subj "/O=$CERT_ORG/CN=$SERVER_HOST" -addext "subjectAltName = DNS:$SERVER_HOST" -addext extendedKeyUsage=serverAuth > /dev/null 2>&1
 
-  echo "Creating server certificate: $SERVER_CRT"
+  echo "Creating certificate: $SERVER_CRT"
 
    # NOTE: Copying extensions can be dangerous! Requests should be checked
-  openssl x509 -req -days 365 -in $SERVER_CSR -CA $CA_CRT -CAkey $CA_KEY -out $SERVER_CRT -CAcreateserial -CAserial $CA_SEQ -copy_extensions copy > /dev/null 2>&1
+  openssl x509 -req -days $MAX_CERT_DAYS -in $SERVER_CSR -CA $CA_CRT -CAkey $CA_KEY -out $SERVER_CRT -CAcreateserial -CAserial $CA_SEQ -copy_extensions copy > /dev/null 2>&1
 
-  rm -f "SERVER_CSR"
+  remove_file "$SERVER_CSR"
 }
 
 
@@ -182,15 +199,16 @@ if [ -z "$SERVER_HOSTNAME" ]; then
   SERVER_HOSTNAME=$(hostname -f)  
 fi
 
-if [ ! -e /etc/nginx/conf.d/cert.pem ]; then
+# Use custom certificate or create one on via MicroCA at every start
+if [ -e /etc/nginx/conf.d/custom_key.pem ] && [ -e /etc/nginx/conf.d/custom_cert.pem ]; then
+
+  cp -f /etc/nginx/conf.d/custom_cert.pem /etc/nginx/conf.d/cert.pem
+  cp -f /etc/nginx/conf.d/custom_key.pem  /etc/nginx/conf.d/key.pem
+
+else
   create_local_ca_cert "$SERVER_HOSTNAME"
 fi
 
-header "Server Certficiate"
-show_cert /etc/nginx/conf.d/cert.pem
-echo
-delim
-echo
 
 if [ -e /etc/nginx/conf.d/hcltechsw.conf ]; then
 
@@ -211,6 +229,12 @@ if [ -e /etc/nginx/conf.d/ca_cert.pem ]; then
   cat /etc/nginx/conf.d/ca_cert.pem
   echo
 fi
+
+header "Server Certficiate"
+show_cert /etc/nginx/conf.d/cert.pem
+echo
+delim
+echo
 
 echo
 echo
