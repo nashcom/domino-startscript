@@ -18,7 +18,21 @@ usage ()
   echo
   echo Domino Download Server $DOMDOWNLOAD_SERVER_VERSION
   echo
-  echo "Usage: $(basename $SCRIPT_NAME) { start | stop | rm | log | cfg | info | du | allow | adduser [http user] | access [lines] }"
+  echo "Usage: $(basename $SCRIPT_NAME) [Options]"
+  echo
+  echo "start      start the container"
+  echo "stop       stop the container"
+  echo "bash       start a bash in the container with the standard 'nginx' user"
+  echo "bash root  start a bash with root"
+  echo "rm         remove the container (even when running)"
+  echo
+  echo "log        show the NGINX server log (container output)"
+  echo "cfg        edit configuration"
+  echo "info       show information about the configuration"
+  echo "du|ncdu    snow the space used SOFTWARE_DIR. Either a 'du' summary or 'ncdu'"
+  echo "allow      edit the allow list"
+  echo "adduser    add a new HTTP user"
+  echo "access     show access lines. Optionally specify the number of lines or 'f' to follow the log"
   echo
 
   return 0
