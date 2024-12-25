@@ -25,6 +25,7 @@ chown -R 1000:1000 /var/log/nginx
 
 chmod 555 /usr/local/bin/domdownload
 chmod 555 /entrypoint.sh
+chmod 555 /upd_catalog.sh
 
 setcap 'cap_net_bind_service=+ep' /usr/sbin/nginx
 apk del libcap

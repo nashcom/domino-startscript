@@ -125,10 +125,15 @@ container_start()
 
     else
       CONTAINER_NETWORK="--network=$CONTAINER_NETWORK_NAME -p $CONTAINER_HTTPS_PORT:8888"
-    
     fi
 
-    $CONTAINER_CMD run -d --name "$CONTAINER_NAME" --hostname=$CONTAINER_HOSTNAME --stop-timeout 1 $CONTAINER_NETWORK -v $DOMDOWNLOADSRV_LOG:/tmp/nginx:Z -v $SOFTWARE_DIR:/local/software:Z -v $DOMDOWNLOADSRV_DIR:/etc/nginx/conf.d:Z -v $DOMDOWNLOADSRV_DIR:/home/nginx/.DominoDownload:Z "$CONTAINER_IMAGE"
+    if [ -n "$DOMDOWNLOADSRV_ENV_FILE" ]; then
+      if [ -e "$DOMDOWNLOADSRV_ENV_FILE" ]; then
+        CONTAINER_ENV_FILE_OPTION="--env-file $DOMDOWNLOADSRV_ENV_FILE"
+      fi
+    fi
+
+    $CONTAINER_CMD run -d --name "$CONTAINER_NAME" --hostname=$CONTAINER_HOSTNAME $CONTAINER_ENV_FILE_OPTION --stop-timeout 1 $CONTAINER_NETWORK -v $DOMDOWNLOADSRV_LOG:/tmp/nginx:Z -v $SOFTWARE_DIR:/local/software:Z -v $DOMDOWNLOADSRV_DIR:/etc/nginx/conf.d:Z -v $DOMDOWNLOADSRV_DIR:/home/nginx/.DominoDownload:Z "$CONTAINER_IMAGE"
 
   elif [ "$STATUS" = "exited" ] ; then 
     echo "Starting existing Docker container: $CONTAINER_NAME"
@@ -420,6 +425,7 @@ fi
 # Load config if present
 
 DOMDOWNLOADSRV_CFG="$DOMDOWNLOADSRV_CFG_DIR/domdownloadserver.cfg"
+DOMDOWNLOADSRV_ENV_FILE=$DOMDOWNLOADSRV_CFG_DIR/.env
 
 if [ ! -e "$DOMDOWNLOADSRV_CFG_DIR" ]; then
   mkdir -p "$DOMDOWNLOADSRV_CFG_DIR"
@@ -515,6 +521,11 @@ case "$PARAM1" in
 
   rm)
     container_rm
+    ;;
+
+  update)
+    container_rm
+    container_start
     ;;
 
   bash)

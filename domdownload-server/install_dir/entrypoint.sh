@@ -163,7 +163,6 @@ fi
 
 # Substistute variables and create configuration
 
-
 # Names which need to stay untranslated
 
 export name='$name'
@@ -193,6 +192,17 @@ if [ ! -e /etc/nginx/conf.d/allow.access ]; then
   echo "# allow 192.168.1.0/24;" >> /etc/nginx/conf.d/allow.access
 fi
 
+# Load catalog data from MHS
+if [ -x /upd_catalog.sh ]; then
+  log_space "Loading MHS catalog JSON ..."
+  /upd_catalog.sh -v >/tmp/nginx/upd_catalog.log  2>&1 &
+fi
+
+header "Environment"
+env
+delim
+
+
 echo
 echo
 echo NGINX Domino Download Server
@@ -201,7 +211,6 @@ echo $LINUX_PRETTY_NAME
 echo
 nginx -V
 echo
-
 
 if [ -z "$SERVER_HOSTNAME" ]; then
   SERVER_HOSTNAME=$(hostname)  
@@ -216,8 +225,6 @@ if [ -e /etc/nginx/conf.d/custom_key.pem ] && [ -e /etc/nginx/conf.d/custom_cert
 else
   create_local_ca_cert "$SERVER_HOSTNAME"
 fi
-
-echo "Final SERVER_HOSTNAME: [$SERVER_HOSTNAME]"
 
 if [ -e /etc/nginx/conf.d/hcltechsw.conf ]; then
 
