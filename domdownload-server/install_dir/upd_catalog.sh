@@ -4,6 +4,7 @@
 
 # Remote server URL can be set to point to another server.
 # SERVER_URL=
+TABLE_STYLE=1
 
 
 if [ "$CATALOG_BROSWING" = "no" ]; then
@@ -48,7 +49,15 @@ html_begin()
     return 0
   fi
 
-  echo "<html><head><style>body {font-family: Arial, sans-serif;}</style><title>$2</title></head><body><h1>$2</h1><hr><br>" > "$FILE"
+  if [ "$TABLE_STYLE" = "1" ]; then
+
+    echo "<html><head><style>body {font-family: Arial, sans-serif;} .header {padding: 2px; padding-left: 20px; text-align: left; background: #000000; color: white; font-size: 20px;} table {border-collapse: collapse; width: 100%;} .c1 {width: 20%;} .c2 {width: 40%;} .c3 {width: 40%} .hash {font-family: 'Courier';} th, td {text-align: left; padding: 8px;} tr:nth-child(even) {background-color: #f2f2f2;} a.links:link {text-decoration: none; color:#0F52BA;} a.links:visited {text-decoration: none; color:#0F52BA;} a.links:hover {text-decoration: none; color:#0F52BA; font-weight: bold;} </style>" > "$FILE"
+    echo "<title>$2</title></head><body> <div class=\"header\"><h1>$2</h1></div><br><table>" >> "$FILE"
+    echo "<tr> <th class=\"c1\">$3</th> <th class=\"c2\">$4</th> <th class=\"c3\">$5</th> </tr>" >> "$FILE"
+
+  else
+    echo "<html><head><style>body {font-family: Arial, sans-serif;}</style><title>$2</title></head><body><h1>< <div class=\"header\"><h1>$2</h1></div>/h1><br>" > "$FILE"
+  fi
 }
 
 
@@ -64,7 +73,11 @@ html_end()
     return 0
   fi
 
-  echo "<br></body></html>" >> "$FILE"
+  if [ "$TABLE_STYLE" = "1" ]; then
+    echo "<br></table></body></html>" >> "$FILE"
+  else
+    echo "<br></body></html>" >> "$FILE"
+  fi
 }
 
 
@@ -75,6 +88,7 @@ html_entry()
   local LINK="$2"
   local TEXT="$3"
   local DESCRIPTION="$4"
+  local HASH="$5"
 
   if [ -z "$1" ]; then
     return 0
@@ -84,18 +98,26 @@ html_entry()
     return 0
   fi
 
-  if [ -n "$5" ]; then
-    LINK="$5/$2"
+  if [ -n "$6" ]; then
+    LINK="$6/$2"
   fi
 
   if [ -z "$TEXT" ]; then
     TEXT="$LINK"
   fi
 
-  if [ -z "$DESCRIPTION" ]; then
-    echo "<a href=\"$LINK\">$TEXT</a><br>" >> "$FILE"
+  if [ "$TABLE_STYLE" = "1" ]; then
+
+    echo "<tr> <td class=\"c1\"> <a class=\"links\" href=\"$LINK\">$TEXT</a> </td> <td class=\"c3\"> $DESCRIPTION </td> <td class=\"c3\"> <span class=\"hash\">$HASH</span> </td> </tr>" >> "$FILE"
+
   else
-    echo "<a href=\"$LINK\">$TEXT</a> $DESCRIPTION<br>" >> "$FILE"
+
+    if [ -z "$DESCRIPTION" ]; then
+      echo "<a href=\"$LINK\">$TEXT</a><br>" >> "$FILE"
+    else
+      echo "<a href=\"$LINK\">$TEXT</a> $DESCRIPTION<br>" >> "$FILE"
+    fi
+
   fi
 }
 
@@ -179,7 +201,7 @@ CATEGORY_SUB=$(cat "$CATALOG_FILE" | cut -f1 -d'|' | uniq)
 
 LogTrace "Generating $INDEX_FILE"
 
-html_begin "$INDEX_FILE" "Domino Download Server"
+html_begin "$INDEX_FILE" "Domino Download Server" "Category"
 
 for CATEGORY in $CATEGORY_TOP
 do
@@ -192,7 +214,7 @@ LogTrace "Generating top categories"
 
 for CATEGORY in $CATEGORY_TOP
 do
-  html_begin "$CATEGORY.html" "$CATEGORY"
+  html_begin "$CATEGORY.html" "$CATEGORY" "Category"
 done
 
 for ENTRY in $CATEGORY_SUB
@@ -204,7 +226,7 @@ do
   LogTrace "Generating: $COMBINED"
 
   html_entry "${CATEGORY}.html" "$COMBINED.html" "$SUB"
-  html_begin "$COMBINED.html" "$CATEGORY $SUB"
+  html_begin "$COMBINED.html" "$CATEGORY $SUB" "File" "Description" "Hash"
 done
 
 LogTrace "Generating sub categories"
@@ -228,8 +250,9 @@ while read LINE; do
   COMBINED=${CATEGORY}_${SUB}
   FILE=$(echo "$LINE" | cut -d'|' -f2)
   DESCRIPTION=$(echo "$LINE" | cut -d'|' -f3)
+  HASH=$(echo "$LINE" | cut -d'|' -f4)
 
-  html_entry "$COMBINED.html" "$FILE" "$FILE" " - $DESCRIPTION" "$SERVER_URL"
+  html_entry "$COMBINED.html" "$FILE" "$FILE" "$DESCRIPTION" "$HASH" "$SERVER_URL"
 
   COUNT=$(expr $COUNT + 1)
 
