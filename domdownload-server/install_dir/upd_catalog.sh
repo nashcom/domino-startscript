@@ -51,7 +51,7 @@ html_begin()
 
   if [ "$TABLE_STYLE" = "1" ]; then
 
-    echo "<html><head><style>body {margin: 0px; font-family: Arial, sans-serif;} .header {margin: -0px; border: 0px; padding: 1px; padding-left: 20px; text-align: left; background: #000000; color: white; font-size: 14px;} table {border-collapse: collapse; width: 100%;} .c1 {width: 20%;} .c2 {width: 40%;} .c3 {width: 40%} .hash {font-family: 'Courier';} th, td {text-align: left; padding: 8px;} tr:nth-child(even) {background-color: #f2f2f2;} a.links:link {text-decoration: none; color:#0F52BA;} a.links:visited {text-decoration: none; color:#0F52BA;} a.links:hover {text-decoration: none; color:#0F52BA; font-weight: bold;} </style>" > "$FILE"
+    echo "<html><head><style>body {margin: 0px; font-family: Arial, sans-serif;} .header {margin: -0px; border: 0px; padding: 1px; padding-left: 20px; text-align: left; background: #000000; color: white; font-size: 14px;} table {border-collapse: collapse; width: 100%; margin-left: 8px;} .c1 {width: 20%;} .c2 {width: 40%;} .c3 {width: 40%} .hash {font-family: 'Courier';} th, td {text-align: left; padding: 8px;} tr:nth-child(even) {background-color: #f2f2f2;} a.links:link {text-decoration: none; color:#0F52BA;} a.links:visited {text-decoration: none; color:#0F52BA;} a.links:hover {text-decoration: none; color:#0F52BA; font-weight: bold;} </style>" > "$FILE"
     echo "<title>$2</title></head><body> <div class=\"header\"><h1>$2</h1></div><br><table>" >> "$FILE"
     echo "<tr> <th class=\"c1\">$3</th> <th class=\"c2\">$4</th> <th class=\"c3\">$5</th> </tr>" >> "$FILE"
 
