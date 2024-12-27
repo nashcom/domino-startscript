@@ -18,7 +18,13 @@ fi
 
 
 INDEX_FILE=index.html
-TARGET_DIR="/local/software"
+
+if [ -z "$SOFTWARE_DIR" ]; then
+  TARGET_DIR="/local/software"
+else
+  TARGET_DIR="$SOFTWARE_DIR"
+fi
+
 HTML_DIR="$TARGET_DIR/html.update"
 
 CATALOG_FILE="$TARGET_DIR/catalog.list"
@@ -299,10 +305,13 @@ do
   html_end "$COMBINED.html"
 done
 
+LogTrace "Moving files and cleaning up"
+
 # Move new files and remove older files not updated
 mv  -f "$HTML_DIR"/*.html "$TARGET_DIR"
 mv  -f "$HTML_DIR"/style.css "$TARGET_DIR"
 
-find "$HTML_DIR" ! -newer catalog.json -type f -name "*.html" -exec rm {} \;
+find "$TARGET_DIR" ! -newer "$CATALOG_JSON" -type f -name "*.html" -exec rm {} \;
 rmdir "$HTML_DIR"
 
+LogTrace "Completed"
