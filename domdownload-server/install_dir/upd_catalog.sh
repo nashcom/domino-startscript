@@ -40,6 +40,27 @@ LogTrace()
   echo "[$(printf "%02d" "$SECONDS")] $@"
 }
 
+write_css()
+{
+  local FILE="$HTML_DIR/$1"
+
+  if [ -z "$1" ]; then
+    return 0
+  fi
+
+  echo "body {margin: 0px; font-family: Arial, sans-serif;}" > "$FILE"
+  echo "table {border-collapse: collapse; width: 100%}" >> "$FILE"
+  echo "th, td {text-align: left; margin: 0; padding: 8px; padding-left: 20px; padding-right: 20px;}" >> "$FILE"
+  echo "tr:nth-child(even) {background-color: #f2f2f2;}" >> "$FILE"
+  echo "a.links:link {text-decoration: none; color:#0F52BA;}" >> "$FILE"
+  echo "a.links:visited {text-decoration: none; color:#0F52BA;}" >> "$FILE"
+  echo "a.links:hover {text-decoration: none; color:#0F52BA; font-weight: bold;}" >> "$FILE"
+  echo ".header {margin: -0px; border: 0px; padding: 1px; padding-left: 20px; text-align: left; background: #000000; color: white; font-size: 14px;}" >> "$FILE"
+  echo ".hash {font-family: 'Courier';}" >> "$FILE"
+  echo ".c1 {width: 20%;}" >> "$FILE"
+  echo ".c2 {width: 40%;}" >> "$FILE"
+  echo ".c3 {width: 40%}" >> "$FILE"
+}
 
 html_begin()
 {
@@ -51,7 +72,7 @@ html_begin()
 
   if [ "$TABLE_STYLE" = "1" ]; then
 
-    echo "<html><head><style>body {margin: 0px; font-family: Arial, sans-serif;} .header {margin: -0px; border: 0px; padding: 1px; padding-left: 20px; text-align: left; background: #000000; color: white; font-size: 14px;} table {border-collapse: collapse; width: 100%; margin-left: 8px;} .c1 {width: 20%;} .c2 {width: 40%;} .c3 {width: 40%} .hash {font-family: 'Courier';} th, td {text-align: left; padding: 8px;} tr:nth-child(even) {background-color: #f2f2f2;} a.links:link {text-decoration: none; color:#0F52BA;} a.links:visited {text-decoration: none; color:#0F52BA;} a.links:hover {text-decoration: none; color:#0F52BA; font-weight: bold;} </style>" > "$FILE"
+    echo "<html><head> <link rel=\"stylesheet\" href=\"style.css\"/>"  > "$FILE"
     echo "<title>$2</title></head><body> <div class=\"header\"><h1>$2</h1></div><br><table>" >> "$FILE"
     echo "<tr> <th class=\"c1\">$3</th> <th class=\"c2\">$4</th> <th class=\"c3\">$5</th> </tr>" >> "$FILE"
 
@@ -192,12 +213,13 @@ rm -f "$CATALOG_TEMP"
 LogTrace "Catalog entries generated: $(cat "$CATALOG_FILE" | wc -l | xargs)"
 
 
-
 # Create4 temporary directory to store HTML files
 mkdir -p "$HTML_DIR"
 
 CATEGORY_TOP=$(cat "$CATALOG_FILE" | cut -f1 -d'/' | uniq)
 CATEGORY_SUB=$(cat "$CATALOG_FILE" | cut -f1 -d'|' | uniq)
+
+write_css "style.css"
 
 LogTrace "Generating $INDEX_FILE"
 
@@ -277,7 +299,10 @@ do
   html_end "$COMBINED.html"
 done
 
-rm -f "$TARGET_DIR"/*.html
+# Move new files and remove older files not updated
 mv  -f "$HTML_DIR"/*.html "$TARGET_DIR"
+mv  -f "$HTML_DIR"/style.css "$TARGET_DIR"
+
+find "$HTML_DIR" ! -newer catalog.json -type f -name "*.html" -exec rm {} \;
 rmdir "$HTML_DIR"
 
