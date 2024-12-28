@@ -4,7 +4,6 @@
 
 # Remote server URL can be set to point to another server.
 # SERVER_URL=
-TABLE_STYLE=1
 
 
 if [ "$CATALOG_BROSWING" = "no" ]; then
@@ -46,6 +45,7 @@ LogTrace()
   echo "[$(printf "%02d" "$SECONDS")] $@"
 }
 
+
 write_css()
 {
   local FILE="$HTML_DIR/$1"
@@ -68,6 +68,7 @@ write_css()
   echo ".c3 {width: 40%}" >> "$FILE"
 }
 
+
 html_begin()
 {
   local FILE="$HTML_DIR/$1"
@@ -76,15 +77,17 @@ html_begin()
     return 0
   fi
 
-  if [ "$TABLE_STYLE" = "1" ]; then
-
-    echo "<html><head> <link rel=\"stylesheet\" href=\"style.css\"/>"  > "$FILE"
-    echo "<title>$2</title></head><body> <div class=\"header\"><h1>$2</h1></div><br><table>" >> "$FILE"
-    echo "<tr> <th class=\"c1\">$3</th> <th class=\"c2\">$4</th> <th class=\"c3\">$5</th> </tr>" >> "$FILE"
-
-  else
-    echo "<html><head><style>body {font-family: Arial, sans-serif;}</style><title>$2</title></head><body><h1>< <div class=\"header\"><h1>$2</h1></div>/h1><br>" > "$FILE"
-  fi
+  echo "<!DOCTYPE html>" > "$FILE"
+  echo "<html>" >> "$FILE"
+  echo "<head>" >> "$FILE"
+  echo "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">" >> "$FILE"
+  echo "<link rel=\"stylesheet\" href=\"style.css\"/>" >> "$FILE"
+  echo "<title>$2</title" >> "$FILE"
+  echo "</head>" >> "$FILE"
+  echo "<body>" >> "$FILE"
+  echo "<div class=\"header\"><h1>$2</h1></div><br>" >> "$FILE"
+  echo "<table>" >> "$FILE"
+  echo "<tr> <th class=\"c1\">$3</th> <th class=\"c2\">$4</th> <th class=\"c3\">$5</th> </tr>" >> "$FILE"
 }
 
 
@@ -100,11 +103,9 @@ html_end()
     return 0
   fi
 
-  if [ "$TABLE_STYLE" = "1" ]; then
-    echo "<br></table></body></html>" >> "$FILE"
-  else
-    echo "<br></body></html>" >> "$FILE"
-  fi
+  echo "<br></table>" >> "$FILE"
+  echo "</body>" >> "$FILE"
+  echo "</html>" >> "$FILE"
 }
 
 
@@ -133,19 +134,7 @@ html_entry()
     TEXT="$LINK"
   fi
 
-  if [ "$TABLE_STYLE" = "1" ]; then
-
-    echo "<tr> <td class=\"c1\"> <a class=\"links\" href=\"$LINK\">$TEXT</a> </td> <td class=\"c3\"> $DESCRIPTION </td> <td class=\"c3\"> <span class=\"hash\">$HASH</span> </td> </tr>" >> "$FILE"
-
-  else
-
-    if [ -z "$DESCRIPTION" ]; then
-      echo "<a href=\"$LINK\">$TEXT</a><br>" >> "$FILE"
-    else
-      echo "<a href=\"$LINK\">$TEXT</a> $DESCRIPTION<br>" >> "$FILE"
-    fi
-
-  fi
+  echo "<tr> <td class=\"c1\"> <a class=\"links\" href=\"$LINK\">$TEXT</a> </td> <td class=\"c3\"> $DESCRIPTION </td> <td class=\"c3\"> <span class=\"hash\">$HASH</span> </td> </tr>" >> "$FILE"
 }
 
 
