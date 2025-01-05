@@ -2,9 +2,9 @@
 
 ###########################################################################
 # Install Script - Start/Stop Script for Domino on xLinux/zLinux/AIX      #
-# Version  4.0.1 07.08:2024                                               #
+# Version  4.0.2 04.01.2025                                               #
 #                                                                         #
-# (C) Copyright Daniel Nashed/NashCom 2005-2024                           #
+# (C) Copyright Daniel Nashed/NashCom 2005-2025                           #
 # Feedback domino_unix@nashcom.de                                         #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #
@@ -32,7 +32,7 @@ DOMINO_DOCKER_SCRIPT=entrypoint.sh
 DONT_TOUCH_THIS_NASHCOM_PATH=/opt/nashcom/startscript
 DONT_TOUCH_THIS_STANDARD_USER=notes
 
-DOMINO_SCRIPT_VERSION=4.0.1
+DOMINO_SCRIPT_VERSION=4.0.2
 
 # if you really really need to, change this and all files will be patched
 

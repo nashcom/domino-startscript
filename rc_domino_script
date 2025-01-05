@@ -3,9 +3,9 @@
 
 ###########################################################################
 # Main Script Logic - Start/Stop Script for Domino on xLinux/zLinux/AIX   #
-# Version  4.0.1 07.08:2024                                               #
+# Version  4.0.2 04.01.2025                                               #
 #                                                                         #
-# (C) Copyright Daniel Nashed/NashCom 2005-2024                           #
+# (C) Copyright Daniel Nashed/NashCom 2005-2025                           #
 # Feedback domino_unix@nashcom.de                                         #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #
@@ -21,7 +21,7 @@
 # limitations under the License.                                          #
 ###########################################################################
 
-DOMINO_SCRIPT_VERSION=4.0.1
+DOMINO_SCRIPT_VERSION=4.0.2
 
 if [ -z "$DOMINO_SCRIPT_VERBOSE_INFO" ]; then
   DOMINO_SCRIPT_VERBOSE_INFO="yes"
@@ -329,22 +329,22 @@ fi
 
 DOMINO_SYSTEMD_NAME=
 
-if [ -n "$(ps --no-headers -o comm 1 | grep systemd)" ]; then
-  if [ -z "$DOMINO_PID" ]; then
-    DOMINO_SYSTEMD_NAME=
+if [ ${LARCH} = "linux" ]; then
+  if [ -n "$(ps --no-headers -o comm 1 | grep systemd)" ]; then
+    if [ -z "$DOMINO_PID" ]; then
+      DOMINO_SYSTEMD_NAME=
+    else
+      DOMINO_SYSTEMD_NAME=$(/usr/bin/ps -o'unit' --no-headers "$DOMINO_PID")
+    fi
+
   else
-    DOMINO_SYSTEMD_NAME=$(/usr/bin/ps -o'unit' --no-headers "$DOMINO_PID")
+    case "$DOMINO_PID_FILE" in
+      /run/*)
+        DOMINO_PID_FILE=/tmp/domino.pid
+        ;;
+    esac
   fi
-
-else
-  case "$DOMINO_PID_FILE" in
-    /run/*)
-      DOMINO_PID_FILE=/tmp/domino.pid
-      ;;
-  esac
-
 fi
-
 
 
 # Export all variables that might be useful for other scripts
@@ -509,18 +509,24 @@ stop_monitor()
 
 get_domino_process_list()
 {
-  if [ -z "$DOMINO_SYSTEMD_NAME" ]; then
 
-    # Old style of getting process list for none systemd
-    $PS_COMMAND -fu $DOMINO_USER | grep "$LOTUS_BIN_DIR" | grep -v "$SCRIPT_NAME" | grep -v "grep"
+  if [ ${LARCH} = "linux" ]; then
+
+    if [ -z "$DOMINO_SYSTEMD_NAME" ]; then
+
+      # Old style of getting process list for none systemd
+      $PS_COMMAND -fu $DOMINO_USER | grep "$LOTUS_BIN_DIR" | grep -v "$SCRIPT_NAME" | grep -v "grep"
+
+    else
+
+      # New way filtering processes by systemd service name
+      ps -e -ouser,pid,ppid,stime,time,unit,cmd | grep "$DOMINO_SYSTEMD_NAME"
+
+    fi
 
   else
-
-    # New way filtering processes by systemd service name
-    ps -e -ouser,pid,ppid,stime,time,unit,cmd | grep "$DOMINO_SYSTEMD_NAME"
-
-   fi
-
+    $PS_COMMAND -fu $DOMINO_USER | grep "$LOTUS_BIN_DIR" | grep -v "$SCRIPT_NAME" | grep -v "grep"
+  fi
 }
 
 remove_file()
@@ -2598,12 +2604,14 @@ domino_start()
   echo "---- time info ----" >> $DOMINO_OUTPUT_LOG
   echo >> $DOMINO_OUTPUT_LOG
 
-  if [ -n "$(ps --no-headers -o comm 1 | grep systemd)" ] || [ -x /usr/bin/timedatectl ]; then
-    /usr/bin/timedatectl >> $DOMINO_OUTPUT_LOG
-  else
-    echo "timezone: $(date +"%Z %z")" >> $DOMINO_OUTPUT_LOG
+  if [ ${LARCH} = "linux" ]; then
+    if [ -n "$(ps --no-headers -o comm 1 | grep systemd)" ] || [ -x /usr/bin/timedatectl ]; then
+      /usr/bin/timedatectl >> $DOMINO_OUTPUT_LOG
+    else
+      echo "timezone: $(date +"%Z %z")" >> $DOMINO_OUTPUT_LOG
+    fi
+    echo >> $DOMINO_OUTPUT_LOG
   fi
-  echo >> $DOMINO_OUTPUT_LOG
 
   if [ ${LARCH} = "ibmpow" ]; then
 
