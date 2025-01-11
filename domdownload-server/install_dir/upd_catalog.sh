@@ -297,6 +297,8 @@ done
 LogTrace "Moving files and cleaning up"
 
 # Move new files and remove older files not updated
+
+touch "$HTML_DIR"/*.html
 mv  -f "$HTML_DIR"/*.html "$TARGET_DIR"
 mv  -f "$HTML_DIR"/style.css "$TARGET_DIR"
 
