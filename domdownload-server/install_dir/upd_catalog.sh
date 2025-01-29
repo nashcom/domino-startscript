@@ -201,8 +201,12 @@ LogTrace "Generating $CATALOG_FILE"
 
 cat "$CATALOG_JSON"| jq -r '.locations[0] + "|" + .name + "|" + .description  + "|" + .checksums.sha256'  | sort -V | cut -d'/' -f2- > "$CATALOG_TEMP"
 
+if [ -z "$CATALOG_EXCLUDE_PATTERN" ]; then
+  CATALOG_EXCLUDE_PATTERN="12.0.1|IBMi|verse|mobile|voltscript|appdev/|caa/|dlau/|domino/11|notes/11|ccm/|htmo/|hei/11|traveler/apnscerts|.pdf|.txt|consap/|EarlyAccessMay2023|EarlyAccessJuly2023|EarlyAccessOctober2023|EarlyAccessSept2024"
+fi
+
 # Exclude software, which should not be listed
-cat "$CATALOG_TEMP" | grep -v -e "12.0.1" -e "IBMi" -e "verse" -e "mobile" -e "voltscript" -e "appdev/" -e "caa/" -e "dlau/" -e "domino/11" -e "notes/11" -e "ccm/" -e "htmo/" -e "hei/11" -e "traveler/apnscerts" -e ".pdf" -e ".txt"  -e "consap/" -e "Early Access May 2023" -e "Early Access July 2023" -e "Early Access October 2023" -e "Early Access Sept 2024" > "$CATALOG_FILE"
+cat "$CATALOG_TEMP" | grep -v -E "$CATALOG_EXCLUDE_PATTERN"  > "$CATALOG_FILE"
 
 rm -f "$CATALOG_TEMP"
 LogTrace "Catalog entries generated: $(cat "$CATALOG_FILE" | wc -l | xargs)"

@@ -70,6 +70,10 @@ ClearScreen()
     return 0
   fi
 
+  if [ "$DOMDOWNLOAD_DEBUG" = "yes" ]; then
+    sleep 4
+  fi
+
   clear
 }
 
@@ -573,6 +577,8 @@ ConfirmConnection()
 
 CheckConnection()
 {
+  local HTTP_STATUS=
+
   if [ -n "$DOMDOWNLOAD_MODE" ]; then
     return 0
   fi
@@ -628,17 +634,35 @@ CheckConnection()
     DebugText "Agreed to connect via $CONNECTION_AGREED_FILE at [$(cat $CONNECTION_AGREED_FILE)]"
   fi
 
-  PerfTimerBegin
-  local CURL_RET=$($CURL_CMD --silent "$GITHUB_URL" --head -w 'RESP_CODE:%{response_code}\n')
-  PerfTimerEnd $PERF_MAX_CURL "$MYHCL_PORTAL_URL"
+  # Allow connection status override to online mode
+  if [ "$DOMDOWNLOAD_MODE" = "online" ]; then
+    DebugText "Connection override -> online"
 
-  if [ -z "$(echo "$CURL_RET" | grep "RESP_CODE:200")" ]; then
-    DOMDOWNLOAD_MODE=error
   else
-    DOMDOWNLOAD_MODE=online
+    PerfTimerBegin
+    local CURL_RET=$($CURL_CMD --silent "$GITHUB_URL" --head -w 'RESP_CODE:%{response_code}\n')
+    PerfTimerEnd $PERF_MAX_CURL "$MYHCL_PORTAL_URL"
+
+    HTTP_STATUS=$(echo "$CURL_RET" | grep "RESP_CODE:" | cut -f2 -d':')
+
+    case "$HTTP_STATUS" in
+
+      2??)
+        DOMDOWNLOAD_MODE=online
+        ;;
+
+      3??)
+        DOMDOWNLOAD_MODE=online
+        ;;
+
+      *)
+        DOMDOWNLOAD_MODE=error
+        ;;
+
+    esac
   fi
 
-  DebugText "Connection: $DOMDOWNLOAD_MODE"
+  DebugText "Connection: $DOMDOWNLOAD_MODE, HTTP_STATUS: [$HTTP_STATUS]"
 }
 
 

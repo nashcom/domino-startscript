@@ -150,9 +150,9 @@ NGINX server log level
 
 ## Hostname, Port and Network Configuration
 
-The default hostname is the hostname of the Linux container. The port used is `8888`.
+The default hostname is the hostname of the Linux container. The port used is `8443`.
 The recommended configuration uses the container host mode to have full access to the true IP address to allow IP based authentication.
-If no IP based authentication is required and a server in front of it (like another NGINX server) the server can also use a container network and map the default port `8888` to another port.
+If no IP based authentication is required and a server in front of it (like another NGINX server) the server can also use a container network and map the default port `8443` to another port.
 
 
 ## TLS/SSL Certificate

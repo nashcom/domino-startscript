@@ -1,15 +1,16 @@
 #/bin/bash
 
 ############################################################################
-# Copyright Nash!Com, Daniel Nashed 2024 - APACHE 2.0 see LICENSE
+# Copyright Nash!Com, Daniel Nashed 2024-2025 - APACHE 2.0 see LICENSE
 ############################################################################
 
 
-DOMDOWNLOAD_SERVER_VERSION=0.9.1
+DOMDOWNLOAD_SERVER_VERSION=0.9.2
 
 SCRIPT_NAME="$0"
 PARAM1="$1"
 PARAM2="$2"
+PARAM3="$3"
 
 
 usage ()
@@ -25,13 +26,16 @@ usage ()
   echo "bash         Start a bash in the container with the standard 'nginx' user"
   echo "bash root    Start a bash with root"
   echo "rm           Remove the container (even when running)"
+  echo "update       Recreate the container from current image"
   echo
   echo "log          Show the NGINX server log (container output)"
   echo "cfg          Edit configuration"
+  echo "env          Edit environment"
   echo "info/about   Show information about the configuration"
   echo "du|ncdu      Snow the space used SOFTWARE_DIR. Either a 'du' summary or 'ncdu'"
   echo "allow        Edit the allow list"
   echo "reload       Reload NGINX config. For example when you added an allow entry"
+  echo "refresh      Refresh software download list"
   echo "adduser      Add a new HTTP user"
   echo "access       Show access lines. Optionally specify the number of lines or 'f' to follow the log"
   echo "version      Prints the version"
@@ -118,13 +122,13 @@ container_start()
     echo "Creating Docker container: $CONTAINER_NAME"
 
     if [ -z "$CONTAINER_NETWORK_NAME" ]; then
-      CONTAINER_NETWORK="-p $CONTAINER_HTTPS_PORT:8888"
+      CONTAINER_NETWORK="-p $CONTAINER_HTTPS_PORT:$NGINX_PORT"
 
     elif [ "$CONTAINER_NETWORK_NAME" = "host" ]; then
       CONTAINER_NETWORK="--network=host"
 
     else
-      CONTAINER_NETWORK="--network=$CONTAINER_NETWORK_NAME -p $CONTAINER_HTTPS_PORT:8888"
+      CONTAINER_NETWORK="--network=$CONTAINER_NETWORK_NAME -p $CONTAINER_HTTPS_PORT:$NGINX_PORT"
     fi
 
     if [ -n "$DOMDOWNLOADSRV_ENV_FILE" ]; then
@@ -133,7 +137,7 @@ container_start()
       fi
     fi
 
-    $CONTAINER_CMD run -d --name "$CONTAINER_NAME" --hostname=$CONTAINER_HOSTNAME $CONTAINER_ENV_FILE_OPTION --stop-timeout 1 $CONTAINER_NETWORK -v $DOMDOWNLOADSRV_LOG:/tmp/nginx:Z -v $SOFTWARE_DIR:/local/software:Z -v $DOMDOWNLOADSRV_DIR:/etc/nginx/conf.d:Z -v $DOMDOWNLOADSRV_DIR:/home/nginx/.DominoDownload:Z "$CONTAINER_IMAGE"
+    $CONTAINER_CMD run -d --name "$CONTAINER_NAME" --hostname=$CONTAINER_HOSTNAME $CONTAINER_ENV_FILE_OPTION -e NGINX_PORT=$NGINX_PORT --stop-timeout 1 $CONTAINER_NETWORK -v $DOMDOWNLOADSRV_LOG:/tmp/nginx:Z -v $SOFTWARE_DIR:/local/software:Z -v $DOMDOWNLOADSRV_DIR:/etc/nginx/conf.d:Z -v $DOMDOWNLOADSRV_DIR:/home/nginx/.DominoDownload:Z "$CONTAINER_IMAGE"
 
   elif [ "$STATUS" = "exited" ] ; then 
     echo "Starting existing Docker container: $CONTAINER_NAME"
@@ -209,10 +213,41 @@ http_add_user()
   fi
 
   if [ -e "$DOMDOWNLOADSRV_DIR/htpasswd" ]; then
-    $CONTAINER_CMD exec -it $CONTAINER_NAME htpasswd -B /etc/nginx/conf.d/htpasswd "$1" 
+    $CONTAINER_CMD exec -it $CONTAINER_NAME htpasswd -B /etc/nginx/conf.d/htpasswd "$1"
   else
-    $CONTAINER_CMD exec -it $CONTAINER_NAME htpasswd -B -c /etc/nginx/conf.d/htpasswd "$1" 
+    $CONTAINER_CMD exec -it $CONTAINER_NAME htpasswd -B -c /etc/nginx/conf.d/htpasswd "$1"
   fi
+
+  return 0
+}
+
+
+random_password()
+{
+  local DIGITS=$1
+
+  if [ -z "$DIGITS" ]; then
+    DIGITS=32
+  fi
+
+  local PASSWORD=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c $DIGITS)
+  echo
+  echo "$PASSWORD"
+  echo
+  return 0
+}
+
+
+
+refresh_software()
+{
+  container_status
+
+  if [ "$STATUS" != "running" ] ; then
+    return 0
+  fi
+
+  $CONTAINER_CMD exec -it $CONTAINER_NAME /upd_catalog.sh
 
   return 0
 }
@@ -400,6 +435,7 @@ show_config()
   echo "Logs          :  $DOMDOWNLOADSRV_LOG"
   echo
   echo "Network       :  $CONTAINER_NETWORK_NAME"
+  echo "NGINX Port    :  $NGINX_PORT"
 
   if [ "$CONTAINER_NETWORK_NAME" != "host" ]; then
     echo "HTTP port     :  $CONTAINER_HTTPS_PORT"
@@ -542,11 +578,19 @@ case "$PARAM1" in
     ;;
 
   adduser)
-    http_add_user "$PARAM2"
+    http_add_user "$PARAM2" "$PARAM3"
+    ;;
+
+  random)
+    random_password "$PARAM2" 
     ;;
 
   reload)
     nginx_reload
+    ;;
+
+  refresh)
+    refresh_software
     ;;
 
   access)
@@ -559,6 +603,10 @@ case "$PARAM1" in
 
   config|cfg)
     $CONTAINER_SUDO $EDIT_COMMAND "$DOMDOWNLOADSRV_CFG"
+    ;;
+
+  env)
+    $CONTAINER_SUDO $EDIT_COMMAND "$DOMDOWNLOADSRV_ENV_FILE"
     ;;
 
   allow)

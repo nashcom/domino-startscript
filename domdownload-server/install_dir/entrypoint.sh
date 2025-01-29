@@ -153,7 +153,7 @@ if [ -z "$NGINX_LOG_LEVEL" ]; then
 fi
 
 if [ -z "$NGINX_PORT" ]; then
-  export NGINX_PORT=8888
+  export NGINX_PORT=8443
 fi
 
 if [ -z "$DOMDOWNLOADSRV_HOST" ]; then
