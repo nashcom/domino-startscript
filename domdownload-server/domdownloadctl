@@ -5,7 +5,7 @@
 ############################################################################
 
 
-DOMDOWNLOAD_SERVER_VERSION=0.9.2
+DOMDOWNLOAD_SERVER_VERSION=0.9.3
 
 SCRIPT_NAME="$0"
 PARAM1="$1"
@@ -137,7 +137,17 @@ container_start()
       fi
     fi
 
-    $CONTAINER_CMD run -d --name "$CONTAINER_NAME" --hostname=$CONTAINER_HOSTNAME $CONTAINER_ENV_FILE_OPTION -e NGINX_PORT=$NGINX_PORT --stop-timeout 1 $CONTAINER_NETWORK -v $DOMDOWNLOADSRV_LOG:/tmp/nginx:Z -v $SOFTWARE_DIR:/local/software:Z -v $DOMDOWNLOADSRV_DIR:/etc/nginx/conf.d:Z -v $DOMDOWNLOADSRV_DIR:/home/nginx/.DominoDownload:Z "$CONTAINER_IMAGE"
+    if [ -z "$CONTAINER_RESTART_POLICY" ]; then
+      CONTAINER_RESTART_POLICY=always
+    fi
+
+    if [ -n "$CONTAINER_RESTART_POLICY" ]; then
+      CONTAINER_RESTART_OPTIONS="--restart=$CONTAINER_RESTART_POLICY"
+    else
+      CONTAINER_RESTART_OPTIONS=
+    fi
+
+    $CONTAINER_CMD run -d --name "$CONTAINER_NAME" --hostname=$CONTAINER_HOSTNAME $CONTAINER_ENV_FILE_OPTION -e NGINX_PORT=$NGINX_PORT --stop-timeout 1 $CONTAINER_NETWORK $CONTAINER_RESTART_OPTIONS -v $DOMDOWNLOADSRV_LOG:/tmp/nginx:Z -v $SOFTWARE_DIR:/local/software:Z -v $DOMDOWNLOADSRV_DIR:/etc/nginx/conf.d:Z -v $DOMDOWNLOADSRV_DIR:/home/nginx/.DominoDownload:Z "$CONTAINER_IMAGE"
 
   elif [ "$STATUS" = "exited" ] ; then 
     echo "Starting existing Docker container: $CONTAINER_NAME"
@@ -539,6 +549,10 @@ fi
 
 if [ -z "$EDIT_COMMAND" ]; then
   EDIT_COMMAND="vi"
+fi
+
+if [ -z "$NGINX_PORT" ]; then
+  NGINX_PORT=8443
 fi
 
 
