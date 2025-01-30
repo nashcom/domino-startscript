@@ -1,7 +1,7 @@
 #!/bin/sh
 
 ############################################################################
-# Copyright Nash!Com, Daniel Nashed 2024 - APACHE 2.0 see LICENSE
+# Copyright Nash!Com, Daniel Nashed 2024-2025 - APACHE 2.0 see LICENSE
 ############################################################################
 
 adduser nginx -D
@@ -26,6 +26,7 @@ chown -R 1000:1000 /var/log/nginx
 chmod 555 /usr/local/bin/domdownload
 chmod 555 /entrypoint.sh
 chmod 555 /upd_catalog.sh
+chmod 555 /housekeeping.sh
 
 setcap 'cap_net_bind_service=+ep' /usr/sbin/nginx
 apk del libcap

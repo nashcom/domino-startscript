@@ -192,12 +192,6 @@ if [ ! -e /etc/nginx/conf.d/allow.access ]; then
   echo "# allow 192.168.1.0/24;" >> /etc/nginx/conf.d/allow.access
 fi
 
-# Load catalog data from MHS
-if [ -x /upd_catalog.sh ]; then
-  log_space "Loading MHS catalog JSON ..."
-  /upd_catalog.sh -v >/tmp/nginx/upd_catalog.log  2>&1 &
-fi
-
 header "Environment"
 env
 delim
@@ -251,6 +245,8 @@ show_cert /etc/nginx/conf.d/cert.pem
 echo
 delim
 echo
+
+/housekeeping.sh &
 
 echo
 echo

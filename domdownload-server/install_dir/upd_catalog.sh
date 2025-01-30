@@ -212,7 +212,7 @@ rm -f "$CATALOG_TEMP"
 LogTrace "Catalog entries generated: $(cat "$CATALOG_FILE" | wc -l | xargs)"
 
 
-# Create4 temporary directory to store HTML files
+# Create temporary directory to store HTML files
 mkdir -p "$HTML_DIR"
 
 CATEGORY_TOP=$(cat "$CATALOG_FILE" | cut -f1 -d'/' | uniq)
