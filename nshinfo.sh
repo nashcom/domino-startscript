@@ -78,6 +78,7 @@ print_infos()
   fi
 
   LINUX_KERNEL=$(uname -r)
+  LINUX_GLIBC_VERSION=$(ldd --version| head -1 | rev | cut -f1 -d' ' | rev 2> /dev/null)
   LINUX_ARCH==$(uname -m)
   LINUX_UPTIME=$( awk '{x=$1/86400;y=($1%86400)/3600;z=($1%3600)/60} {printf("%d day, %d hour %d min\n",x,y,z)}' /proc/uptime )
   LINUX_LOAD_AVG=$(awk -F " " '{printf $1 "  " $2 "  " $3}' /proc/loadavg)
@@ -121,6 +122,7 @@ print_infos()
   printf "Linux OS      :      $LINUX_PRETTY_NAME\n"
   printf "Linux Version :      $LINUX_VERSION\n"
   printf "Kernel        :      $LINUX_KERNEL\n"
+  printf "GNU libc      :      $LINUX_GLIBC_VERSION\n"
   printf "Timezone      :      $(date +"%Z %z")\n"
 
 
