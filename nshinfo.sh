@@ -124,6 +124,7 @@ print_infos()
   printf "Kernel        :      $LINUX_KERNEL\n"
   printf "GNU libc      :      $LINUX_GLIBC_VERSION\n"
   printf "Timezone      :      $(date +"%Z %z")\n"
+  printf "Locale        :      $LANG\n"
 
 
   if [ -n "$LINUX_VIRT" ]; then

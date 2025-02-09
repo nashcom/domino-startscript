@@ -2132,6 +2132,30 @@ init_project ()
 
 }
 
+check_systemd()
+{
+
+  case "$CONTAINER_CMD" in
+
+    podman)
+      if [ -z "$DOMINO_SYSTEMD_NAME" ]; then
+        log_and_exit "No systemd service configured for Podman"
+      fi
+      ;;
+
+    docker)
+      log_and_exit "For Docker please use: 'restartpolicy' commands"
+      ;;
+
+    *)
+      log_and_exit "[$CONTAINER_CMD] does not use systemd services"
+
+      ;;
+
+  esac
+}
+
+
 case "$PARAM1" in
 
   config|cfg)
@@ -2263,15 +2287,20 @@ case "$PARAM1" in
     ;;
 
   configd|cfgd)
+    check_systemd
     $CONTAINER_SUDO $EDIT_COMMAND "/etc/systemd/system/$DOMINO_SYSTEMD_NAME"
     ;;
 
   enable|on)
+    check_systemd
+
     echo "Enabling Service"
     $SYSTEMCTL_CMD enable "$DOMINO_SYSTEMD_NAME"
     ;;
 
   disable|off)
+    check_systemd
+
     echo "Disabling Service"
     $SYSTEMCTL_CMD disable "$DOMINO_SYSTEMD_NAME"
     ;;
@@ -2296,7 +2325,7 @@ case "$PARAM1" in
     fi
     ;;
 
- label)
+  label)
     if [ -z "$CONTAINER_FULL_LABEL_FILE" ]; then
 
       if [ -z "$CONTAINER_LABEL_FILE" ]; then
@@ -2319,7 +2348,7 @@ case "$PARAM1" in
     fi
     ;;
 
- init)
+  init)
     init_project "$PARAM2" "$PARAM3" "$PARAM4" "$PARAM5"
     ;;
 
