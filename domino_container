@@ -690,6 +690,7 @@ inspect_image_native ()
 
   IMAGE_DOMINO_ADDONS="$($CONTAINER_CMD inspect --format "{{ index .Config.Labels \"DominoContainer.addons\" }}" $CONTAINER_IMAGE 2>/dev/null)"
   IMAGE_DOMINO_CUSTOM_ADDONS="$($CONTAINER_CMD inspect --format "{{ index .Config.Labels \"DominoContainer.custom-addons\" }}" $CONTAINER_IMAGE 2>/dev/null)"
+  IMAGE_DOMINO_BASEIMAGE="$($CONTAINER_CMD inspect --format "{{ index .Config.Labels \"DominoContainer.baseimage\" }}" $CONTAINER_IMAGE 2>/dev/null)"
 
   return 0
 }
@@ -743,6 +744,7 @@ inspect_image ()
   IMAGE_DOMINO_ADDONS="$(echo "$JSON" | jq -r '.Config.Labels."DominoContainer.addons"' | sed "s/null//")"
   IMAGE_DOMINO_CUSTOM_ADDONS="$(echo "$JSON" | jq -r '.Config.Labels."DominoContainer.custom-addons"' | sed "s/null//")"
 
+  IMAGE_DOMINO_BASEIMAGE="$(echo "$JSON" | jq -r '.Config.Labels."DominoContainer.baseimage"' | sed "s/null//")"
   return 0
 }
 
@@ -837,6 +839,7 @@ inspect_container_native ()
 
   CONTAINER_DOMINO_ADDONS="$($CONTAINER_CMD inspect --format "{{ index .Config.Labels \"DominoContainer.addons\" }}" $CONTAINER_KEY 2>/dev/null)"
   CONTAINER_DOMINO_CUSTOM_ADDONS="$($CONTAINER_CMD inspect --format "{{ index .Config.Labels \"DominoContainer.custom-addons\" }}" $CONTAINER_KEY 2>/dev/null)"
+  CONTAINER_DOMINO_BASEIMAGE="$($CONTAINER_CMD inspect --format "{{ index .Config.Labels \"DominoContainer.baseimage\" }}" $CONTAINER_KEY 2>/dev/null)"
 
   STARTDATE="$($CONTAINER_CMD inspect --format "{{ .State.StartedAt }}" $CONTAINER_KEY | cut -f1 -d+ 2>/dev/null)"
 
@@ -967,6 +970,7 @@ inspect_container ()
 
   CONTAINER_DOMINO_ADDONS=$(echo "$JSON" | jq -r '.Config.Labels."DominoContainer.addons"' | sed "s/null//")
   CONTAINER_DOMINO_CUSTOM_ADDONS=$(echo "$JSON" | jq -r '.Config.Labels."DominoContainer.custom-addons"' | sed "s/null//")
+  CONTAINER_DOMINO_BASEIMAGE=$(echo "$JSON" | jq -r '.Config.Labels."DominoContainer.baseimage"' | sed "s/null//")
 
   STARTDATE=$(echo "$JSON" | jq -r .State.StartedAt | sed "s/null//" | cut -f1 -d+ 2>/dev/null)
   CONTAINER_STARTED_AT=$(date +"%d.%m.%Y %H:%M:%S" -d "$STARTDATE" 2>/dev/null)
@@ -1105,6 +1109,15 @@ container_show_inspect ()
     else
       echo " CustAdd-ons CNT:  $CONTAINER_DOMINO_CUSTOM_ADDONS"
       echo " CustAdd-ons IMG:  $IMAGE_DOMINO_CUSTOM_ADDONS"
+    fi
+  fi
+
+ if [ -n "$CONTAINER_DOMINO_BASEIMAGE$IMAGE_DOMINO_BASEIMAGE" ]; then
+    if [ "$CONTAINER_DOMINO_BASEIMAGE" = "$IMAGE_DOMINO_BASEIMAGE" ]; then
+      echo " Base Image     :  $CONTAINER_DOMINO_BASEIMAGE"
+    else
+      echo " Base Image CNT :  $CONTAINER_DOMINO_BASEIMAGE"
+      echo " Base Image IMG :  $IMAGE_DOMINO_BASEIMAGE"
     fi
   fi
 
