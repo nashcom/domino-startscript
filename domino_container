@@ -1568,7 +1568,7 @@ container_start ()
   fi
 
   if [ ! -z "$CONTAINER_IT" ]; then
-    log_space "--- Starting Docker Container interactive [ Use Ctrl + p q to exit ] ---"
+    log_space "--- Starting Container interactive [ Use Ctrl + p q to exit ] ---"
   fi
 
   $CONTAINER_CMD start $CONTAINER_IT $CONTAINER_NAME
@@ -1697,7 +1697,7 @@ container_attach ()
   if [ -z "$CONTAINER_STATUS" ]; then log_space "Container [$CONTAINER_NAME] does not exist"; return 1; fi
   if [ ! "$CONTAINER_STATUS" = "running" ]; then log_space "Container [$CONTAINER_NAME] not started"; return 1; fi
 
-  log_space "--- Attaching to Docker Container [ Use Ctrl + p q to exit ] ---"
+  log_space "--- Attaching to Container [ Use Ctrl + p q to exit ] ---"
   $CONTAINER_CMD attach $CONTAINER_NAME
 
   return 0
@@ -1708,7 +1708,7 @@ container_attach ()
   if [ -z "$CONTAINER_STATUS" ]; then log_space "Container [$CONTAINER_NAME] does not exist"; return 1; fi
   if [ ! "$CONTAINER_STATUS" = "running" ]; then echo "Container [$CONTAINER_NAME] not started"; return 1; fi
 
-  log_space "--- Attaching to Docker Container [ Use Ctrl + p q to exit ] ---"
+  log_space "--- Attaching to Container [ Use Ctrl + p q to exit ] ---"
   $CONTAINER_CMD attach $CONTAINER_NAME
 
   return 0
@@ -1886,7 +1886,7 @@ help ()
   echo
   echo "pull            Pull current image (e.g for update)"
   echo "install         Install Podman"
-  echo "load            Load HCL Domino Docker image"
+  echo "load            Load HCL Domino Container image"
   echo "build           Build a current image -- even image tags might not have changed to ensure OS patches are installed"
   echo "restartpolicy   Update restart policy for existing container (e.g. : no | on-failure | always | unless-stopped)"
   echo "enable|on       Enable systemd service for Podman"

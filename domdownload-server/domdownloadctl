@@ -119,7 +119,7 @@ container_start()
 
   if [ -z "$STATUS" ]; then
 
-    echo "Creating Docker container: $CONTAINER_NAME"
+    echo "Creating container: $CONTAINER_NAME"
 
     if [ -z "$CONTAINER_NETWORK_NAME" ]; then
       CONTAINER_NETWORK="-p $CONTAINER_HTTPS_PORT:$NGINX_PORT"
@@ -150,7 +150,7 @@ container_start()
     $CONTAINER_CMD run -d --name "$CONTAINER_NAME" --hostname=$CONTAINER_HOSTNAME $CONTAINER_ENV_FILE_OPTION -e NGINX_PORT=$NGINX_PORT --stop-timeout 1 $CONTAINER_NETWORK $CONTAINER_RESTART_OPTIONS -v $DOMDOWNLOADSRV_LOG:/tmp/nginx:Z -v $SOFTWARE_DIR:/local/software:Z -v $DOMDOWNLOADSRV_DIR:/etc/nginx/conf.d:Z -v $DOMDOWNLOADSRV_DIR:/home/nginx/.DominoDownload:Z "$CONTAINER_IMAGE"
 
   elif [ "$STATUS" = "exited" ] ; then 
-    echo "Starting existing Docker container: $CONTAINER_NAME"
+    echo "Starting existing container: $CONTAINER_NAME"
     $CONTAINER_CMD start $CONTAINER_NAME
   fi
 
