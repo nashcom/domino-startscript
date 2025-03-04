@@ -56,7 +56,7 @@ stop_server ()
 }
 
 # "docker stop" will send a SIGTERM to the shell. catch it and stop Domino gracefully.
-# Ensure to use e.g. "docker stop --time=90 .." to ensure server has sufficient time to terminate.
+# Ensure to use e.g. "docker stop --timeout=90 .." to ensure server has sufficient time to terminate.
 
 # signal child died causes issues in bash 5.x
 case "$BASH_VERSION" in

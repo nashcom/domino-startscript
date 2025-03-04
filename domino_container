@@ -3,9 +3,9 @@
 # dominoctl                                                               #
 # ---------                                                               #
 # Nash!Com Domino Container Management Script                             #
-# Version 1.4.3 14.11.2024                                                #
+# Version 1.4.4 04.03.2025                                                #
 #                                                                         #
-# (C) Copyright Daniel Nashed/NashCom 2021-2024                           #
+# (C) Copyright Daniel Nashed/NashCom 2021-2025                           #
 # Feedback domino_unix@nashcom.de                                         #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #
@@ -52,7 +52,7 @@ CONTAINER_ENV_FILE=
 # Shutdown timeout increased for Domino proper shutdown
 DOMINO_SHUTDOWN_TIMEOUT=120
 
-CONTAINER_SCRIPT_VERSION=1.4.3
+CONTAINER_SCRIPT_VERSION=1.4.4
 MYHCL_DOWNLOAD_URL=https://my.hcltechsw.com/
 
 if [ "$1" == "--version" ]; then
@@ -1594,7 +1594,7 @@ container_stop ()
     return 0
   fi
 
-  $CONTAINER_CMD stop --time=$DOMINO_SHUTDOWN_TIMEOUT $CONTAINER_NAME
+  $CONTAINER_CMD stop --timeout=$DOMINO_SHUTDOWN_TIMEOUT $CONTAINER_NAME
 }
 
 container_logs ()
@@ -1738,7 +1738,7 @@ systemd_start ()
 
 systemd_stop ()
 {
-  $CONTAINER_CMD stop --time=$DOMINO_SHUTDOWN_TIMEOUT --ignore --cidfile $CONTAINER_CID
+  $CONTAINER_CMD stop --timeout=$DOMINO_SHUTDOWN_TIMEOUT --ignore --cidfile $CONTAINER_CID
   $CONTAINER_CMD rm --ignore -f --cidfile $CONTAINER_CID
   remove_file "$CONTAINER_CID"
 }

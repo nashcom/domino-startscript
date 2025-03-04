@@ -365,9 +365,9 @@ This would cause an unclean Domino Server shutdown!
 
 The entrypoint script is designed to catch the signals, but the server needs time to shutdown!
 
-So you should stop your Domino Docker containers always specifying the --time parameter to increase the shutdown grace period.
+So you should stop your Domino Docker containers always specifying the --timeout parameter to increase the shutdown grace period.
 
-Example: docker stop --time=60 domino
+Example: docker stop --timeout=60 domino
 Will wait for 60 seconds until the container is killed.
 
 
