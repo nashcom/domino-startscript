@@ -3,7 +3,7 @@
 # dominoctl                                                               #
 # ---------                                                               #
 # Nash!Com Domino Container Management Script                             #
-# Version 1.4.4 04.03.2025                                                #
+# Version 1.4.5 04.03.2025                                                #
 #                                                                         #
 # (C) Copyright Daniel Nashed/NashCom 2021-2025                           #
 # Feedback domino_unix@nashcom.de                                         #
@@ -52,7 +52,7 @@ CONTAINER_ENV_FILE=
 # Shutdown timeout increased for Domino proper shutdown
 DOMINO_SHUTDOWN_TIMEOUT=120
 
-CONTAINER_SCRIPT_VERSION=1.4.4
+CONTAINER_SCRIPT_VERSION=1.4.5
 MYHCL_DOWNLOAD_URL=https://my.hcltechsw.com/
 
 if [ "$1" == "--version" ]; then
@@ -282,7 +282,7 @@ is_sha256()
    esac
 }
 
-check_version ()
+check_version_older()
 {
   local count=1
   # Remove any unexpected chars like for Docker CE version on some platforms 
@@ -291,20 +291,33 @@ check_version ()
   while true
   do
     VER=$(echo $VERSION_STR|cut -d"." -f $count)
-    CHECK=$(echo $VERSION_STR|cut -d"." -f $count)
+    CHECK=$(echo $2|cut -d"." -f $count)
 
     if [ -z "$VER" ]; then return 0; fi
     if [ -z "$CHECK" ]; then return 0; fi
 
     if [ $VER -gt $CHECK ]; then return 0; fi
     if [ $VER -lt $CHECK ]; then
-      log_space "Warning: Unsupported $3 version $1 - Must be at least $2 !"
-      sleep 1
       return 1
     fi
 
     count=$(expr $count + 1)
   done
+
+  return 0
+}
+
+
+check_version()
+{
+
+  check_version_older "$@"
+
+  if [ "$?" = "1" ]; then
+      log_space "Warning: Unsupported $3 version $1 - Must be at least $2 !"
+      sleep 1
+      return 1
+  fi
 
   return 0
 }
@@ -393,6 +406,7 @@ check_container_environment()
 
   CONTAINER_ENV_NAME=
   CONTAINER_RUNTIME_VERSION=
+  CONTAINER_TIMEOUT_CMD=--time
 
   detect_container_environment
   detect_compose_environment
@@ -405,6 +419,7 @@ check_container_environment()
     if [ -z "$CONTAINER_RUNTIME_VERSION_STR" ]; then
       CONTAINER_RUNTIME_VERSION_STR=$(docker -v 2> /dev/null | head -1)
     fi
+
     CONTAINER_RUNTIME_VERSION=$(echo $CONTAINER_RUNTIME_VERSION_STR | awk -F'version ' '{print $2 }'|cut -d"," -f1)
 
     # Docker doesn't uses systemd
@@ -412,6 +427,14 @@ check_container_environment()
 
     # Check container environment
     check_version "$CONTAINER_RUNTIME_VERSION" "$DOCKER_MINIMUM_VERSION" "$CONTAINER_CMD"
+
+    # Docker 28.x.x starts complaining about older --time command replaced by new --timeout command
+
+    check_version_older "$CONTAINER_RUNTIME_VERSION" "28.0.0"
+
+    if [ "$?" = "0" ]; then
+      CONTAINER_TIMEOUT_CMD=--timeout
+    fi
 
     # For Docker we are done here
 
@@ -1594,7 +1617,7 @@ container_stop ()
     return 0
   fi
 
-  $CONTAINER_CMD stop --timeout=$DOMINO_SHUTDOWN_TIMEOUT $CONTAINER_NAME
+  $CONTAINER_CMD stop $CONTAINER_TIMEOUT_CMD=$DOMINO_SHUTDOWN_TIMEOUT $CONTAINER_NAME
 }
 
 container_logs ()
@@ -1738,7 +1761,7 @@ systemd_start ()
 
 systemd_stop ()
 {
-  $CONTAINER_CMD stop --timeout=$DOMINO_SHUTDOWN_TIMEOUT --ignore --cidfile $CONTAINER_CID
+  $CONTAINER_CMD stop $CONTAINER_TIMEOUT_CMD=$DOMINO_SHUTDOWN_TIMEOUT --ignore --cidfile $CONTAINER_CID
   $CONTAINER_CMD rm --ignore -f --cidfile $CONTAINER_CID
   remove_file "$CONTAINER_CID"
 }
