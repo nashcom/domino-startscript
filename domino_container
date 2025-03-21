@@ -1803,8 +1803,13 @@ container_update ()
   if [ -z "$CONTAINER_STATUS" ]; then log_space "Container [$CONTAINER_NAME] does not exist"; return 1; fi
 
   if [ "$CONTAINER_IMAGE_ID" = "$IMAGE_ID" ]; then
-    echo "Image did not change -- No Update needed"
-    return 0
+
+    if [ "$1" = "-f" ] || [ "$1" = "-force" ]; then
+      echo "Image did not change -- Forcing update"
+    else
+      echo "Image did not change -- No Update needed"
+      return 0
+    fi
   fi
 
   if [ -z "$IMAGE_ID" ]; then
@@ -2298,7 +2303,7 @@ case "$PARAM1" in
     ;;
 
   update)
-    container_update
+    container_update "$PARAM2"
     ;;
 
   domino)

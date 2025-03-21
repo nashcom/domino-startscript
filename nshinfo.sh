@@ -69,6 +69,7 @@ print_infos()
 
   if [ "$(uname)" = "Darwin" ]; then
     echo "No OS infos for MacOS"
+    return 0
   fi
 
   if [ -r  /etc/os-release ]; then
