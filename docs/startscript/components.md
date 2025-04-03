@@ -82,7 +82,7 @@ This file only needs to be readable in contrast to `rc_domino` and `rc_domino_sc
 
 ## systemd service file: domino.service
 
-Starting with CentOS 7 RHEL 7 and SLES 12 systemd is used to start/stop services.  
+Domino on Linux requires a systemd service used to start/stop services.  
 The domino.service file contains the configuration for the service.  
 The variables used (Linux user name and script location) have to match your configuration.  
 Configuration for the domino.service file is described in the previous section.  

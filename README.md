@@ -1,25 +1,29 @@
 
 # Introduction
 
-The Domino cross platform start/stop and diagnostic script has been written
-to unify and simplify running Domino on Linux and UNIX. The start script
-is designed to be "one-stop shopping" for all kind of operations done on the
-Linux/UNIX prompt. The script can start and stop the server, provides an interactive
-console and run NSD in different flavors.
+The Domino cross platform start/stop and diagnostic script has been written to unify and simplify running Domino on Linux and UNIX.
+The start script is designed to be "one-stop shopping" for all kind of operations done on the Linux/UNIX prompt. The script can start and stop the server, provides an interactive console and run NSD in different flavors.
 
-This script is designed to run with a dedicated user for each partition.
+This script is designed to run with a dedicated user for each partition. Out of the box the script is configured to use the "notes" user/group and the standard directories for binaries (/opt/hcl/domino) and the data directory (/local/notesdata). You should setup all settings in the script configuration file.
+
 Out of the box the script is configured to use the "notes" user/group and the standard
 directories for binaries (/opt/hcl/domino) and the data directory (/local/notesdata).
 You should setup all settings in the script configuration file.
 
-Note: Linux systemd (CentOS 7 RHEL 7/ SLES 12) requires root permissions for start/stop.
+Note: Linux systemd requires root permissions for start/stop.
 One way to accomplish this is to grant "sudo" permissions for the "rc_domino" script.
 See the "Enable Startup with sudo" section for details.
+
+
+[The Start Script GitHub page](https://nashcom.github.io/domino-startscript/) contains the full documentation for the Start Script.
+
+
 
 # Simple Configuration
 
 If you configure your Domino environment with the standard path names
 and users names, you can use this standard configuration and install script.
+
 
 The default configuration is
 
@@ -50,9 +54,11 @@ It copies all the scripts and configuration and after installation you can use t
 The script is pre-configured and will work for older versions with init.d and also with the newer systemd.
 
 - The first command untars the files
-- The install_scripts writes all required files into the right locations with the right owner and permissions.
-- The next command enables the service (works for init.d and systemd)
+- **install_scripts** writes all required files into the right locations with the right owner and permissions.
+- The next command enables the service (systemd)
 - And finally the server is started
+
+Example:
 
 ```
 tar -xzf domino-startscript_v3.8.0.taz
@@ -72,4 +78,6 @@ domino status
 domino statusd
 domino console
 ```
+
+For a detailed documentation check the GitHub page linked on the top right corner of this page.
 

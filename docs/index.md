@@ -243,7 +243,7 @@ of the Domino server. Default is  `notes`.
 For systemd ensure the configuration of the domino.service file is matching and
 specially if it contains the right user name and path to the rc_domino_script.
 And also the right path for the "PIDFile"
-(See "Special platform considerations --> systemd (CentOS 7 RHEL 7/ SLES 12 or higher)"  for details).
+(See "Special platform considerations --> **systemd** for details).
 
 # Special platform considerations AIX
 

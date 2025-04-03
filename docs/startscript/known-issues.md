@@ -61,6 +61,8 @@ You could create a sym link for your locale. This will ensure it works also with
 cd /opt/hcl/domino/notes/latest/linux/res
 ln -s de_DE.UTF-8 C
 ln -s en_US.UTF-8 C
+ln -s de_DE C
+ln -s en_US C
 ```
 
 In some cases when the installer created the directory for a specific locale, you should make sure that you also have directory or sym link to a directory for C. So the `ln -s` command would have the opposite order.

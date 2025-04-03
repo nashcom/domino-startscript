@@ -7,12 +7,10 @@ parent: "Domino Start Script"
 has_children: false
 ---
 
-# Special systemd configuration
+# Systemd configuration
 
-Linux introdued systemd in the following version and is since then the standard used instead of the older init.d functionality
-
-- CentOS 7+ RHEL 7+
-- SLES 12+ or higher
+Earlier versions of Linux used init.d to start and stop services.
+Current Linux versions support systemd to start and stop serivces.
 
 `etc/systemd/system/domino.service` contains the configuration for the systemd service.
 
@@ -55,7 +53,7 @@ processes but the number of threads that the "notes" user is allowed to use!
 TasksMax=8000
 ```
 
-The version of systemd shipped in SLES 12 SP2 uses the PIDs cgroup controller.
+The version of systemd shipped with SLES uses the PIDs cgroup controller.
 This provides some per-service fork() bomb protection, leading to a safer system.
 It controls the number of threads/processes a user can use.
 To control the default TasksMax= setting for services and scopes running on the system,
