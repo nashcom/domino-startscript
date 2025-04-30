@@ -1,0 +1,33 @@
+name: Release
+
+on:
+  release:
+    types: [published, edited] 
+
+jobs:
+  release:
+    name: Build & Upload Binaries
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write  # Required to create releases
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create tar package
+        run: |
+         TAR_NAME=domino-startscript-$(cat version.txt).taz
+         tar -cvzf "$TAR_NAME" *
+         sha256sum "$TAR_NAME" | cut -f1 -d" " > checksum.txt
+
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            *.taz
+            checksum.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

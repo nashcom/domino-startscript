@@ -5,7 +5,7 @@
 ############################################################################
 
 # Domino on Linux installation script
-# Version 4.0.2 04.01.2025
+# Version 4.0.3 30.04.2025 
 
 # - Installs required software
 # - Adds notes:notes user and group

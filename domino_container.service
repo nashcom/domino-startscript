@@ -2,9 +2,9 @@
 
 ###########################################################################
 # systemd Service - Start/Stop Script for Domino on Podman                #
-# Version 1.4.0 20.12.2023                                                #
+# Version 4.0.3 30.04.2025                                                #
 #                                                                         #
-# (C) Copyright Daniel Nashed/NashCom 2020-2023                           #
+# (C) Copyright Daniel Nashed/NashCom 2020-2025                           #
 # Feedback domino_unix@nashcom.de                                         #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #

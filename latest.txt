@@ -1,1 +1,1 @@
-https://github.com/nashcom/domino-startscript/releases/download/v4.0.2/domino-startscript-4.0.2.taz
+https://github.com/nashcom/domino-startscript/releases/download/v4.0.3/domino-startscript-4.0.3.taz
