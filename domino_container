@@ -3,7 +3,7 @@
 # dominoctl                                                               #
 # ---------                                                               #
 # Nash!Com Domino Container Management Script                             #
-# Version 1.4.5 04.03.2025                                                #
+# Version 1.5.0 17.05.2025                                                #
 #                                                                         #
 # (C) Copyright Daniel Nashed/NashCom 2021-2025                           #
 # Feedback domino_unix@nashcom.de                                         #
@@ -52,13 +52,27 @@ CONTAINER_ENV_FILE=
 # Shutdown timeout increased for Domino proper shutdown
 DOMINO_SHUTDOWN_TIMEOUT=120
 
-CONTAINER_SCRIPT_VERSION=1.4.5
+CONTAINER_SCRIPT_VERSION=1.5.0
 MYHCL_DOWNLOAD_URL=https://my.hcltechsw.com/
 
 if [ "$1" == "--version" ]; then
   echo $CONTAINER_SCRIPT_VERSION
   exit 0
 fi
+
+# Reset
+ColorOff='\033[0m'
+
+# Regular Colors
+ColorBlack='\033[0;30m'
+ColorRed='\033[0;31m'
+ColorGreen='\033[0;32m'
+ColorYellow='\033[1;33m'
+ColorBlue='\033[0;34m'
+ColorPurple='\033[0;35m'
+ColorCyan='\033[0;36m'
+ColorWhite='\033[0;37m'
+
 
 # Default config directory. Can be overwritten by environment 
 if [ -z "$DOMINO_CFG_DIR" ]; then
@@ -2197,6 +2211,290 @@ check_systemd()
 }
 
 
+wait_for_key()
+{
+  local SELECTED=
+  echo
+  echo "--- Press any key to continue / [Q] for quit  ---"
+  echo
+  read -n1 -e SELECTED;
+
+  if [ "$SELECTED" = "q" ]; then
+    exit 0
+  fi
+}
+
+
+check_container_status()
+{
+  CONTAINER_STATUS="$($CONTAINER_CMD inspect --format "{{ .State.Status }}" $CONTAINER_NAME 2>/dev/null)"
+
+  if [ -z "$CONTAINER_STATUS" ]; then
+
+     CONTAINER_STATUS_DISPLAY="${ColorRed}Not existing${ColorOff}"
+    return 0
+  fi
+
+  if [ "running" = "$CONTAINER_STATUS" ]; then
+    CONTAINER_STATUS_DISPLAY="${ColorGreen}Running${ColorOff}"
+    return 0
+  fi
+
+  if [ "exited" = "$CONTAINER_STATUS" ]; then
+     CONTAINER_STATUS_DISPLAY="${ColorRed}Stopped${ColorOff}"
+    return 0
+  fi
+
+  CONTAINER_STATUS_DISPLAY="${ColorRed}$CONTAINER_STATUS${ColorOff}"
+
+  return 0
+}
+
+
+menu_help()
+{
+  echo
+  echo "Domino Container Menu Help"
+  echo "--------------------------"
+  echo
+  echo "The Domino Container Control Menu offers the most general used commands."
+  echo "It is intended to provide an easy to use menu for daily operations."
+  echo "The menu complements the command-line operations."
+  echo
+  echo "For additional commands and options run 'dominoctl help'."
+  echo
+  wait_for_key
+}
+
+
+edit_env_file()
+{
+  if [ -n "$CONTAINER_COMPOSE_FILE" ]; then
+    CONTAINER_ENV_FILE=.env
+  fi
+
+  if [ -z "$CONTAINER_FULL_ENV_FILE" ]; then
+
+    if [ -z "$CONTAINER_ENV_FILE" ]; then
+      echo "No environment file configured!"
+    else
+      echo "Creating new environment file [$DOMINO_CFG_DIR/$CONTAINER_ENV_FILE]"
+      sleep 2
+      $EDIT_COMMAND "$DOMINO_CFG_DIR/$CONTAINER_ENV_FILE"
+    fi
+  else
+    $EDIT_COMMAND "$CONTAINER_FULL_ENV_FILE"
+  fi
+}
+
+
+setup_domino()
+{
+  if [ -e "$SCRIPT_DIR_NAME/DominoOneTouchSetup.sh" ]; then
+
+    export SCRIPT_DIR_NAME
+    export DOMINO_AUTO_CONFIG_JSON_FILE
+
+    echo "DOMINO_AUTO_CONFIG_JSON_FILE: [$DOMINO_AUTO_CONFIG_JSON_FILE]"
+
+    . "$SCRIPT_DIR_NAME/DominoOneTouchSetup.sh" "$PARAM2" "$PARAM3" "$PARAM4" "$PARAM5"
+  else
+    echo "Domino One-Touch Setup not available!"
+  fi
+  echo
+}
+
+
+menu()
+{
+  local SELECTED=
+  local QUESTION=
+  local CONTAINER_STATUS=
+
+  while [ 1 ];
+  do
+    check_container_status
+    clear
+    echo
+    echo "HCL Domino Container"
+    echo "--------------------"
+    echo
+    printf " Status:  $CONTAINER_STATUS_DISPLAY\n"
+    echo
+
+    if [ "$CONTAINER_STATUS" = "running" ]; then
+      echo " (T)   Shutdown Container"
+    else
+      echo " (S)   Start Container"
+    fi
+
+    if [ -z "$CONTAINER_STATUS" ]; then
+      echo " (F)   Configure Domino"
+    fi
+
+    if [ "$CONTAINER_STATUS" = "running" ]; then
+      echo " (C)   Domino Server Console"
+    fi
+
+    echo " (D)   Domino start script in container"
+    echo " (B)   Bash into container"
+    echo " (R)   Root bash into container"
+    echo
+    echo " (I)   Inspect container"
+    echo " (U)   Update container"
+    echo " (E)   Container configuration"
+    echo " (V)   Container environment"
+    echo
+    echo "Diagnostic"
+    echo
+    echo " (l)   Linux Information"
+    echo " (N)   NSD (Notes System Diagnostic)"
+    echo " (G)   NSD Hang (3 NSDs in a row)"
+    echo " (M)   Domino Memory dump"
+    echo " (K)   Kill / Cleanup Domino server"
+    echo " (Z)   Cleanup the container"
+    echo
+    echo " (H)   Help"
+    echo
+    echo
+    echo " Runtime   :  $CONTAINER_ENV_NAME $CONTAINER_RUNTIME_VERSION"
+    echo " Container :  $CONTAINER_NAME"
+    echo " Image     :  $CONTAINER_IMAGE"
+    echo
+    read -n1 -e -p " Select command,  [Q] to cancel? " SELECTED;
+
+    clear
+
+    case $(echo "$SELECTED" | awk '{print tolower($0)}') in
+
+      "")
+    ;;
+
+      0|q)
+        clear
+        echo
+        exit 0
+        ;;
+
+      s)
+        if [ "$CONTAINER_STATUS" = "running" ]; then
+          echo
+          echo "Domino container already started"
+          echo
+        else
+          echo
+          domino_start
+        fi
+
+        sleep 3
+        ;;
+
+      t)
+        log_space "Waiting for container shutdown, please wait ..."
+        domino_stop
+        ;;
+
+      f)
+        setup_domino
+        ;;
+
+      c)
+        if [ "$CONTAINER_STATUS" = "running" ]; then
+          container_domino_cmd domino console
+	else
+	  echo "Container not running"
+	  sleep 2
+	fi
+        ;;
+
+      d)
+        container_domino_cmd domino
+        ;;
+
+      b)
+        container_bash
+        ;;
+
+      r)
+        container_bash root
+        ;;
+
+      i)
+        container_show_inspect full 
+        wait_for_key
+        ;;
+
+      u)
+        container_update
+        ;;
+
+      e)
+        $CONTAINER_SUDO $EDIT_COMMAND "$CONFIG_FILE"
+        ;;
+
+      v)
+        edit_env_file
+        ;;
+
+      l)
+        if [ -x $SCRIPT_DIR_NAME/nshinfo.sh ]; then
+          $SCRIPT_DIR_NAME/nshinfo.sh
+          wait_for_key
+        fi
+        ;;
+
+      n)
+        container_domino_cmd domino nsd
+        wait_for_key
+        ;;
+
+      g)
+        container_domino_cmd domino hang
+        wait_for_key
+        ;;
+
+      m)
+        container_domino_cmd domino memcheck
+        wait_for_key
+        ;;
+
+      k)
+         echo
+         read -p " Really kill and cleanup Domino server: (yes/no) ? " QUESTION
+
+         if [ "$QUESTION" = "yes" ] || [ "$QUESTION" = "y" ]; then
+            container_domino_cmd domino cleanup
+         fi
+         ;;
+
+      z)
+         echo
+         read -p " Really kill and cleanup the container: (yes/no) ? " QUESTION
+
+         if [ "$QUESTION" = "yes" ] || [ "$QUESTION" = "y" ]; then
+           container_cleanup 
+         fi
+         ;;
+
+
+      h)
+        menu_help
+        ;;
+
+      *)
+        echo
+        echo
+        echo " Invalid option selected: $SELECTED"
+        echo -n " "
+        sleep 2
+        ;;
+    esac
+
+  done
+}
+
+
+
 case "$PARAM1" in
 
   config|cfg)
@@ -2216,6 +2514,12 @@ check_hostname
 inspect_image
 inspect_container
 config_warnings 
+
+if [ -z "$PARAM1" ]; then
+  menu
+  exit 0
+fi
+
 
 case "$PARAM1" in
 
@@ -2347,23 +2651,7 @@ case "$PARAM1" in
     ;;
 
   env)
-
-    if [ -n "$CONTAINER_COMPOSE_FILE" ]; then
-      CONTAINER_ENV_FILE=.env
-    fi
-
-    if [ -z "$CONTAINER_FULL_ENV_FILE" ]; then
-
-      if [ -z "$CONTAINER_ENV_FILE" ]; then
-        echo "No environment file configured!"
-      else
-        echo "Creating new environment file [$DOMINO_CFG_DIR/$CONTAINER_ENV_FILE]"
-        sleep 2
-        $EDIT_COMMAND "$DOMINO_CFG_DIR/$CONTAINER_ENV_FILE"
-      fi
-    else
-      $EDIT_COMMAND "$CONTAINER_FULL_ENV_FILE"
-    fi
+    edit_env_file
     ;;
 
   label)
@@ -2443,19 +2731,7 @@ case "$PARAM1" in
 
     # setup On Touch Setup
     echo
-
-    if [ -e "$SCRIPT_DIR_NAME/DominoOneTouchSetup.sh" ]; then
-
-      export SCRIPT_DIR_NAME
-      export DOMINO_AUTO_CONFIG_JSON_FILE
-
-      echo "DOMINO_AUTO_CONFIG_JSON_FILE: [$DOMINO_AUTO_CONFIG_JSON_FILE]"
-
-      . "$SCRIPT_DIR_NAME/DominoOneTouchSetup.sh" "$PARAM2" "$PARAM3" "$PARAM4" "$PARAM5"
-    else
-      echo "Domino One-Touch Setup not available!"
-    fi
-    echo
+    setup_domino
     exit 0
     ;;
 
