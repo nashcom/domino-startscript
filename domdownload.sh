@@ -2395,8 +2395,13 @@ SOFTWARE_URL=$HCL_AUTOUPDATE_URL/software.jwt
 PRODUCT_URL=$HCL_AUTOUPDATE_URL/product.jwt
 GITHUB_URL=https://github.com
 
+
 if [ -z "$EDIT_COMMAND" ]; then
-  EDIT_COMMAND="vi"
+  if [ -n "$EDITOR" ]; then
+    EDIT_COMMAND="$EDITOR"
+  else
+    EDIT_COMMAND="vi"
+  fi
 fi
 
 if [ -z $CURL_DOWNLOAD_TIMEOUT ]; then

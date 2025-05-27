@@ -212,7 +212,11 @@ IMAGE_BUILD_VERSION=$IMAGE_VERSION
 BUILDTIME=$(date +"%d.%m.%Y %H:%M:%S")
 
 if [ -z "$EDIT_COMMAND" ]; then
-  EDIT_COMMAND="vi"
+  if [ -n "$EDITOR" ]; then
+    EDIT_COMMAND="$EDITOR"
+  else
+    EDIT_COMMAND="vi"
+  fi
 fi
 
 # Get OS type
@@ -2313,6 +2317,12 @@ menu()
 
   while [ 1 ];
   do
+    # ensure we terminate when terminal is closed
+    if ! [ -t 0 ]; then
+      echo "Cannot read from stdin"
+      return 0
+    fi
+
     check_container_status
     clear
     echo
@@ -2345,7 +2355,7 @@ menu()
     echo " (E)   Container configuration"
     echo " (V)   Container environment"
     echo
-    echo "Diagnostic"
+    echo " Diagnostic"
     echo
     echo " (l)   Linux Information"
     echo " (N)   NSD (Notes System Diagnostic)"
@@ -2359,7 +2369,13 @@ menu()
     echo
     echo " Runtime   :  $CONTAINER_ENV_NAME $CONTAINER_RUNTIME_VERSION"
     echo " Container :  $CONTAINER_NAME"
-    echo " Image     :  $CONTAINER_IMAGE"
+
+    if [ "$CONTAINER_IMAGE_ID" = "$IMAGE_ID" ]; then
+      echo " Image     :  $CONTAINER_IMAGE"
+    else 
+      echo " Image     :  $CONTAINER_IMAGE - New image vailable!"
+    fi
+
     echo
     read -n1 -e -p " Select command,  [Q] to cancel? " SELECTED;
 

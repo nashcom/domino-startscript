@@ -202,7 +202,7 @@ LogTrace "Generating $CATALOG_FILE"
 cat "$CATALOG_JSON"| jq -r '.locations[0] + "|" + .name + "|" + .description  + "|" + .checksums.sha256'  | sort -V | cut -d'/' -f2- > "$CATALOG_TEMP"
 
 if [ -z "$CATALOG_EXCLUDE_PATTERN" ]; then
-  CATALOG_EXCLUDE_PATTERN="12.0.1|IBMi|verse|mobile|voltscript|appdev/|caa/|dlau/|domino/11|notes/11|ccm/|htmo/|hei/11|traveler/apnscerts|.pdf|.txt|consap/|EarlyAccessMay2023|EarlyAccessJuly2023|EarlyAccessOctober2023|EarlyAccessSept2024"
+  CATALOG_EXCLUDE_PATTERN="12.0.1|IBMi|verse|mobile|voltscript|appdev/|caa/|dlau/|domino/11|notes/11|ccm/|htmo/|hei/11|traveler/apnscerts|.pdf|.txt|consap/|14ea|14.5ea1|14.5ea2"
 fi
 
 # Exclude software, which should not be listed

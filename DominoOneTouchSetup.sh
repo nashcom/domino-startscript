@@ -506,7 +506,11 @@ EditOneTouchSetup()
 
 # Edit command
 if [ -z "$EDIT_COMMAND" ]; then
-  export EDIT_COMMAND="vi"
+  if [ -n "$EDITOR" ]; then
+    EDIT_COMMAND="$EDITOR"
+  else
+    EDIT_COMMAND="vi"
+  fi
 fi
 
 # Ensure Domino Data path is set

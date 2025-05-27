@@ -140,7 +140,11 @@ fi
 
 # Edit command
 if [ -z "$EDIT_COMMAND" ]; then
-  EDIT_COMMAND="vi"
+  if [ -n "$EDITOR" ]; then
+    EDIT_COMMAND="$EDITOR"
+  else
+    EDIT_COMMAND="vi"
+  fi
 fi
 
 # Show log command
@@ -1557,6 +1561,13 @@ run_monitor()
     read var
 
     if [ "$var" = "PIPE-DEAD" ]; then
+      echo "Terminating live console - Input Pipe is dead!"
+      stop_monitor
+      exit 0
+    fi
+
+    # Ensure to terminate when terminal is closed
+    if ! [ -t 0 ]; then
       echo "Terminating live console - Input Pipe is dead!"
       stop_monitor
       exit 0
@@ -3036,6 +3047,13 @@ domino_setup()
 
   while [ 1 ];
   do
+
+    # Ensure to terminate when terminal is closed
+    if ! [ -t 0 ]; then
+      echo "Cannot read from stdin"
+      return 0
+    fi
+
     clear
     echo
     echo "HCL Domino Server Configuration"
@@ -3129,6 +3147,13 @@ menu()
 
   while [ 1 ];
   do
+
+    # Ensure to terminate when terminal is closed
+    if ! [ -t 0 ]; then
+      echo "Cannot read from stdin"
+      return 0
+    fi
+
     check_domino_status
     clear
     echo
@@ -3156,6 +3181,11 @@ menu()
     echo
     echo "Diagnostic"
     echo
+
+    if [ -x /opt/nashcom/startscript/nshdiag.sh ]; then
+      echo " (D)   Domino Diagnostics"
+    fi
+
     echo " (I)   Linux Information"
     echo " (N)   NSD (Notes System Diagnostic)"
     echo " (G)   NSD Hang (3 NSDs in a row)"
@@ -3195,23 +3225,29 @@ menu()
         ;;
 
       i)
-        if [ -x $SCRIPT_DIR_NAME/nshinfo.sh ]; then
-          $SCRIPT_DIR_NAME/nshinfo.sh
+        if [ -x "$SCRIPT_DIR_NAME/nshinfo.sh" ]; then
+          "$SCRIPT_DIR_NAME/nshinfo.sh"
         fi
         wait_for_key
         ;;
 
+      d)
+        if [ -x "$SCRIPT_DIR_NAME/nshdiag.sh" ]; then
+          "$SCRIPT_DIR_NAME/nshdiag.sh"
+        fi
+        ;;
+
       t)
-    log_space "Waiting for server shutdown, please wait ..."
+        log_space "Waiting for server shutdown, please wait ..."
         domino stop
         ;;
 
       w)
         log_space "Waiting for server shutdown, please wait ..."
         domino stop &
-    sleep 3
-    domino_shutdown_monitor
-    wait_for_key
+        sleep 3
+        domino_shutdown_monitor
+        wait_for_key
         ;;
 
       p)
