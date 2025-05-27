@@ -1867,12 +1867,22 @@ container_bash ()
   if [ -z "$CONTAINER_STATUS" ]; then log_space "Container [$CONTAINER_NAME] does not exist"; return 1; fi
   if [ ! "$CONTAINER_STATUS" = "running" ]; then log_space "Container [$CONTAINER_NAME] not started"; return 1; fi
 
+  CONTAINER_ENV_FILE_OPTION=
+
+   if [ -n "$CONTAINER_FULL_ENV_FILE" ]; then
+    CONTAINER_ENV_FILE_OPTION="--env-file $CONTAINER_FULL_ENV_FILE"
+
+    if [ ! -r "$CONTAINER_FULL_ENV_FILE" ]; then
+      log_and_exit "Error - Cannot read environment file [$CONTAINER_FULL_ENV_FILE]"
+    fi
+  fi
+
   log_space "--- Starting bash in $CONTAINER_ENV_NAME [ Use exit to return ] ---"
 
   if [ "$1" = "root" ]; then
-    $CONTAINER_CMD exec -it --user 0 $CONTAINER_NAME /bin/bash
+    $CONTAINER_CMD exec -it $CONTAINER_ENV_FILE_OPTION --user 0 $CONTAINER_NAME /bin/bash
   else
-    $CONTAINER_CMD exec -it -w /local/notesdata $CONTAINER_NAME /bin/bash
+    $CONTAINER_CMD exec -it $CONTAINER_ENV_FILE_OPTION -w /local/notesdata $CONTAINER_NAME /bin/bash
   fi
 
   return 0
