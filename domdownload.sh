@@ -2,7 +2,7 @@
 
 ###########################################################################
 # Domino Software Download Script                                         #
-# Version 1.0.6 06.12.2024                                                #
+# Version 1.0.9 01.06.2025                                                #
 # Copyright Nash!Com, Daniel Nashed                                       #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #
@@ -50,11 +50,12 @@
 # 1.0.6  Allow custom download without authentication. Support for custom authentication
 # 1.0.7  Run Curl with silent option if -silent is specified. use only basename if download file has a slash
 # 1.0.8  Use temp files for download and rename them when verified
+# 1.0.9  Performance optimization (parsing strings)
 
 SCRIPT_NAME=$0
 SCRIPT_DIR=$(dirname $SCRIPT_NAME)
 
-DOMDOWNLOAD_SCRIPT_VERSION=1.0.8
+DOMDOWNLOAD_SCRIPT_VERSION=1.0.9
 
 # Just print version and exit
 case "$1" in
@@ -1123,13 +1124,15 @@ GetProductLinePortal()
   local PRODUCT_LINE=$(echo "$PRODUCT_INFO" | $JQ_CMD -r '.name + "|" + .description + "|" + .platform  + "|" + (.size|tostring) + "|" + .checksums.sha256 + "|" + .id + "|" + .modified')
   PerfTimerEnd $PERF_MAX_JQ "JQ: GetProductLinePortal"
 
-  FILE_NAME=$(echo "$PRODUCT_LINE" | /usr/bin/cut -d"|" -f1)
-  FILE_DESCRIPTION=$(echo "$PRODUCT_LINE" | /usr/bin/cut -d"|" -f2)
-  FILE_PLATFORM=$(echo "$PRODUCT_LINE" | /usr/bin/cut -d"|" -f3)
-  FILE_SIZE=$(echo "$PRODUCT_LINE" | /usr/bin/cut -d"|" -f4)
-  FILE_CHECKSUM_SHA256=$(echo "$PRODUCT_LINE" | /usr/bin/cut -d"|" -f5)
-  FILE_ID=$(echo "$PRODUCT_LINE" | /usr/bin/cut -d"|" -f6)
-  FILE_MODIFIED=$(echo "$PRODUCT_LINE" | /usr/bin/cut -d"|" -f7)
+  IFS='|' read -r -a PARTS <<< "$PRODUCT_LINE"
+
+  FILE_NAME=${PARTS[0]}
+  FILE_DESCRIPTION=${PARTS[1]}
+  FILE_PLATFORM=${PARTS[2]}
+  FILE_SIZE=${PARTS[3]}
+  FILE_CHECKSUM_SHA256=${PARTS[4]}
+  FILE_ID=${PARTS[5]}
+  FILE_MODIFIED=${PARTS[6]}
 
   if [ "$SILENT_MODE" = "yes" ]; then
     return 0
@@ -1191,17 +1194,18 @@ GetProductLineAutoUpdate()
 
   PerfTimerEnd $PERF_MAX_JQ "JQ: GetProductLineAutoUpdate"
 
-  # cut is faster to than JQ and is a very simple operation
-  FILE_NAME=$(echo "$PRODUCT_LINE" | /usr/bin/cut -d"|" -f1)
-  FILE_DESCRIPTION=$(echo "$PRODUCT_LINE" | /usr/bin/cut -d"|" -f2)
-  FILE_VERSION=$(echo "$PRODUCT_LINE" | /usr/bin/cut -d"|" -f3)
-  FILE_SIZE=$(echo "$PRODUCT_LINE" | /usr/bin/cut -d"|" -f4)
-  FILE_CHECKSUM_SHA256=$(echo "$PRODUCT_LINE" | /usr/bin/cut -d"|" -f5)
-  FILE_ID=$(echo "$PRODUCT_LINE" | /usr/bin/cut -d"|" -f6)
-  FILE_PRODUCT=$(echo "$PRODUCT_LINE" | /usr/bin/cut -d"|" -f7)
-  FILE_TYPE=$(echo "$PRODUCT_LINE" | /usr/bin/cut -d"|" -f8)
-  FILE_PLATFORM=$(echo "$PRODUCT_LINE" | /usr/bin/cut -d"|" -f9)
-  FILE_INFO_S3=$(echo "$PRODUCT_LINE" | /usr/bin/cut -d"|" -f10)
+  IFS='|' read -r -a PARTS <<< "$PRODUCT_LINE"
+
+  FILE_NAME=${PARTS[0]}
+  FILE_DESCRIPTION=${PARTS[1]}
+  FILE_VERSION=${PARTS[2]}
+  FILE_SIZE=${PARTS[3]}
+  FILE_CHECKSUM_SHA256=${PARTS[4]}
+  FILE_ID=${PARTS[5]}
+  FILE_PRODUCT=${PARTS[6]}
+  FILE_TYPE=${PARTS[7]}
+  FILE_PLATFORM=${PARTS[8]}
+  FILE_INFO_S3=${PARTS[9]}
 
   if [ "$SILENT_MODE" = "yes" ]; then
     return 0
@@ -1246,6 +1250,7 @@ DownloadProductFromPortal()
   return 0
 }
 
+
 GetDownloadFromPortal()
 {
   local JSON=
@@ -1262,6 +1267,10 @@ GetDownloadFromPortal()
 
   # For menus ensure to always read from terminal even stdin was redirected
   exec < /dev/tty
+
+  if [ -z "$CATALOG_EXCLUDE_PATTERN" ]; then
+    CATALOG_EXCLUDE_PATTERN="Client Application Access|CCM Connector for Notes|AppDev Pack|Nomad Mobile|Verse Mobile|Traveler for Microsoft Outlook|14.0 EA|14.5 EA1|14.5 EA2"
+  fi
 
   while [ -z "$SELECTED" ];
   do
@@ -1288,13 +1297,13 @@ GetDownloadFromPortal()
     TYPE=$(echo "$JSON" | $JQ_CMD -r '.type')
 
     if [ "$TYPE" = "null" ] || [ "$TYPE" = "product-group" ]; then
-      SELECT=$(echo "$JSON" | $JQ_CMD -r ' .children | map (.name) | join("\n")' | sort)
+      SELECT=$(echo "$JSON" | $JQ_CMD -r ' .children | map (.name) | join("\n")'  | grep -v -E "$CATALOG_EXCLUDE_PATTERN" | sort)
 
     elif [ "$TYPE" = "product" ]; then
-      SELECT=$(echo "$JSON" | $JQ_CMD -r '.releases | map (.name) | join("\n")' | sort -V)
+      SELECT=$(echo "$JSON" | $JQ_CMD -r '.releases | map (.name) | join("\n")' | grep -v -E "$CATALOG_EXCLUDE_PATTERN" | sort -V)
 
     elif [ "$TYPE" = "release" ]; then
-      SELECT=$(echo "$JSON" | $JQ_CMD -r '.files | map (.name) | join("\n")' | sort)
+      SELECT=$(echo "$JSON" | $JQ_CMD -r '.files | map (.name) | join("\n")' | grep -v -E "$CATALOG_EXCLUDE_PATTERN" | sort )
 
       PRODUCT_PATH=$(echo "$JSON" | $JQ_CMD -r '.path[0].path')
 
@@ -1598,18 +1607,18 @@ GetSoftwareConfig()
     exit 1
   fi
 
-  # cut is faster to than JQ and is a very simple operation
+  IFS='|' read -r -a PARTS <<< "$CONFIG"
 
   if [ -z "$MYHCL_TOKEN_URL" ]; then
-    MYHCL_TOKEN_URL=$(echo "$CONFIG" | /usr/bin/cut -d"|" -f1)
+    MYHCL_TOKEN_URL=${PARTS[0]}
   fi
 
   if [ -z "$MYHCL_DOWNLOAD_URL_PREFIX" ]; then
-    MYHCL_DOWNLOAD_URL_PREFIX=$(echo "$CONFIG" | /usr/bin/cut -d"|" -f2)
+    MYHCL_DOWNLOAD_URL_PREFIX=${PARTS[1]}
   fi
 
   if [ -z "$MYHCL_DOWNLOAD_URL_SUFFIX" ]; then
-    MYHCL_DOWNLOAD_URL_SUFFIX=$(echo "$CONFIG" | /usr/bin/cut -d"|" -f3)
+    MYHCL_DOWNLOAD_URL_SUFFIX=${PARTS[2]}
   fi
 
   DebugText "Token URL:      " $MYHCL_TOKEN_URL
@@ -2124,7 +2133,8 @@ MapFileID()
   case "$1" in
 
     /v1/files/*/download)
-      FILE_ID=$(echo $1 | cut -f4 -d'/')
+      IFS='/' read -r -a PARTS <<< "$1"
+      FILE_ID=${PARTS[3]}
       ;;
   esac
 

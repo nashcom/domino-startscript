@@ -2361,7 +2361,9 @@ menu()
     echo " (R)   Root bash into container"
     echo
     echo " (I)   Inspect container"
-    echo " (U)   Update container"
+    if [ ! "$CONTAINER_IMAGE_ID" = "$IMAGE_ID" ]; then
+      echo " (U)   Update container"
+    fi
     echo " (E)   Container configuration"
     echo " (V)   Container environment"
     echo

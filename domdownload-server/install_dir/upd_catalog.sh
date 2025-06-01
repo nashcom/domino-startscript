@@ -11,8 +11,8 @@ if [ "$CATALOG_BROSWING" = "no" ]; then
 fi
 
 
-if [ -z "$CATELOG_MAX_AGE_SEC" ]; then
-  CATELOG_MAX_AGE_SEC=120
+if [ -z "$CATALOG_MAX_AGE_SEC" ]; then
+  CATALOG_MAX_AGE_SEC=120
 fi
 
 
@@ -185,7 +185,7 @@ check_file_smaller()
 # --- Main ---
 
 # Skip if MHS catalog data is still younger then max age
-check_file_older "$CATALOG_JSON" "$CATELOG_MAX_AGE_SEC" 
+check_file_older "$CATALOG_JSON" "$CATALOG_MAX_AGE_SEC"
 
 # If file is too small (32k), this isn't a valid JSON file
 check_file_smaller "$CATALOG_JSON" 32768
@@ -240,8 +240,9 @@ done
 
 for ENTRY in $CATEGORY_SUB
 do
-  CATEGORY=$(echo "$ENTRY" | cut -d'/' -f1)
-  SUB=$(echo "$ENTRY" | cut -d'/' -f2)
+  IFS='/' read -r -a PARTS <<< "$ENTRY"
+  CATEGORY=${PARTS[0]}
+  SUB=${PARTS[1]}
   COMBINED=${CATEGORY}_${SUB}
 
   LogTrace "Generating: $COMBINED"
@@ -265,13 +266,18 @@ LogTrace "Adding $COUNT_ENTRIES entries ..."
 
 while read LINE; do
 
-  ENTRY=$(echo "$LINE" | cut -d'|' -f1)
-  CATEGORY=$(echo "$ENTRY" | cut -d'/' -f1)
-  SUB=$(echo "$ENTRY" | cut -d'/' -f2)
+  IFS='|' read -r -a PARTS <<< "$LINE"
+
+  ENTRY=${PARTS[0]}
+  FILE=${PARTS[1]}
+  DESCRIPTION=${PARTS[2]}
+  HASH=${PARTS[3]}
+
+  IFS='/' read -r -a PARTS <<< "$ENTRY"
+
+  CATEGORY=${PARTS[0]}
+  SUB=${PARTS[1]}
   COMBINED=${CATEGORY}_${SUB}
-  FILE=$(echo "$LINE" | cut -d'|' -f2)
-  DESCRIPTION=$(echo "$LINE" | cut -d'|' -f3)
-  HASH=$(echo "$LINE" | cut -d'|' -f4)
 
   html_entry "$COMBINED.html" "$FILE" "$FILE" "$DESCRIPTION" "$HASH" "$SERVER_URL"
 
@@ -291,8 +297,10 @@ done < "$CATALOG_FILE"
 
 for ENTRY in $CATEGORY_SUB
 do
-  CATEGORY=$(echo "$ENTRY" | cut -d'/' -f1)
-  SUB=$(echo "$ENTRY" | cut -d'/' -f2)
+
+  IFS='/' read -r -a PARTS <<< "$ENTRY"
+  CATEGORY=${PARTS[0]}
+  SUB=${PARTS[1]}
   COMBINED=${CATEGORY}_${SUB}
 
   html_end "$COMBINED.html"
