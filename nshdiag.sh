@@ -123,6 +123,20 @@ print_file()
 }
 
 
+get_file_age()
+{
+  if [ ! -e "$1" ]; then
+    echo ""
+  fi
+
+  local now=$(date +%s)
+  local modified=$(stat -c %Y "$1")
+  local age=$((now - modified))
+
+  echo "$(human_time $age)"
+}
+
+
 showfile()
 {
   print_file "$1" "$2"
@@ -397,6 +411,9 @@ menu()
 
   while [ 1 ];
   do
+
+    LAST_NSD=$(head -1 "$NSD_INDEX_FILE")
+
     ClearScreen
     echo
     echo "HCL Domino Diagnostics"
@@ -415,6 +432,7 @@ menu()
 
     if [ -n "$LAST_NSD" ]; then
       echo " Latest NSD :  $LAST_NSD"
+      echo " NSD age    :  $(get_file_age "$LAST_NSD")"
     fi
 
     if [ -n "$DOMINO_DIAG_TAR" ]; then

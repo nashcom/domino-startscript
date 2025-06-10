@@ -28,6 +28,7 @@ HTML_DIR="$TARGET_DIR/html.update"
 
 CATALOG_FILE="$TARGET_DIR/catalog.list"
 CATALOG_JSON="$TARGET_DIR/catalog.json"
+CATALOG_JSON_RAW="$TARGET_DIR/mhs_files_domino.json"
 CATALOG_TEMP="$TARGET_DIR/catalog.tmp"
 
 
@@ -187,22 +188,25 @@ check_file_smaller()
 # Skip if MHS catalog data is still younger then max age
 check_file_older "$CATALOG_JSON" "$CATALOG_MAX_AGE_SEC"
 
-# If file is too small (32k), this isn't a valid JSON file
-check_file_smaller "$CATALOG_JSON" 32768
-
 # Touch file to lower the risk of race conditions for parallel requests
 touch "$CATALOG_JSON"
 
 LogTrace "Reading $CATALOG_JSON"
-curl -sL https://my.hcltechsw.com/files/domino | jq .files[] > "$CATALOG_JSON"
+curl -sL https://my.hcltechsw.com/files/domino -o "$CATALOG_JSON_RAW"
+cat "$CATALOG_JSON_RAW" | jq .files[] > "$CATALOG_JSON"
 
+# If file is too small (32k), this isn't a valid JSON file
+check_file_smaller "$CATALOG_JSON" 32768
+
+# Read MHS the Domino catalog JSON data for providing it to other services
+curl -sL https://my.hcltechsw.com/catalog/domino -o "$MHS_DOMINO_CATALOG"
 
 LogTrace "Generating $CATALOG_FILE"
 
 cat "$CATALOG_JSON"| jq -r '.locations[0] + "|" + .name + "|" + .description  + "|" + .checksums.sha256'  | sort -V | cut -d'/' -f2- > "$CATALOG_TEMP"
 
 if [ -z "$CATALOG_EXCLUDE_PATTERN" ]; then
-  CATALOG_EXCLUDE_PATTERN="12.0.1|IBMi|verse|mobile|voltscript|appdev/|caa/|dlau/|domino/11|notes/11|ccm/|htmo/|hei/11|traveler/apnscerts|.pdf|.txt|consap/|14ea|14.5ea1|14.5ea2"
+  CATALOG_EXCLUDE_PATTERN="12.0.1|IBMi|verse|mobile|versemobile|voltscript|appdev/|caa/|dlau/|domino/11|notes/11|ccm/|htmo/|hei/11|traveler/apnscerts|.pdf|.txt|consap/|14ea|14.5ea1|14.5ea2"
 fi
 
 # Exclude software, which should not be listed

@@ -51,11 +51,12 @@
 # 1.0.7  Run Curl with silent option if -silent is specified. use only basename if download file has a slash
 # 1.0.8  Use temp files for download and rename them when verified
 # 1.0.9  Performance optimization (parsing strings)
+# 1.1.0  New option to select software based on MHS Domino files JSON
 
 SCRIPT_NAME=$0
 SCRIPT_DIR=$(dirname $SCRIPT_NAME)
 
-DOMDOWNLOAD_SCRIPT_VERSION=1.0.9
+DOMDOWNLOAD_SCRIPT_VERSION=1.1.0
 
 # Just print version and exit
 case "$1" in
@@ -64,6 +65,7 @@ case "$1" in
     exit 0
     ;;
 esac
+
 
 ClearScreen()
 {
@@ -77,6 +79,7 @@ ClearScreen()
 
   clear
 }
+
 
 LogError()
 {
@@ -93,6 +96,7 @@ LogMessage()
   echo
 }
 
+
 LogMessageIfNotSilent()
 {
   if [ "$SILENT_MODE" = "yes" ]; then
@@ -104,10 +108,13 @@ LogMessageIfNotSilent()
   echo
 }
 
+
 print_delim()
 {
   echo "--------------------------------------------------------------------------------"
 }
+
+
 
 header()
 {
@@ -117,6 +124,7 @@ header()
   print_delim
   echo
 }
+
 
 DebugText()
 {
@@ -129,6 +137,7 @@ DebugText()
   return 0
 }
 
+
 DebugDump()
 {
   if [ "$DOMDOWNLOAD_DEBUG" = "yes" ]; then
@@ -140,6 +149,7 @@ DebugDump()
   fi
 }
 
+
 DebugDumpFile()
 {
   if [ "$DOMDOWNLOAD_DEBUG" = "yes" ]; then
@@ -150,6 +160,7 @@ DebugDumpFile()
     echo
   fi
 }
+
 
 PerfTimerLogSession()
 {
@@ -172,6 +183,7 @@ PerfTimerLogSession()
   echo "--------------------" >> "$PERF_LOG_FILE"
 }
 
+
 PerfTimerBegin()
 {
   if [ "$OS_PLATFORM" = "Darwin" ]; then
@@ -184,6 +196,7 @@ PerfTimerBegin()
 
   PERF_BEGIN_TIMER=$(($(date +%s%N)/1000000))
 }
+
 
 PerfTimerEnd()
 {
@@ -203,6 +216,7 @@ PerfTimerEnd()
   fi
 }
 
+
 CheckWriteFile()
 {
   if [ ! -w "$1" ]; then
@@ -211,6 +225,7 @@ CheckWriteFile()
   fi
 }
 
+
 CheckWriteDir()
 {
   if [ ! -w "$1" ]; then
@@ -218,6 +233,7 @@ CheckWriteDir()
     exit 1
   fi
 }
+
 
 remove_file()
 {
@@ -241,6 +257,7 @@ remove_file()
   DebugText "File removed: $1"
   return 0
 }
+
 
 create_link()
 {
@@ -272,6 +289,7 @@ create_link()
   DebugText "Link created [$1] -> [$2]"
   return 0
 }
+
 
 install_package()
 {
@@ -416,6 +434,7 @@ InstallJQ()
 
 }
 
+
 InstallCurl()
 {
 
@@ -442,6 +461,7 @@ InstallCurl()
   echo ---
   echo
 }
+
 
 CheckBin()
 {
@@ -565,6 +585,7 @@ LogConnectionError()
 
   LogError "$1"
 }
+
 
 ConfirmConnection()
 {
@@ -1113,6 +1134,7 @@ DownloadS3()
   LogMessage "$OUTFILE_FULLPATH"
 }
 
+
 GetProductLinePortal()
 {
   if [ -z "$PRODUCT_INFO" ]; then
@@ -1163,6 +1185,7 @@ GetProductLinePortal()
   echo
 }
 
+
 PrintSoftwareLine()
 {
   local PRODUCT="$FILE_PRODUCT"
@@ -1180,6 +1203,7 @@ PrintSoftwareLine()
   echo
   echo "$PRODUCT|$VERSION|$FILE_NAME|-|$FILE_CHECKSUM_SHA256"
 }
+
 
 GetProductLineAutoUpdate()
 {
@@ -1268,8 +1292,8 @@ GetDownloadFromPortal()
   # For menus ensure to always read from terminal even stdin was redirected
   exec < /dev/tty
 
-  if [ -z "$CATALOG_EXCLUDE_PATTERN" ]; then
-    CATALOG_EXCLUDE_PATTERN="Client Application Access|CCM Connector for Notes|AppDev Pack|Nomad Mobile|Verse Mobile|Traveler for Microsoft Outlook|14.0 EA|14.5 EA1|14.5 EA2"
+  if [ -z "$CATALOG_EXCLUDE_GUI_PATTERN" ]; then
+    CATALOG_EXCLUDE_GUI_PATTERN="Client Application Access|CCM Connector for Notes|AppDev Pack|Nomad Mobile|Verse Mobile|Traveler for Microsoft Outlook|14.0 EA|14.5 EA1|14.5 EA2"
   fi
 
   while [ -z "$SELECTED" ];
@@ -1297,13 +1321,13 @@ GetDownloadFromPortal()
     TYPE=$(echo "$JSON" | $JQ_CMD -r '.type')
 
     if [ "$TYPE" = "null" ] || [ "$TYPE" = "product-group" ]; then
-      SELECT=$(echo "$JSON" | $JQ_CMD -r ' .children | map (.name) | join("\n")'  | grep -v -E "$CATALOG_EXCLUDE_PATTERN" | sort)
+      SELECT=$(echo "$JSON" | $JQ_CMD -r ' .children | map (.name) | join("\n")'  | grep -v -E "$CATALOG_EXCLUDE_GUI_PATTERN" | sort)
 
     elif [ "$TYPE" = "product" ]; then
-      SELECT=$(echo "$JSON" | $JQ_CMD -r '.releases | map (.name) | join("\n")' | grep -v -E "$CATALOG_EXCLUDE_PATTERN" | sort -V)
+      SELECT=$(echo "$JSON" | $JQ_CMD -r '.releases | map (.name) | join("\n")' | grep -v -E "$CATALOG_EXCLUDE_GUI_PATTERN" | sort -V)
 
     elif [ "$TYPE" = "release" ]; then
-      SELECT=$(echo "$JSON" | $JQ_CMD -r '.files | map (.name) | join("\n")' | grep -v -E "$CATALOG_EXCLUDE_PATTERN" | sort )
+      SELECT=$(echo "$JSON" | $JQ_CMD -r '.files | map (.name) | join("\n")' | grep -v -E "$CATALOG_EXCLUDE_GUI_PATTERN" | sort )
 
       PRODUCT_PATH=$(echo "$JSON" | $JQ_CMD -r '.path[0].path')
 
@@ -1319,12 +1343,14 @@ GetDownloadFromPortal()
     # In case if a product release ask which one to pick
 
     echo
+    COUNT=$(echo "$SELECT"| wc -l)
+    WIDTH=${#COUNT}
     N=0
     while IFS= read -r LINE
     do
       if [ -n "$LINE" ]; then
         N=$(($N + 1))
-        echo "[$N] $LINE"
+        printf "[%0${WIDTH}d] %s\n" "$N" "$LINE"
       fi
     done <<< "$SELECT"
 
@@ -1648,6 +1674,11 @@ GetSoftwareList()
 
   DownloadFileDataJSON "$1" "$CATALOG_JSON_FILE" "files"
 
+  if [ ! -e "$CATALOG_JSON_FILE" ]; then
+    LogError "$CATALOG_JSON_FILE not found"
+    exit 1
+  fi
+
   cat "$CATALOG_JSON_FILE" | $JQ_CMD -r '[(.locations[0] | ascii_upcase | sub("DOMINO/DOMINO/";"domino|") | sub("DOMINO/NOMAD/";"nomad|") | sub("DOMINO/VERSE/";"verse|") | sub("DOMINO/NOTES/";"notes|") | sub("DOMINO/TRAVELER/";"traveler|") | sub("DOMINO/VERSE/";"verse|") | sub("DOMINO/CAPI/";"capi|") | sub("DOMINO/SAFELINX/";"safelinx|") | sub("DOMINO/RESTAPI/";"restapi|")), .name, .id, .checksums.sha256] | @csv | sub("\"";"";"g")' | grep -v DOMINO | sed -e 's~,~|~g' > "$2"
 
   return 0
@@ -1670,6 +1701,11 @@ GetSoftwareFromCatalogByName()
   fi
 
   DownloadFileDataJSON "$1" "$CATALOG_JSON_FILE" "files"
+
+  if [ ! -e "$CATALOG_JSON_FILE" ]; then
+    LogError "$CATALOG_JSON_FILE not found"
+    exit 1
+  fi
 
   PRODUCT_INFO=$(cat "$CATALOG_JSON_FILE" | $JQ_CMD --arg key "$2" -r 'select(.name==$key)')
   GetProductLinePortal
@@ -1771,12 +1807,14 @@ GetDownloadFromSoftwareJSON()
   SELECT=$(echo "$CURRENT_JSON" | $JQ_CMD -r '.product' | sort | uniq)
 
   echo
+  COUNT=$(echo "$SELECT"| wc -l)
+  WIDTH=${#COUNT}
   N=0
   while IFS= read -r LINE
   do
     if [ -n "$LINE" ]; then
       N=$(($N + 1))
-      echo "[$N] $LINE"
+      printf "[%0${WIDTH}d] %s\n" "$N" "$LINE"
     fi
   done <<< "$SELECT"
 
@@ -1825,12 +1863,14 @@ GetDownloadFromSoftwareJSON()
   SELECT=$(echo "$CURRENT_JSON" | $JQ_CMD -r .type | sort | uniq)
 
   echo
+  COUNT=$(echo "$SELECT"| wc -l)
+  WIDTH=${#COUNT}
   N=0
   while IFS= read -r LINE
   do
     if [ -n "$LINE" ]; then
       N=$(($N + 1))
-      echo "[$N] $LINE"
+      printf "[%0${WIDTH}d] %s\n" "$N" "$LINE"
     fi
   done <<< "$SELECT"
 
@@ -1879,12 +1919,14 @@ GetDownloadFromSoftwareJSON()
   SELECT=$(echo "$CURRENT_JSON" | $JQ_CMD -r '( (select(.platform|type=="array") | .platform[]), (select(.platform|type=="string") | .platform) )' | sort | uniq)
 
   echo
+  COUNT=$(echo "$SELECT"| wc -l)
+  WIDTH=${#COUNT}
   N=0
   while IFS= read -r LINE
   do
     if [ -n "$LINE" ]; then
       N=$(($N + 1))
-      echo "[$N] $LINE"
+      printf "[%0${WIDTH}d] %s\n" "$N" "$LINE"
     fi
   done <<< "$SELECT"
 
@@ -1933,12 +1975,14 @@ GetDownloadFromSoftwareJSON()
   SELECT=$(echo "$CURRENT_JSON" | $JQ_CMD -r .labelVersion | sort -V | uniq)
 
   echo
+  COUNT=$(echo "$SELECT"| wc -l)
+  WIDTH=${#COUNT}
   N=0
   while IFS= read -r LINE
   do
     if [ -n "$LINE" ]; then
       N=$(($N + 1))
-      echo "[$N] $LINE"
+      printf "[%0${WIDTH}d] %s\n" "$N" "$LINE"
     fi
   done <<< "$SELECT"
 
@@ -1986,12 +2030,14 @@ GetDownloadFromSoftwareJSON()
   SELECT=$(echo "$CURRENT_JSON" | $JQ_CMD -r '((select(.language|type=="array") | .language[]), (select(.language|type=="string") | .language))' | sort | uniq)
 
   echo
+  COUNT=$(echo "$SELECT"| wc -l)
+  WIDTH=${#COUNT}
   N=0
   while IFS= read -r LINE
   do
     if [ -n "$LINE" ]; then
       N=$(($N + 1))
-      echo "[$N] $LINE"
+      printf "[%0${WIDTH}d] %s\n" "$N" "$LINE"
     fi
   done <<< "$SELECT"
 
@@ -2043,12 +2089,14 @@ GetDownloadFromSoftwareJSON()
   SELECT=$(echo "$CURRENT_JSON" | $JQ_CMD -r .description)
 
   echo
+  COUNT=$(echo "$SELECT"| wc -l)
+  WIDTH=${#COUNT}
   N=0
   while IFS= read -r LINE
   do
     if [ -n "$LINE" ]; then
       N=$(($N + 1))
-      echo "[$N] $LINE"
+      printf "[%0${WIDTH}d] %s\n" "$N" "$LINE"
     fi
   done <<< "$SELECT"
 
@@ -2094,6 +2142,225 @@ GetDownloadFromSoftwareJSON()
 }
 
 
+DownloadMHSDominoFileJSON()
+{
+  if [ -z "$CATALOG_EXCLUDE_PATTERN" ]; then
+    CATALOG_EXCLUDE_PATTERN="12.0.1|IBMi|verse|mobile|versemobile|voltscript|appdev/|caa/|dlau/|domino/11|notes/11|ccm/|htmo/|hei/11|traveler/apnscerts|.pdf|.txt|consap/|14ea|14.5ea1|14.5ea2"
+  fi
+
+  DownloadFileDataJSON "$MYHCL_PORTAL_FILES_URL" "$CATALOG_JSON_FILE" "files"
+
+  if [ ! -e "$CATALOG_JSON_FILE" ]; then
+    LogError "DownloadMHSDominoFileJSON: File not found: [$CATALOG_JSON_FILE]"
+    exit 1
+  fi
+
+  local DOMINO_CATALOG_TXT=$(cat "$CATALOG_JSON_FILE" | jq -r '(.locations[0] + "|" + .name + "|" + .id + "|" + .checksums.sha256 + "|" + .description)' | grep -v -E "$CATALOG_EXCLUDE_PATTERN" | sort)
+
+  echo -n > "$MHS_SOFTWARE_TXT"
+
+  while IFS= read -r LINE; do
+    IFS='|' read -r -a PARTS <<< "$LINE"
+    CATEGORY=${PARTS[0]}
+    NAME=${PARTS[1]}
+    ID=${PARTS[2]}
+    CHECKSUM=${PARTS[3]}
+    DESCRIPTION=${PARTS[4]}
+
+    IFS='/' read -r -a PARTS <<< "$CATEGORY"
+    PROD=${PARTS[1]}
+    VERSION=${PARTS[2]}
+
+    local WIDTH=50
+    printf "%s|%s|%s|%s|%s|%s|%-${WIDTH}s %s\n" "$PROD" "$VERSION" "$NAME" "$ID" "$CHECKSUM" "$DESCRIPTION" "$NAME" "$DESCRIPTION" >> "$MHS_SOFTWARE_TXT"
+
+  done <<< "$DOMINO_CATALOG_TXT"
+
+}
+
+
+GetDownloadFromMHSDominoFileJSON()
+{
+  # Select software from MHS Domino files JSON
+
+  DownloadMHSDominoFileJSON
+
+  if [ ! -e "$MHS_SOFTWARE_TXT" ]; then
+    LogError "$MHS_SOFTWARE_TXT not found"
+    exit 1
+  fi
+
+  local SOFTWARE_DATA=$(cat "$MHS_SOFTWARE_TXT")
+
+  # Select Product
+
+  ClearScreen
+  header "Select Product"
+
+  SELECT=$(echo "$SOFTWARE_DATA" | cut -d'|' -f1 | uniq)
+
+  echo
+  COUNT=$(echo "$SELECT"| wc -l)
+  WIDTH=${#COUNT}
+  N=0
+  while IFS= read -r LINE
+  do
+    if [ -n "$LINE" ]; then
+      N=$(($N + 1))
+      printf "[%0${WIDTH}d] %s\n" "$N" "$LINE"
+    fi
+  done <<< "$SELECT"
+
+  if [ "$N" = "0" ]; then
+    echo "No product found!"
+    return 1
+  fi
+
+  # Set to one to automatically select if only one entry is in list
+  if [ "$N" = "1" ]; then
+    SELECTED=1
+  else
+    echo
+    SELECTED=
+    while [ -z "$SELECTED" ];
+    do
+      read -p "Select Version [1-$N] 0 to cancel? " SELECTED;
+    done
+    echo
+
+    if [ "$SELECTED" = "0" ]; then
+      return 0
+    fi
+  fi
+
+  N=0
+  while IFS= read -r LINE
+  do
+    if [ -n "$LINE" ]; then
+      N=$(($N + 1))
+      if [ "$N" = "$SELECTED" ]; then
+        PRODUCT=$(echo $LINE | awk -v ORS="" 1)
+      fi
+    fi
+  done <<< "$SELECT"
+
+  # Select Version
+
+  ClearScreen
+  header "Select Version"
+
+  SELECT=$(echo "$SOFTWARE_DATA" | grep "^$PRODUCT|" | cut -d'|' -f2 | uniq | sort -V)
+
+  echo
+  COUNT=$(echo "$SELECT"| wc -l)
+  WIDTH=${#COUNT}
+  N=0
+  while IFS= read -r LINE
+  do
+    if [ -n "$LINE" ]; then
+      N=$(($N + 1))
+      printf "[%0${WIDTH}d] %s\n" "$N" "$LINE"
+    fi
+  done <<< "$SELECT"
+
+  if [ "$N" = "0" ]; then
+    echo "No version found!"
+    return 1
+  fi
+
+  # Set to one to automatically select if only one entry is in list
+  if [ "$N" = "1" ]; then
+    SELECTED=1
+  else
+    echo
+    SELECTED=
+    while [ -z "$SELECTED" ];
+    do
+      read -p "Select Version [1-$N] 0 to cancel? " SELECTED;
+    done
+    echo
+
+    if [ "$SELECTED" = "0" ]; then
+      return 0
+    fi
+  fi
+
+  N=0
+  while IFS= read -r LINE
+  do
+    if [ -n "$LINE" ]; then
+      N=$(($N + 1))
+      if [ "$N" = "$SELECTED" ]; then
+        VERSION=$(echo $LINE | awk -v ORS="" 1)
+      fi
+    fi
+  done <<< "$SELECT"
+
+  # Select Webkit
+
+  ClearScreen
+  header "Select Webkit"
+
+  SELECT=$(echo "$SOFTWARE_DATA" | grep "^$PRODUCT|$VERSION|" | cut -d'|' -f7 | uniq)
+
+  echo
+  COUNT=$(echo "$SELECT"| wc -l)
+  WIDTH=${#COUNT}
+  N=0
+  while IFS= read -r LINE
+  do
+    if [ -n "$LINE" ]; then
+      N=$(($N + 1))
+      printf "[%0${WIDTH}d] %s\n" "$N" "$LINE"
+    fi
+  done <<< "$SELECT"
+
+  if [ "$N" = "0" ]; then
+    echo "No webkit found!"
+    return 1
+  fi
+
+  # Set to one to automatically select if only one entry is in list
+  if [ "$N" = "1" ]; then
+    SELECTED=1
+  else
+    echo
+    SELECTED=
+    while [ -z "$SELECTED" ];
+    do
+      read -p "Select WebKit [1-$N] 0 to cancel? " SELECTED;
+    done
+    echo
+
+    if [ "$SELECTED" = "0" ]; then
+      return 0
+    fi
+  fi
+
+  N=0
+  while IFS= read -r LINE
+  do
+    if [ -n "$LINE" ]; then
+      N=$(($N + 1))
+      if [ "$N" = "$SELECTED" ]; then
+        FILE_NAME=$(echo $LINE | awk -v ORS="" 1 | cut -d ' ' -f1)
+      fi
+    fi
+  done <<< "$SELECT"
+
+
+  while IFS= read -r LINE
+  do
+    IFS='|' read -r -a PARTS <<< "$LINE"
+    if [ "$FILE_NAME" = "${PARTS[2]}" ]; then
+      FILE_ID=${PARTS[3]}
+      FILE_CHECKSUM_SHA256=${PARTS[4]}
+    fi
+  done <<< "$SOFTWARE_DATA"
+
+}
+
+
 TranslatePlatform()
 {
 
@@ -2120,6 +2387,7 @@ TranslatePlatform()
   esac
 }
 
+
 MapFileID()
 {
   local FILE_ID=$1
@@ -2138,8 +2406,14 @@ MapFileID()
       ;;
   esac
 
+  if [ ! -e "$CATALOG_JSON_FILE" ]; then
+    LogError "$CATALOG_JSON_FILE not found"
+    exit 1
+  fi
+
   cat "$CATALOG_JSON_FILE" | $JQ_CMD --arg key "$FILE_ID" -r 'select(.id==$key) | .name' | tr -d '\n'
 }
+
 
 CheckWriteStandardConfig()
 {
@@ -2178,6 +2452,11 @@ CheckWriteStandardConfig()
   echo \#Authentication token  >> "$DOMDOWNLOAD_CFG_FILE"
   echo \#DOMDOWNLOAD_CUSTOM_AUTHORIZATION=\"Bearer xyz\" >> "$DOMDOWNLOAD_CFG_FILE"
   echo >> "$DOMDOWNLOAD_CFG_FILE"
+
+  echo \#Custom HCL Domino file JSON URL pointing to an own e.g. internal server >> "$DOMDOWNLOAD_CFG_FILE"
+  echo \#MYHCL_PORTAL_FILES_URL=https://myserver/files/domino >> "$DOMDOWNLOAD_CFG_FILE"
+  echo >> "$DOMDOWNLOAD_CFG_FILE"
+
 }
 
 
@@ -2268,6 +2547,7 @@ Usage()
   echo
   echo "-autoupdate             Navigate software list via software.json"
   echo "-myhcl                  Navigate software list via MyHCL portal (default)"
+  echo "-myhcl-json             Navigate software list via MyHCL Domino JSON file"
   echo "-download=<filename>    Download software by WebKit file name"
   echo "-curl                   Print download curl command instead of downloading"
   echo "-out=<fileName>         Custom download target filename (overwrites file name from JSON)"
@@ -2401,6 +2681,10 @@ if [ -z "$HCL_AUTOUPDATE_URL" ]; then
    HCL_AUTOUPDATE_URL=https://ds_infolib.hcltechsw.com
 fi
 
+if [ -z "$MYHCL_PORTAL_FILES_URL" ]; then
+  MYHCL_PORTAL_FILES_URL=$MYHCL_PORTAL_URL/files/domino
+fi
+
 SOFTWARE_URL=$HCL_AUTOUPDATE_URL/software.jwt
 PRODUCT_URL=$HCL_AUTOUPDATE_URL/product.jwt
 GITHUB_URL=https://github.com
@@ -2422,6 +2706,7 @@ fi
 PRODUCT_JSON_FILE=$DOMDOWNLOAD_CFG_DIR/product.json
 SOFTWARE_JSON_FILE=$DOMDOWNLOAD_CFG_DIR/software.json
 CATALOG_JSON_FILE=$DOMDOWNLOAD_CFG_DIR/catalog.json
+MHS_SOFTWARE_TXT=$DOMDOWNLOAD_CFG_DIR/mhs_software.txt
 CONNECTION_AGREED_FILE=$DOMDOWNLOAD_CFG_DIR/connection-agreed.txt
 
 for a in "$@"; do
@@ -2436,6 +2721,10 @@ for a in "$@"; do
 
     -myhcl)
       DOMDOWNLOAD_FROM=myhcl
+      ;;
+
+    -myhcl-json)
+      DOMDOWNLOAD_FROM=myhcl-json
       ;;
 
     -token)
@@ -2727,7 +3016,7 @@ if [ -n "$SOFTWARE_FILE" ]; then
     remove_file "$SOFTWARE_FILE"
   fi
 
-  GetSoftwareList "$MYHCL_PORTAL_URL/files/domino" "$SOFTWARE_FILE"
+  GetSoftwareList "$MYHCL_PORTAL_FILES_URL" "$SOFTWARE_FILE"
   LogMessage "Runtime : $SECONDS"
 
   echo
@@ -2767,7 +3056,7 @@ if [ -n "$DOWNLOAD_WEB_KIT_NAME" ]; then
   if [ "$DOMDOWNLOAD_FROM" = "autoupdate" ]; then
     GetSoftwareByNameFromSoftwareJSON "$SOFTWARE_URL" "$DOWNLOAD_WEB_KIT_NAME"
   else
-    GetSoftwareFromCatalogByName "$MYHCL_PORTAL_URL/files/domino" "$DOWNLOAD_WEB_KIT_NAME"
+    GetSoftwareFromCatalogByName "$MYHCL_PORTAL_FILES_URL" "$DOWNLOAD_WEB_KIT_NAME"
   fi
 
   if [ -z "$FILE_ID" ]; then
@@ -2823,6 +3112,10 @@ if [ "$DOMDOWNLOAD_FROM" = "autoupdate" ]; then
     DownloadS3 "$FILE_INFO_S3" "$FILE_NAME"
     exit 0
   fi
+
+elif [ "$DOMDOWNLOAD_FROM" = "mhs-json" ]; then
+
+  GetDownloadFromMHSDominoFileJSON
 
 else
 
