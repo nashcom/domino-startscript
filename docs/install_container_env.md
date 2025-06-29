@@ -7,7 +7,7 @@ has_children: false
 ---
 
 
-# Installing a Domino Container Environment with Nash!Com Convenience Script
+# Container Environment Convenience Script
 
 This guide explains how to install a container-based environment for HCL Domino using a streamlined installation script.
 The script automates the setup of a container host with Docker, helpful tools, and key utilities for building and running Domino in containers.
