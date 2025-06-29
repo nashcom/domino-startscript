@@ -1293,7 +1293,7 @@ GetDownloadFromPortal()
   exec < /dev/tty
 
   if [ -z "$CATALOG_EXCLUDE_GUI_PATTERN" ]; then
-    CATALOG_EXCLUDE_GUI_PATTERN="Client Application Access|CCM Connector for Notes|AppDev Pack|Nomad Mobile|Verse Mobile|Traveler for Microsoft Outlook|14.0 EA|14.5 EA1|14.5 EA2"
+    CATALOG_EXCLUDE_GUI_PATTERN="Client Application Access|CCM Connector for Notes|AppDev Pack|Nomad Mobile|Verse Mobile|Traveler for Microsoft Outlook|14.0 EA|14.5 EA"
   fi
 
   while [ -z "$SELECTED" ];
@@ -2719,11 +2719,11 @@ for a in "$@"; do
       DOMDOWNLOAD_FROM=autoupdate
       ;;
 
-    -myhcl)
+    -myhcl|-mhs)
       DOMDOWNLOAD_FROM=myhcl
       ;;
 
-    -myhcl-json)
+    -myhcl-json|-mhs-json)
       DOMDOWNLOAD_FROM=myhcl-json
       ;;
 
