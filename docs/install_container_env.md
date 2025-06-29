@@ -17,10 +17,10 @@ The script automates the setup of a container host with Docker, helpful tools, a
 
 The installation script performs the following actions:
 
-1. **Installs Docker** – The recommended container engine using Docker’s [official installation script](https://docs.docker.com/engine/install/).
-2. **Installs the Domino Download Script** – A helper script to download HCL Domino software packages.
-3. **Installs `dominoctl`** – A control utility to manage Domino containers.
-4. **Installs Linux tools** - Installs useful and required Linux tools.
+- **Installs Docker** – The recommended container engine using Docker’s [official installation script](https://docs.docker.com/engine/install/).
+- **Installs the Domino Download Script** – A helper script to download HCL Domino software packages.
+- **Installs dominoctl** – A control utility to manage Domino containers.
+- **Installs Linux tools** - Installs useful and required Linux tools.
 
 
 ## Prerequisites
@@ -58,18 +58,18 @@ A script that simplifies downloading HCL Domino installation packages. You will 
 
 A command-line tool to manage Domino containers, including:
 
-* Starting and stopping Domino containers
-* Managing configuration and logs
+- Starting and stopping Domino containers
+- Managing configuration and logs
 
 
 ## After Installation
 
 Once the installation completes:
 
-* Docker should be running and enabled at startup.
-* The Domino container GitHub project in **/local/gihub/domino-container**
-* You can use the `dominoctl` command to set up and manage Domino containers.
-* The Domino download script is available to fetch the required Domino install packages manually or during the container build process.
+- Docker should be running and enabled at startup.
+- The Domino container GitHub project in **/local/gihub/domino-container**
+- You can use the `dominoctl` command to set up and manage Domino containers.
+- The Domino download script is available to fetch the required Domino install packages manually or during the container build process.
 
 
 ## Next Steps
