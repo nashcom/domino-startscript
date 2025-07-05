@@ -3,7 +3,7 @@
 
 ###########################################################################
 # Main Script Logic - Start/Stop Script for Domino on xLinux/zLinux/AIX   #
-# Version  4.0.3 30.04.2025                                               #
+# Version  4.0.4 04.07.2025                                               #
 #                                                                         #
 # (C) Copyright Daniel Nashed/NashCom 2005-2025                           #
 # Feedback domino_unix@nashcom.de                                         #
@@ -21,7 +21,7 @@
 # limitations under the License.                                          #
 ###########################################################################
 
-DOMINO_SCRIPT_VERSION=4.0.3
+DOMINO_SCRIPT_VERSION=4.0.4
 
 if [ -z "$DOMINO_SCRIPT_VERBOSE_INFO" ]; then
   DOMINO_SCRIPT_VERBOSE_INFO="yes"
@@ -1843,21 +1843,26 @@ cleanup_domino_server_os_level()
 
   # Remove Notes lock file
 
-  if [ -e $DOMINO_DATA/~notes.lck ]; then
+  if [ -e "$DOMINO_DATA_PATH/~notes.lck" ]; then
     echo "Removing ~notes.lck"
-    rm -f $DOMINO_DATA/~notes.lck
+    rm -f "$DOMINO_DATA_PATH/~notes.lck"
   fi
 
   # Remove Server Controller lock file
-  if [ -e $DOMINO_DATA/.jsc_lock ]; then
+  if [ -e "$DOMINO_DATA_PATH/.jsc_lock" ]; then
     echo "Removing .jsc_lock"
-    rm -f $DOMINO_DATA/.jsc_lock
+    rm -f "$DOMINO_DATA_PATH/.jsc_lock"
   fi
 
   # Remove PID file if present
   if [ -e "$DOMINO_PID_FILE" ]; then
     echo "Removing $DOMINO_PID_FILE"
     remove_file "$DOMINO_PID_FILE"
+  fi
+
+  if [ -e "$DOMINO_DATA_PATH/pid.nbf" ]; then
+    echo "Removing pid.nbf"
+    rm -f "$DOMINO_DATA_PATH/pid.nbf"
   fi
 
   # Remove shared mem, semaphores and message-queues
@@ -1962,12 +1967,12 @@ show_domino_resources_short()
   done
   echo
 
-  if [ -e $DOMINO_DATA/~notes.lck ]; then
+  if [ -e $DOMINO_DATA_PATH/~notes.lck ]; then
     echo "Lock file exists (~notes.lck)"
   fi
 
   # Remove Server Controller lock file
-  if [ -e $DOMINO_DATA/.jsc_lock ]; then
+  if [ -e $DOMINO_DATA_PATH/.jsc_lock ]; then
     echo "Server controller log file exist (.jsc_lock)"
   fi
 
@@ -2021,12 +2026,11 @@ show_domino_resources()
 
   echo
 
-  if [ -e $DOMINO_DATA/~notes.lck ]; then
+  if [ -e $DOMINO_DATA_PATH/~notes.lck ]; then
     echo "Lock file exists (~notes.lck)"
   fi
 
-  # Remove Server Controller lock file
-  if [ -e $DOMINO_DATA/.jsc_lock ]; then
+  if [ -e $DOMINO_DATA_PATH/.jsc_lock ]; then
     echo "Server controller log file exist (.jsc_lock)"
   fi
 
