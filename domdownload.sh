@@ -1629,7 +1629,10 @@ GetSoftwareConfig()
   PerfTimerEnd $PERF_MAX_CURL "Curl: $SOFTWARE_URL"
 
   if [ -z "$CONFIG" ]; then
-    LogError "No configuration found"
+    LogError "No configuration found at: $SOFTWARE_URL"
+    header "Software Config: $SOFTWARE_URL"
+    $CURL_CMD -sL "$SOFTWARE_URL"
+    echo
     exit 1
   fi
 
