@@ -2180,6 +2180,7 @@ init_project ()
 
   if [ ! -e "$CFG_DIR/$CFG_FILE" ]; then
     cp /opt/nashcom/startscript/domino_container_template.cfg "$CFG_DIR/$CFG_FILE"
+    CONFIG_FILE="$CFG_DIR/$CFG_FILE"
   else
     echo "Info: '$CFG_DIR/$CFG_FILE config file already exists!"
   fi
@@ -2330,6 +2331,39 @@ setup_domino()
 }
 
 
+check_config()
+{
+
+  local answer=
+
+  if [ "$EUID" = "0" ]; then
+    return 0 # root can edit any config
+  fi
+
+  case "$CONFIG_FILE" in
+    /etc/sysconfig/*)
+      echo
+      echo "The standard configuration cannot be edited as a standard user"
+      echo
+      read -p "Do you want to create a local configuration (y/n): " answer
+
+      if [ "$answer" != "y" ]; then
+        return 0
+      fi
+
+      init_project -home
+      ;;
+  esac
+}
+
+
+edit_config()
+{
+  check_config
+  $CONTAINER_SUDO $EDIT_COMMAND "$CONFIG_FILE"
+}
+
+
 menu()
 {
   local SELECTED=
@@ -2468,7 +2502,7 @@ menu()
         ;;
 
       e)
-        $CONTAINER_SUDO $EDIT_COMMAND "$CONFIG_FILE"
+	edit_config
         ;;
 
       v)
@@ -2533,11 +2567,10 @@ menu()
 }
 
 
-
 case "$PARAM1" in
 
   config|cfg)
-    $CONTAINER_SUDO $EDIT_COMMAND "$CONFIG_FILE"
+    edit_config
     exit 0
     ;;
 
