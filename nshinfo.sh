@@ -73,7 +73,7 @@ check_free_space()
 {
   local DISK_INFO=
   local DISK_INFO_CMD="df -h --output=target,source,fstype,size,used,avail,pcent"
-  local FORMAT="%-6s %-15s %-12s %-9s %-8s %-8s %-8s %-7s\n"
+  local FORMAT="%-7s %-20s %-20s %-8s %8s %8s %8s %5s\n"
   local DIR2CHECK=
   local PARTS=
   local DISK="$2"
