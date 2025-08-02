@@ -3,7 +3,7 @@
 
 print_delim ()
 {
-  echo "------------------------------------------------------------------------------------------"
+  echo "--------------------------------------------------------------------------------------------"
 }
 
 
@@ -14,7 +14,7 @@ get_entry()
   else
     DELIM="$4"
   fi
-  
+
   if [ "$5" = "mem" ]; then
     export $1="$(sed -n "/^$3/ {p;q}" $2| cut -d $DELIM -f2 | xargs | cut -d " " -f1)"
   else
@@ -87,12 +87,16 @@ check_free_space()
   case "$1" in
 
     /*)
-     DIR2CHECK="$1"
-     ;;
+      DIR2CHECK="$1"
+      ;;
 
     *)
-     DIR2CHECK=$(cat "$DOMINO_INI_PATH" | grep -i "$1=" | head -1 | cut -d'=' -f2)
-     ;;
+      if [ ! -e "$DOMINO_INI_PATH" ]; then
+        return 0
+      fi
+
+      DIR2CHECK=$(cat "$DOMINO_INI_PATH" | grep -i "$1=" | head -1 | cut -d'=' -f2)
+      ;;
 
   esac
 
@@ -121,15 +125,15 @@ check_free_space()
   case "$DISK_LCASE" in
 
     root)
-      DISK_ROOT_TARGET="$target"
+      DISK_ROOT_SOURCE="$source"
       ;;
 
     nsf)
-      DISK_DATA_TARGET="$target"
+      DISK_DATA_SOURCE="$source"
       ;;
 
     *)
-       if [ "$target" = "$DISK_ROOT_TARGET" ] || [ "$target" = "$DISK_DATA_TARGET" ]; then
+       if [ "$source" = "$DISK_ROOT_SOURCE" ] || [ "$source" = "$DISK_DATA_SOURCE" ]; then
          if [ -z "$DISK_SPACE_SHOW_ALL" ]; then
            return 0
          fi
@@ -143,8 +147,17 @@ check_free_space()
 
 check_all_disks()
 {
-  check_free_space 
+  check_free_space
   check_free_space "/" "Root"
+
+  if [ -z "$DOMINO_INI_PATH" ]; then
+    return 0
+  fi
+
+  if [ ! -e "$DOMINO_INI_PATH" ]; then
+    return 0
+  fi
+
   check_free_space "Directory" "NSF"
   check_free_space "TRANSLOG_Path" "TXN"
   check_free_space "DAOSBasePath" "DAOS"

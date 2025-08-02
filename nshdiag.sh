@@ -1083,7 +1083,7 @@ menu()
     echo
     echo " (N)   Run NSD"
     echo " (L)   Open latest NSD"
-    echo " (X)   Explor Domino processes"
+    echo " (X)   Explore Domino processes"
 
     if [ -n "$SEMDEBUG_DISPLAY" ]; then
       echo " (B)   Open semdebug.txt"

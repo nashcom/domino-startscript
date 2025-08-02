@@ -2307,6 +2307,11 @@ edit_env_file()
       echo "No environment file configured!"
     else
       echo "Creating new environment file [$DOMINO_CFG_DIR/$CONTAINER_ENV_FILE]"
+      echo "# Domino Container environment file" >> "$DOMINO_CFG_DIR/$CONTAINER_ENV_FILE"
+      echo "" >> "$DOMINO_CFG_DIR/$CONTAINER_ENV_FILE"
+      echo "#DOMINO_LANG=de_DE.UTF-8" >> "$DOMINO_CFG_DIR/$CONTAINER_ENV_FILE"
+      echo "#DOMINO_LANG=en_US.UTF-8" >> "$DOMINO_CFG_DIR/$CONTAINER_ENV_FILE"
+      echo "" >> "$DOMINO_CFG_DIR/$CONTAINER_ENV_FILE"
       sleep 2
       $EDIT_COMMAND "$DOMINO_CFG_DIR/$CONTAINER_ENV_FILE"
     fi
