@@ -1343,6 +1343,26 @@ container_build ()
   return 0
 }
 
+
+build_container_image()
+{
+  if [ -z "$CONTAINER_BUILD_DIR" ]; then
+    CONTAINER_BUILD_DIR=/local/github/domino-container
+  fi
+
+  if [ ! -e "$CONTAINER_BUILD_DIR/build.sh" ]; then
+    log_error_and_exit "Container environment does not exist: $CONTAINER_BUILD_DIR"
+  fi
+
+  cd "$CONTAINER_BUILD_DIR"
+  ./build.sh
+  wait_for_key
+
+  # Inspect image after build to update infos
+  inspect_image
+}
+
+
 docker_deamon()
 {
 
@@ -1504,7 +1524,7 @@ container_run ()
   if [ -z "$IMAGE_ID" ]; then
     if [ "$1" = "force" ]; then
       log_space [FORCE-MODE] Building image first ...
-      container_build
+      build_container_image
       log_space [FORCE-MODE] Built image before run
 
     else
@@ -2418,10 +2438,11 @@ menu()
     fi
     echo " (E)   Container configuration"
     echo " (V)   Container environment"
+    echo " (W)   Build container image"
     echo
     echo " Diagnostic"
     echo
-    echo " (l)   Linux Information"
+    echo " (L)   Linux Information"
     echo " (N)   NSD (Notes System Diagnostic)"
     echo " (G)   NSD Hang (3 NSDs in a row)"
     echo " (M)   Domino Memory dump"
@@ -2506,6 +2527,10 @@ menu()
 
       u)
         container_update
+        ;;
+
+      w)
+        build_container_image
         ;;
 
       e)
@@ -2627,7 +2652,7 @@ case "$PARAM1" in
     ;;
 
   build)
-    container_build
+    build_container_image "$PARAM2"
     ;;
 
   start|run|up)

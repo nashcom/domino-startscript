@@ -28,7 +28,7 @@ format_mem()
   if [ -z "$3" ]; then
     export $1="$(echo "$2" | awk '{printf "%4.1f GB", $1/1024/1024}' )"
   else
-    export $1="$(echo "$2" "$3" | awk '{printf "%4.1f GB  (%4.1f)", $1/1024/1024, $1*100/$2}' )"
+    export $1="$(echo "$2" "$3" | awk '{printf "%4.1f GB  (%4.1f %%%%)", $1/1024/1024, $1*100/$2}' )"
   fi
 }
 
