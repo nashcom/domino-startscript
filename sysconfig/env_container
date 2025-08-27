@@ -11,3 +11,9 @@
 # Download a template JSON file to auto configure server. More useful for K8s flows, but also supported for Docker/Podman
 
 #SetupAutoConfigureTemplateDownload=https://acme.com/DominoAutoConfigTemplate.json
+
+# Locale is important for formatting date and numeric formats
+
+#DOMINO_LANG=de_DE.UTF-8
+DOMINO_LANG=en_US.UTF-8
+

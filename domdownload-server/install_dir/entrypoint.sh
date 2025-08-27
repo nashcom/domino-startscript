@@ -61,7 +61,7 @@ create_local_ca_cert()
   local MAX_CERT_DAYS=365
 
   if [ -z "$1" ]; then
-    echo "Cannot create certficate: No host specified"
+    echo "Cannot create certificate: No host specified"
     return 0
   fi
 

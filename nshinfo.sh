@@ -186,7 +186,11 @@ print_infos()
   LINUX_UPTIME=$( awk '{x=$1/86400;y=($1%86400)/3600;z=($1%3600)/60} {printf("%d day, %d hour %d min\n",x,y,z)}' /proc/uptime )
   LINUX_LOAD_AVG=$(awk -F " " '{printf $1 "  " $2 "  " $3}' /proc/loadavg)
 
-  LINUX_HOSTNAME=$(cat /proc/sys/kernel/hostname)
+  if [ -e /usr/bin/hostname ]; then
+    LINUX_HOSTNAME=$(/usr/bin/hostname --fqdn)
+  else
+    LINUX_HOSTNAME=$(cat /proc/sys/kernel/hostname)
+  fi
 
   if [ -x /usr/bin/systemd-detect-virt ]; then
     LINUX_VIRT=$(/usr/bin/systemd-detect-virt -v)

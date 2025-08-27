@@ -16,6 +16,10 @@ DOMINO_SHUTDOWN_TIMEOUT=180
 CONTAINER_NETWORK_NAME=host
 #CONTAINER_PORTS="-p 1352:1352 -p 80:80 -p 443:443"
 
+# Local host volume (recommended for production)
+CONTAINER_VOLUMES="-v /local:/local"
+
+# Use Docker volume "domino_local" (good for testing)
 CONTAINER_VOLUMES="-v domino_local:/local"
 
 # Environment file is used for first container start (run) to pass setup parameters
@@ -24,8 +28,10 @@ CONTAINER_VOLUMES="-v domino_local:/local"
 CONTAINER_ENV_FILE=env_container
 
 # Docker Restart policy
-CONTAINER_RESTART_POLICY=unless-stopped
-CONTAINER_RESTART_POLICY=on-failure:3
+
+#CONTAINER_RESTART_POLICY=unless-stopped
+#CONTAINER_RESTART_POLICY=on-failure:3
+CONTAINER_RESTART_POLICY=always
 
 # Domino V12 Borg Backup support (enables FUSE device)
 #BORG_BACKUP=yes
