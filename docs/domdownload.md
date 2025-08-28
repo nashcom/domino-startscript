@@ -45,7 +45,7 @@ Run the following commands. After the script is installed, it is in the search p
 
 ```
 chmod +x domdownload.sh
-./domdownload install
+./domdownload.sh install
 ```
 
 - The script prompts for missing components and also ask for accessing the internet once
