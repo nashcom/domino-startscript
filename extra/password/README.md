@@ -45,19 +45,19 @@ EXTMGR_ADDINS_EARLY=libnshsrvpw.so
 
 ## Environment Variables
 
-- **NshSrvPwCredentialProcess**
+- **NshSrvPwCredentialProcess**  
   Full path to a helper binary which is invoked to retrieve the password from STDIN
 
-- **NshSrvPwSetup**
+- **NshSrvPwSetup**  
   Set this variable to **1** to set the password of the server.id to the password retieved from the helper application.
 
-- **NshSrvPwDebug**
+- **NshSrvPwDebug**  
   Debug option for tracing
 
-- **EXTMGR_ADDINS=**
+- **EXTMGR_ADDINS**  
   Loads the extension manager
 
-- **EXTMGR_ADDINS_EARLY**
+- **EXTMGR_ADDINS_EARLY**  
   Required for password extension managers to be loaded early
 
 
