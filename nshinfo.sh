@@ -1,5 +1,14 @@
 #!/bin/bash
 
+###########################################################################
+# NashCom Domino/Linux info  script (part of Domino start script)
+###########################################################################
+# 2025 Copyright by Daniel Nashed, feedback domino_unix@nashcom.de
+# You may use and distribute the unmodified version of this script.
+# Use at your own risk. No implied or specific warranties are given.
+# You may change it for your own usage only
+# Version 4.0.6 30.07.2025
+###########################################################################
 
 print_delim ()
 {
@@ -72,15 +81,15 @@ domino_uptime()
 check_free_space()
 {
   local DISK_INFO=
-  local DISK_INFO_CMD="df -h --output=target,source,fstype,size,used,avail,pcent"
-  local FORMAT="%-7s %-20s %-20s %-8s %8s %8s %8s %5s\n"
+  local DISK_INFO_CMD="df -h --output=size,used,avail,pcent,target,source,fstype"
+  local FORMAT="%-6s %8s %8s %8s %5s   %-8s %-20s %-20s\n"
   local DIR2CHECK=
   local PARTS=
   local DISK="$2"
   local SHOW_ALL="$3"
 
   if [ -z "$1" ]; then
-    printf "$FORMAT\n" "Disk" "Mounted on" "Filesystem" "Type" "Size" "Used" "Avail" "Use%"
+    printf "$FORMAT\n" "Type" "Size" "Used" "Avail" "Use%" "Disk" "Mounted on" "Filesystem"
     return 0
   fi
 
@@ -292,9 +301,7 @@ print_infos()
     printf "Linux Uptime  :      $LINUX_UPTIME\n"
   fi
 
-  if [ -n "$DOMINO_UPTIME" ]; then
-    printf "Domino Uptime :      $DOMINO_UPTIME\n"
-  fi
+  printf "Domino Uptime :      $DOMINO_UPTIME\n"
 
   printf "Load Average  :      $LINUX_LOAD_AVG\n"
 
