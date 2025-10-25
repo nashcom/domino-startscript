@@ -7,7 +7,7 @@
 # You may use and distribute the unmodified version of this script.
 # Use at your own risk. No implied or specific warranties are given.
 # You may change it for your own usage only
-# Version 4.0.6 30.07.2025
+# Version 4.0.7 20.10.2025
 ###########################################################################
 
 print_delim ()
@@ -137,16 +137,16 @@ check_free_space()
       DISK_ROOT_SOURCE="$source"
       ;;
 
-    nsf)
-      DISK_DATA_SOURCE="$source"
+    local)
+      DISK_LOCAL_SOURCE="$source"
       ;;
 
     *)
-       if [ "$source" = "$DISK_ROOT_SOURCE" ] || [ "$source" = "$DISK_DATA_SOURCE" ]; then
-         if [ -z "$DISK_SPACE_SHOW_ALL" ]; then
-           return 0
-         fi
-       fi
+      if [ "$source" = "$DISK_ROOT_SOURCE" ] || [ "$source" = "$DISK_LOCAL_SOURCE" ]; then
+        if [ -z "$DISK_SPACE_SHOW_ALL" ]; then
+          return 0
+        fi
+      fi
       ;;
   esac
 
@@ -158,6 +158,7 @@ check_all_disks()
 {
   check_free_space
   check_free_space "/" "Root"
+  check_free_space "/local" "Local"
 
   if [ -z "$DOMINO_INI_PATH" ]; then
     return 0

@@ -7,7 +7,7 @@
 # You may use and distribute the unmodified version of this script.
 # Use at your own risk. No implied or specific warranties are given.
 # You may change it for your own usage only
-# Version 4.0.6 30.07.2025
+# Version 4.0.7 20.10.2025
 ###########################################################################
 
 
@@ -68,7 +68,8 @@ ClearScreen()
     return 0
   fi
 
-  clear
+  # Clear screen using the escape sequence
+  printf "\033[H\033[J"
 }
 
 
@@ -359,6 +360,7 @@ send_diag()
   remove_file "$DOMINO_DIAG_TAR"
   DOMINO_DIAG_TAR=
   echo
+  wait_for_key
 }
 
 
@@ -395,6 +397,7 @@ send_nsd()
 
   tar -cz "$LAST_NSD" | "$NSHMAILX_BIN" "$DIAG_RCPT" -name "$DIAG_FULL_SERVER_NAME" -from "$DIAG_FROM"  -subject "Domino NSD [$DIAG_FULL_SERVER_NAME]" -att - -attname "${NSD_FILENAME}.taz"
   echo
+  wait_for_key
 }
 
 
@@ -431,7 +434,7 @@ send_trace_file()
 
   tar -cz "$DOMINO_DIAG_TRACE_FILE" | "$NSHMAILX_BIN" "$DIAG_RCPT" -name "$DIAG_FULL_SERVER_NAME" -from "$DIAG_FROM"  -subject "Domino Tracefile [$DIAG_FULL_SERVER_NAME]" -att - -attname "${BASE_FILENAME}.taz"
   echo
-
+  wait_for_key
 }
 
 
@@ -493,6 +496,12 @@ menu_help()
   echo
   echo "The Domino Diagnostic Menu offers diagnostics commands."
   echo "It is intended to provide easy diagnostics."
+  echo
+  echo "To specify a standard mail recipient or sender use the following notes.ini settings:"
+  echo
+  echo "notes.ini"
+  echo "  DominoDiagRcpt=admin@example.com"
+  echo "  DominoDiagFrom=server@example.com"
   echo
 }
 
@@ -1053,7 +1062,9 @@ menu()
 
     echo " Server     :  $DIAG_FULL_SERVER_NAME"
     echo " Hostname   :  $DIAG_HOSTNAME"
-    echo " Diag RCPT  :  $DIAG_RCPT"
+    if [ -x "$NSHMAILX_BIN" ] ; then
+      echo " Diag RCPT  :  $DIAG_RCPT"
+    fi
     echo
 
     if [ -n "$DOMINO_DIAG_TRACE_FILE" ] && [ -e "$DOMINO_DIAG_TRACE_FILE" ]; then
@@ -1091,6 +1102,10 @@ menu()
 
     echo " (C)   Collect logs"
 
+    if [ -n "$DOMINO_DIAG_TRACE_FILE" ] && [ -e "$DOMINO_DIAG_TRACE_FILE" ]; then
+      echo " (F)   Open trace file"
+    fi
+
     if [ -x "$NSHMAILX_BIN" ] ; then
       echo " (D)   Send diagnostics"
       if [ -n "$LAST_NSD" ]; then
@@ -1099,12 +1114,8 @@ menu()
 
       if [ -n "$DOMINO_DIAG_TRACE_FILE" ] && [ -e "$DOMINO_DIAG_TRACE_FILE" ]; then
         echo " (T)   Send trace file"
-        echo " (F)   Open trace file"
       fi
       echo " (R)   Set recipient"
-
-    else
-      echo " (!)   No nshmailx found!"
     fi
 
     echo
@@ -1281,14 +1292,17 @@ fi
 
 DIAG_SERVER_NAME=$(echo "$DIAG_FULL_SERVER_NAME" | cut -d '/' -f1 | tr ' ' '_' | tr '.' '_')
 
-if [ -z "$DIAG_FROM" ]; then
-  DIAG_FROM="$DIAG_HOSTNAME"
-fi
-
 if [ -z "$DIAG_RCPT" ]; then
   DIAG_RCPT=$(cat "$NOTESINI" | grep -i "^DominoDiagRcpt=" | head -1 | cut -d'=' -f2)
 fi
 
+if [ -z "$DIAG_FROM" ]; then
+  DIAG_FROM=$(cat "$NOTESINI" | grep -i "^DominoDiagFrom=" | head -1 | cut -d'=' -f2)
+fi
+
+if [ -z "$DIAG_FROM" ]; then
+  DIAG_FROM="$DIAG_HOSTNAME"
+fi
 
 for a in "$@"; do
 

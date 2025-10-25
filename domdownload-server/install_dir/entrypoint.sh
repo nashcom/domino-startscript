@@ -240,7 +240,7 @@ if [ -e /etc/nginx/conf.d/ca_cert.pem ]; then
   echo
 fi
 
-header "Server Certficiate"
+header "Server Certificate"
 show_cert /etc/nginx/conf.d/cert.pem
 echo
 delim

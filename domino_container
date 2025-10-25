@@ -236,6 +236,18 @@ if [ -z "$DOMINO_AUTO_CFG_DEFAULTS_ENV_FILE" ]; then
   export DOMINO_AUTO_CFG_DEFAULTS_ENV_FILE=$DOMINO_CFG_DIR/DominoAutoConfigDefault.env
 fi
 
+
+ClearScreen()
+{
+  if [ "$DISABLE_CLEAR_SCREEN" = "yes" ]; then
+    return 0
+  fi
+
+  # Clear screen using the escape sequence
+  printf "\033[H\033[J"
+}
+
+
 log_space ()
 {
   echo
@@ -2406,7 +2418,7 @@ menu()
     fi
 
     check_container_status
-    clear
+    ClearScreen
     echo
     echo "HCL Domino Container"
     echo "--------------------"
@@ -2464,7 +2476,7 @@ menu()
     echo
     read -n1 -e -p " Select command,  [Q] to cancel? " SELECTED;
 
-    clear
+    ClearScreen
 
     case $(echo "$SELECTED" | awk '{print tolower($0)}') in
 
@@ -2472,7 +2484,7 @@ menu()
     ;;
 
       0|q)
-        clear
+        ClearScreen
         echo
         exit 0
         ;;
