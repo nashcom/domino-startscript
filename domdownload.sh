@@ -2,7 +2,7 @@
 
 ###########################################################################
 # Domino Software Download Script                                         #
-# Version 1.0.9 01.06.2025                                                #
+# Version 1.1.1  11.11.2025                                               #
 # Copyright Nash!Com, Daniel Nashed                                       #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #
@@ -52,11 +52,12 @@
 # 1.0.8  Use temp files for download and rename them when verified
 # 1.0.9  Performance optimization (parsing strings)
 # 1.1.0  New option to select software based on MHS Domino files JSON
+# 1.1.1  Ensure downloaded files have proper read permissions when downloaded by root
 
 SCRIPT_NAME=$0
 SCRIPT_DIR=$(dirname $SCRIPT_NAME)
 
-DOMDOWNLOAD_SCRIPT_VERSION=1.1.0
+DOMDOWNLOAD_SCRIPT_VERSION=1.1.1
 
 # Just print version and exit
 case "$1" in
@@ -854,6 +855,41 @@ CheckDownloadedFile()
 }
 
 
+CheckFilePermissions()
+{
+  # Ensure downloaded file is readable if downloaded by root
+  # If directory is not owned by root, change owner to directory owner
+  # If owner of directory is root, make file world readable
+
+  if [ -z "$1" ]; then
+    return
+  fi
+
+  if [ ! -e "$1" ]; then
+    return
+  fi
+
+  local FILE_OWNER=$(stat -c %U "$1" 2>/dev/null)
+  if [ "$FILE_OWNER" != "root" ]; then
+    return
+  fi
+
+  local DIR_NAME=$(dirname "$1")
+  local DIR_OWNER=$(stat -c %U "$DIR_NAME" 2>/dev/null)
+  local DIR_GROUP=$(stat -c %G "$DIR_NAME" 2>/dev/null)
+
+  if [ -z "$DIR_OWNER" ] || [ -z "$DIR_GROUP" ]; then
+    return
+  fi
+
+  if [ "$DIR_OWNER" != "root" ] || [ "$DIR_GROUP" != "root" ]; then
+    chown "$DIR_OWNER:$DIR_GROUP" "$1" 2>/dev/null
+  else
+    chmod o+r "$1" 2>/dev/null
+  fi
+}
+
+
 DownloadCustom()
 {
   local DOWNLOAD_URL=
@@ -919,7 +955,7 @@ DownloadCustom()
   if [ -e "$OUTFILE_FULLPATH_TEMP" ]; then
 
     mv -f "$OUTFILE_FULLPATH_TEMP" "$OUTFILE_FULLPATH"
-
+    CheckFilePermissions "$OUTFILE_FULLPATH"
     LogMessage "$OUTFILE_FULLPATH"
 
   else
@@ -1077,7 +1113,8 @@ DownloadSoftware()
     exit 0
   fi
 
-  CheckDownloadedFile "$OUTFILE_FULLPATH"
+  CheckDownloadedFile  "$OUTFILE_FULLPATH"
+  CheckFilePermissions "$OUTFILE_FULLPATH"
   LogMessage "$OUTFILE_FULLPATH"
   return 0
 }
@@ -1130,7 +1167,8 @@ DownloadS3()
     exit 1
   fi
 
-  CheckDownloadedFile "$OUTFILE_FULLPATH"
+  CheckDownloadedFile  "$OUTFILE_FULLPATH"
+  CheckFilePermissions "$OUTFILE_FULLPATH"
   LogMessage "$OUTFILE_FULLPATH"
 }
 

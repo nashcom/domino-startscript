@@ -44,7 +44,9 @@
 
 # Default config environment file
 
-if [ -z "$DOMINO_AUTO_CFG_DEFAULTS_ENV_FILE" ]; then
+if [ "$DOMINO_AUTO_CFG_DEFAULTS_ENV_FILE" = "-" ]; then
+  DOMINO_AUTO_CFG_DEFAULTS_ENV_FILE=
+elif [ -z "$DOMINO_AUTO_CFG_DEFAULTS_ENV_FILE" ]; then
   DOMINO_AUTO_CFG_DEFAULTS_ENV_FILE=/local/notesdata/DominoAutoConfigDefault.env
 fi
 
@@ -185,8 +187,6 @@ GetConfig()
   local DEFAULT=
   local VAR_NAME=$1
   local PROMPT=$(echo $1 |awk -F'SERVERSETUP_' '{print $2}')
-  local VAR=
-  local DEFAULT=
 
   if [ -n "$(echo $CHECKED_VAR |grep $VAR_NAME)" ]; then
     return 1
@@ -260,6 +260,10 @@ ConfigJSON()
   done
 
   CHECKED_VAR=
+
+  if [ -n "$SERVERSETUP_SERVER_ID_BASE64" ]; then
+    SERVERSETUP_SERVER_IDFILEPATH="$SERVERSETUP_SERVER_ID_BASE64"
+  fi
 
   if [ "$(uname)" = "Darwin" ]; then
 
