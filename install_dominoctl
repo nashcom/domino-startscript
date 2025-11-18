@@ -189,6 +189,7 @@ fi
 install_file "$START_SCRIPT_DIR/domino_container" "$DOMINO_START_SCRIPT_DIR/domino_container" $ROOT_USER $ROOT_GROUP 755
 install_file "$START_SCRIPT_DIR/nshinfo.sh" "$DOMINO_START_SCRIPT_DIR/nshinfo.sh" $ROOT_USER $ROOT_GROUP 755
 install_file "$START_SCRIPT_DIR/DominoOneTouchSetup.sh" "$DOMINO_START_SCRIPT_DIR/DominoOneTouchSetup.sh" $ROOT_USER $ROOT_GROUP 755
+install_file "$START_SCRIPT_DIR/domsetup.sh" "$DOMINO_START_SCRIPT_DIR/domsetup.sh" $ROOT_USER $ROOT_GROUP 755
 install_file "$START_SCRIPT_DIR/nshcfg.sh" "$DOMINO_START_SCRIPT_DIR/nshcfg.sh" $ROOT_USER $ROOT_GROUP 755
 install_file "$START_SCRIPT_DIR/sysconfig/domino_container" "$DOMINO_START_SCRIPT_DIR/domino_container_template.cfg" $ROOT_USER $ROOT_GROUP 644
 install_file "$START_SCRIPT_DIR/docker-compose.yml" "$DOMINO_START_SCRIPT_DIR/docker-compose_template.yml" "$DOMINO_USER" "$DOMINO_GROUP" 644
@@ -202,6 +203,9 @@ if [ ! -e /usr/local/bin/dominoctl ]; then
   ln -s "$DOMINO_START_SCRIPT_DIR/domino_container" /usr/local/bin/dominoctl
 fi
 
+if [ ! -e /usr/local/bin/domsetup ]; then
+  ln -s "$DOMINO_START_SCRIPT_DIR/domsetup.sh" /usr/local/bin/domsetup
+fi
 
 cp -r $START_SCRIPT_DIR/build_image $DOMINO_START_SCRIPT_DIR
 find $DOMINO_START_SCRIPT_DIR -name "*.sh" -exec chmod 755 {}  \;

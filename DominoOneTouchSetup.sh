@@ -50,6 +50,10 @@ elif [ -z "$DOMINO_AUTO_CFG_DEFAULTS_ENV_FILE" ]; then
   DOMINO_AUTO_CFG_DEFAULTS_ENV_FILE=/local/notesdata/DominoAutoConfigDefault.env
 fi
 
+SCRIPT_NAME=$(readlink -f $0)
+SCRIPT_DIR=$(dirname $SCRIPT_NAME)
+
+
 # ---------------------------------------------
 
 DebugText()
@@ -59,6 +63,12 @@ DebugText()
   fi
 
   return 0
+}
+
+
+print_delim()
+{
+  echo "--------------------------------------------------------------------------------"
 }
 
 
@@ -438,7 +448,7 @@ EditOneTouchSetup()
 
       *)
         DebugText "nshcfg.sh [$CFG_URL/$CFG_INDEX] -> [$CFG_TEMPLATE]"
-        $SCRIPT_DIR_NAME/nshcfg.sh "$CFG_TEMPLATE" "$CFG_URL" "$CFG_INDEX"
+        "$SCRIPT_DIR/nshcfg.sh" "$CFG_TEMPLATE" "$CFG_URL" "$CFG_INDEX"
         ;;
 
     esac
@@ -452,7 +462,7 @@ EditOneTouchSetup()
 
     # Finally we have to have a config file
     if [ ! -e "$CFG_FILE" ]; then
-      echo "No JSON configuration found"
+      echo "No JSON configuration found: $CFG_FILE"
       return 1
     fi
 
