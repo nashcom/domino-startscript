@@ -527,6 +527,9 @@ if [ "$DOMSETUP_RESET_OTS" = "1" ]; then
   log_space "Info: Removed existing OTS file: $DOMSETUP_OTS_JSON_FILE"
 fi
 
+# Export the target JSON file for OTS setup
+export DOMINO_AUTO_CONFIG_JSON_FILE="$DOMSETUP_OTS_JSON_FILE"
+
 if [ ! -e "$DOMSETUP_OTS_JSON_FILE" ]; then
   "$SCRIPT_DIR/DominoOneTouchSetup.sh" $DOMSETUP_OTS_OPTIONS
 elif [ -n "$DOMSETUP_OTS_OPTIONS" ]; then
