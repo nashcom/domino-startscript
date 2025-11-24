@@ -2450,7 +2450,6 @@ menu()
     fi
     echo " (E)   Container configuration"
     echo " (V)   Container environment"
-    echo " (W)   Build container image"
     echo
     echo " Diagnostic"
     echo
@@ -2539,10 +2538,6 @@ menu()
 
       u)
         container_update
-        ;;
-
-      w)
-        build_container_image
         ;;
 
       e)

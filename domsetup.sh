@@ -379,12 +379,18 @@ domsetup()
   if [ "$HTTP_STATUS" = "200" ]; then
     log_space "$HTTP_TEXT"
     log_space "Setup completed"
+
+    # Remove OTS file after successful setup
+    if [ "$DOMSETUP_KEEP_OTS_FILE" != "1" ]; then
+      remove_file "$$DOMSETUP_OTS_JSON_FILE"
+    fi
     return 0
   fi
 
   log_space "DomSetup failed: [$HTTP_STATUS] $HTTP_TEXT"
   return 5
 }
+
 
 usage()
 {
@@ -421,9 +427,11 @@ usage()
   echo "DOMSETUP_USER                User name"
   echo "DOMSETUP_PASSWORD            Password"
   echo "DOMSETUP_NOPROMPT            0=always prompt, 1=only prompt if empty, 2=never prompt"
-  echo "DOMSETUP_RESET_OTS=1         Remove existing OTS file and restart configuartion"
+  echo "DOMSETUP_RESET_OTS=1         Remove existing OTS file and restart configuration"
+  echo "DOMSETUP_KEEP_OTS_FILE       Keep OTS file after successful setup"
   echo
 }
+
 
 # --- Main ---
 
