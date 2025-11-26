@@ -334,7 +334,7 @@ install_software()
   esac
 
   # install required and useful packages
-  install_packages tar sysstat net-tools jq gettext git ncurses unzip
+  install_packages tar sysstat net-tools jq gettext git ncurses unzip openssl
 
   # additional packages by platform
 
@@ -347,7 +347,7 @@ install_software()
     install_package bind9-utils
 
   elif [ -x /sbin/apk ]; then
-    install_packages bash outils-sha256 curl gettext gawk openssl shadow procps
+    install_packages bash outils-sha256 curl gettext gawk shadow procps
 
   else
 
