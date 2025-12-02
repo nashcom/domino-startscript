@@ -255,6 +255,7 @@ log_space()
   echo
 }
 
+
 log_and_exit()
 {
   echo
@@ -263,10 +264,12 @@ log_and_exit()
   exit 1
 }
 
+
 print_delim()
 {
   echo "------------------------------------------------------------------------------------------"
 }
+
 
 header()
 {
@@ -276,6 +279,7 @@ header()
   print_delim
   echo
 }
+
 
 config_warnings()
 {
@@ -299,6 +303,7 @@ config_warnings()
   return 0
 }
 
+
 is_sha256()
 {
   case $1 in
@@ -311,6 +316,7 @@ is_sha256()
       esac
    esac
 }
+
 
 check_version_older()
 {
@@ -433,7 +439,7 @@ detect_container_environment()
 
   CONTAINER_RUNTIME_VERSION_STR=$(docker -v 2> /dev/null | head -1)
   if [ -n "$CONTAINER_RUNTIME_VERSION_STR" ]; then
-    xCONTAINER_CMD=docker
+    CONTAINER_CMD=docker
     return 0
   fi
 
@@ -548,6 +554,11 @@ check_container_environment()
       CONTAINER_RUNTIME_VERSION_STR=$(container --version 2> /dev/null | head -1)
     fi
     CONTAINER_RUNTIME_VERSION=$(echo $CONTAINER_RUNTIME_VERSION_STR | awk -F'version ' '{print $2 }' | awk '{print $1}')
+
+    if [ -z "$JQ_VERSION" ] ; then
+      log_and_exit "Apple container platform requires JQ"
+    fi
+
   fi
 
   if [ "$CONTAINER_BUILD_DISABLE_HOST_NET" != "1" ]; then
@@ -571,6 +582,7 @@ check_container_environment()
   return 0
 }
 
+
 check_root_permissions()
 {
   # Use sudo for su for container command if not root if specified
@@ -588,6 +600,7 @@ check_root_permissions()
 
   SYSTEMCTL_CMD="sudo systemctl"
 }
+
 
 print_runtime()
 {
@@ -635,6 +648,20 @@ get_container_image_id()
     container inspect "$1" 2>/dev/null | jq -r .[0].configuration.image.descriptor.digest | cut -f2 -d':'
   else
     $CONTAINER_CMD inspect --format "{{.Image}}" "$1" 2>/dev/null | cut -d":" -f2
+  fi
+}
+
+
+get_container_id()
+{
+  if [ -z "$1" ]; then
+     return 0
+  fi
+
+  if [ "$CONTAINER_CMD" = "container" ]; then
+    container inspect "$1" 2>/dev/null | jq -r .[0].configuration.id| cut -f2 -d':'
+  else
+    $CONTAINER_CMD inspect --format "{{.ID}}" "$1" 2>/dev/null | cut -d":" -f2
   fi
 }
 
@@ -763,6 +790,7 @@ container_status()
 {
   CONTAINER_STATUS="$($CONTAINER_CMD inspect --format "{{ .State.Status }}" $CONTAINER_NAME 2>/dev/null)"
 }
+
 
 inspect_image_native()
 {
