@@ -2,7 +2,7 @@
 
 ###########################################################################
 # systemd Service - Start/Stop Script for Domino on Podman                #
-# Version 4.0.3 30.04.2025                                                #
+# Version 4.0.9 06.12.2025                                                #
 #                                                                         #
 # (C) Copyright Daniel Nashed/NashCom 2020-2025                           #
 # Feedback domino_unix@nashcom.de                                         #
@@ -38,8 +38,11 @@ TimeoutSec=300
 TimeoutStopSec=200
 RemainAfterExit=no
 
+# Can be also set in Domino configuration (DOMINO_LANG, DOMINO_TZ)
+
 #Environment=LANG=en_US.UTF-8
 #Environment=LANG=de_DE.UTF-8
+#Environment=TZ=Europe/Berlin
 
 # !! Note for environment variables and security limits !!
 

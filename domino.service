@@ -2,9 +2,9 @@
 
 ###########################################################################
 # systemd Service - Start/Stop Script for Domino on xLinux/zLinux/AIX     #
-# Version 4.0.0 16.07.2024                                                #
+# Version 4.0.9 06.12.2025                                                #
 #                                                                         #
-# (C) Copyright Daniel Nashed/NashCom 2005-2024                           #
+# (C) Copyright Daniel Nashed/NashCom 2005-2025                           #
 # Feedback domino_unix@nashcom.de                                         #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #
@@ -40,8 +40,11 @@ TimeoutSec=600
 TimeoutStopSec=300
 RemainAfterExit=no
 
+# Can be also set in Domino configuration (DOMINO_LANG, DOMINO_TZ)
+
 #Environment=LANG=en_US.UTF-8
 #Environment=LANG=de_DE.UTF-8
+#Environment=TZ=Europe/Berlin
 
 # !! Note for environment variables and security limits !!
 

@@ -30,6 +30,9 @@ DOMINO_CONFIGURED="yes"
 #DOMINO_LANG=en_US.UTF-8
 #DOMINO_LANG=de_DE.UTF-8
 
+# -- TZ setting on OS level that should be used --
+#DOMINO_TZ=Europe/Berlin
+
 # -- Optional Environment variable file (particular useful for systemd environments)  --
 #DOMINO_ENV_FILE=/etc/sysconfig/rc_domino_env
 
