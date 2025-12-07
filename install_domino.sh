@@ -5,7 +5,7 @@
 ############################################################################
 
 # Domino on Linux installation script
-# Version 4.0.3 30.04.2025 
+# Version 4.0.9 06.12.2025
 
 # - Installs required software
 # - Adds notes:notes user and group
@@ -39,22 +39,13 @@ if [ -z "$SOFTWARE_DIR" ]; then
   SOFTWARE_DIR=/local/software
 fi
 
-if [ -z "$HCL_SOFTWARE" ]; then
-  HCL_SOFTWARE=/local/HCLSoftware
+if [ -z "$DOMINO_START_SCRIPT_GIT_REPO" ]; then
+  DOMINO_START_SCRIPT_GIT_REPO=https://github.com/nashcom/domino-startscript.git
 fi
 
-if [ -z "$INSTALL_TEMP_DIR" ]; then
-  INSTALL_TEMP_DIR=/tmp/install_domino_$$
+if [ -z "$DOMINO_CONTAINER_GIT_REPO" ]; then
+  DOMINO_CONTAINER_GIT_REPO=https://github.com/HCL-TECH-SOFTWARE/domino-container.git
 fi
-
-if [ -z "$DOMINO_START_SCRIPT_GIT_ZIP" ]; then
-  DOMINO_START_SCRIPT_GIT_ZIP=https://github.com/nashcom/domino-startscript/archive/refs/heads/develop.zip
-fi
-
-if [ -z "$DOMINO_CONTAINER_GIT_ZIP" ]; then
-  DOMINO_CONTAINER_GIT_ZIP=https://github.com/HCL-TECH-SOFTWARE/domino-container/archive/refs/heads/develop.zip
-fi
-
 
 SPECIAL_CURL_ARGS=
 CURL_CMD="curl --fail --location --connect-timeout 15 --max-time 300 $SPECIAL_CURL_ARGS"
@@ -76,6 +67,7 @@ print_delim()
 {
   echo "--------------------------------------------------------------------------------"
 }
+
 
 log_ok ()
 {
@@ -124,6 +116,7 @@ remove_directory()
   return 0
 }
 
+
 install_package()
 {
   if [ -x /usr/bin/zypper ]; then
@@ -156,11 +149,52 @@ install_package()
   fi
 }
 
+
 install_packages()
 {
   local PACKAGE=
   for PACKAGE in $*; do
     install_package $PACKAGE
+  done
+}
+
+
+remove_package()
+{
+  if [ -x /usr/bin/zypper ]; then
+    /usr/bin/zypper rm -y "$@"
+
+  elif [ -x /usr/bin/dnf ]; then
+    /usr/bin/dnf remove -y "$@"
+
+  elif [ -x /usr/bin/tdnf ]; then
+    /usr/bin/tdnf remove -y "$@"
+
+  elif [ -x /usr/bin/microdnf ]; then
+    /usr/bin/microdnf remove -y "$@"
+
+  elif [ -x /usr/bin/yum ]; then
+    /usr/bin/yum remove -y "$@"
+
+  elif [ -x /usr/bin/apt-get ]; then
+    /usr/bin/apt-get remove -y "$@"
+
+  elif [ -x /usr/bin/pacman ]; then
+    /usr/bin/pacman --noconfirm -R "$@"
+
+  elif [ -x /sbin/apk ]; then
+      /sbin/apk del "$@"
+  fi
+
+  echo "$@" >> /tmp/remove_package.log
+}
+
+
+remove_packages()
+{
+  local PACKAGE=
+  for PACKAGE in $*; do
+    remove_package $PACKAGE
   done
 }
 
@@ -208,6 +242,7 @@ config_firewall()
   echo "Info: Firewall services enabled - TCP/Inbound: NRPC, HTTP, HTTPS, SMTP"
 
 }
+
 
 config_sudo()
 {
@@ -276,6 +311,7 @@ create_directories()
   # creates local directory structure with the right owner
 
   create_directory /local           $DOMINO_USER $DOMINO_GROUP 777
+  create_directory /local/github    $DOMINO_USER $DOMINO_GROUP 777
   create_directory "$SOFTWARE_DIR"  $DOMINO_USER $DOMINO_GROUP 777
   create_directory /local/notesdata $DOMINO_USER $DOMINO_GROUP $DIR_PERM
   create_directory /local/translog  $DOMINO_USER $DOMINO_GROUP $DIR_PERM
@@ -304,6 +340,7 @@ print_runtime()
   else echo "Completed in $seconds second$s"; fi
 }
 
+
 must_be_root()
 {
   if [ "$EUID" = "0" ]; then
@@ -315,36 +352,66 @@ must_be_root()
 }
 
 
-find_scripts()
+enable_chrony_service()
 {
-  local SEARCH_DIR=$1
-  if [ -z "$SEARCH_DIR" ]; then
-    SEARCH_DIR=$(pwd)
-  fi
+    local unit=
+    local names=
 
-  if [ -z "$INSTALL_DOMDOWNLOAD_SCRIPT" ]; then
-    INSTALL_DOMDOWNLOAD_SCRIPT=$(find "$SEARCH_DIR" -maxdepth 2 -name "domdownload.sh")
-  fi
+    # Try querying chronyd.service first
+    names=$(systemctl show -p Names chronyd.service 2>/dev/null | cut -d= -f2)
 
-  if [ -n "$INSTALL_DOMDOWNLOAD_SCRIPT" ]; then
-    START_SCRIPT_DIR="$(dirname "$INSTALL_DOMDOWNLOAD_SCRIPT")"
-  fi
+    if [ -z "$names" ]; then
+        # Try chrony.service if chronyd did not exist
+        names=$(systemctl show -p Names chrony.service 2>/dev/null | cut -d= -f2)
+    fi
 
-  if [ -n "$START_SCRIPT_DIR" ]; then
-    INSTALL_DOMINO_SCRIPT="$START_SCRIPT_DIR/install_script"
+    if [ -z "$names" ]
+    then
+      echo "ERROR: chrony service not found" >&2
+      return 1
+    fi
 
-    # Search for container porject on same level
-    SEARCH_DIR=$(dirname "$START_SCRIPT_DIR")
-  fi
+    # systemd returns canonical name first
+    unit=$(echo "$names" | awk '{print $1}')
 
-  if [ -z "$CONTAINER_SCRIPT_DIR" ]; then
-    CONTAINER_SCRIPT_DIR=$(find "$SEARCH_DIR" -type d -name "domino-container*")
-  fi
+    if [ -z "$unit" ]; then
+      echo "ERROR: Could not determine real chrony systemd unit" >&2
+      return 1
+    else
+      echo "Info: NTP service $unit enabled. Ensure it can connect a configured NTP server"
+    fi
 
-  if [ -n "$CONTAINER_SCRIPT_DIR" ]; then
-    BUILD_SCRIPT="$CONTAINER_SCRIPT_DIR/build.sh"
-  fi
+    systemctl enable --now "$unit"
 }
+
+
+install_chrony()
+{
+  header "Install NTP client: chrony"
+
+  install_package chrony
+  enable_chrony_service
+}
+
+
+cleanup_git()
+{
+  # Additional option to remove temporary installed GitHub repositories and Git
+
+  if [ "$DOMINO_INSTALL_CLEANUP_GIT" != "yes" ]; then
+    return 0
+  fi
+
+  rm -rf "/local/github/domino-startscript"
+  rm -rf "/local/github/domino-container"
+
+  # Remove directory if empty
+  rmdir "/local/github"
+
+  # Remove git
+  remove_package git
+}
+
 
 # -- Main logic --
 
@@ -366,6 +433,7 @@ if [ -n "$(uname -r|grep microsoft)" ]; then
   LINUX_VM_INFO="on WSL"
 fi
 
+
 header "Nash!Com Domino Installer for $LINUX_PRETTY_NAME $LINUX_VM_INFO"
 
 must_be_root
@@ -380,79 +448,14 @@ if [ -z "SOFTWARE_DIR" ]; then
   export SOFTWARE_DIR=/local/software
 fi
 
-mkdir -p "$INSTALL_TEMP_DIR"
-cd "$INSTALL_TEMP_DIR"
-
 
 header "Installing required software"
 
-install_packages unzip ncurses jq procps openssl
+install_packages unzip ncurses jq procps openssl git
 
 # Install sudo if not present. It's required for systemd
 if [ ! -e /usr/bin/sudo ]; then
   install_package sudo
-fi
-
-
-header "Download Domino Start Script Project"
-
-# Check if projects exist already and determine scripts
-find_scripts "$SCRIPT_DIR"
-
-if [ -z "$START_SCRIPT_DIR" ]; then
-  if [ -e "$SOFTWARE_DIR/domino-startscript.zip" ]; then
-    unzip -q "$SOFTWARE_DIR/domino-startscript.zip"
-
-  else
-    curl -L "$DOMINO_START_SCRIPT_GIT_ZIP" -o domino-startscript.zip
-    unzip -q domino-startscript.zip
-  fi
-
-else
-  echo "Using existing Start Script directory: $START_SCRIPT_DIR"
-fi
-
-if [ -z "$CONTAINER_SCRIPT_DIR" ]; then
-  header "Download Domino Container Project"
-
-  if [ -e "$SOFTWARE_DIR/domino-container.zip" ]; then
-    unzip -q "$SOFTWARE_DIR/domino-container.zip"
-
-  else
-    curl -L "$DOMINO_CONTAINER_GIT_ZIP" -o domino-container.zip
-    unzip -q domino-container.zip
-  fi
-
-else
-  echo "Using existing Container Domino project: $CONTAINER_SCRIPT_DIR"
-fi
-
-# Check again after extract
-find_scripts
-
-if [ -z "$INSTALL_DOMDOWNLOAD_SCRIPT" ]; then
-  echo "Domino Download Script not found"
-  exit 1
-fi
-
-if [ -z "$START_SCRIPT_DIR" ]; then
-  echo "Domino Start Script dir not found"
-  exit 1
-fi
-
-if [ -z "$INSTALL_DOMINO_SCRIPT" ]; then
-  echo "Domino Start Script installer not found"
-  exit 1
-fi
-
-if [ -z "$BUILD_SCRIPT" ]; then
-  echo "Build script not found"
-  exit 1
-fi
-
-if [ -z "$CONTAINER_SCRIPT_DIR" ]; then
-  echo "Domino Container script dir not found"
-  exit 1
 fi
 
 if [ -z "$LinuxYumUpdate" ]; then
@@ -460,41 +463,58 @@ if [ -z "$LinuxYumUpdate" ]; then
 fi
 
 
-cp -f "$CONTAINER_SCRIPT_DIR/software/software.txt" "$SOFTWARE_DIR"
-cp -f "$CONTAINER_SCRIPT_DIR/software/current_version.txt" "$SOFTWARE_DIR"
+header "Git clone Domino Start Script Project & HCL Domino Container Project"
 
-# Install Domino Download Script
+cd /local/github
+git clone "$DOMINO_START_SCRIPT_GIT_REPO"
+git clone "$DOMINO_CONTAINER_GIT_REPO"
+
+cd /local/github/domino_container
+git pull
+
+cd /local/github/domino_startscript
+git pull
+
+
+header "Install Domino Download Script"
+
+INSTALL_DOMDOWNLOAD_SCRIPT="/local/github/domino-startscript/domdownload.sh"
+
 "$INSTALL_DOMDOWNLOAD_SCRIPT" -connect install
 
 if [ -n "$DOMDOWNLOAD_TOKEN" ]; then
   "$INSTALL_DOMDOWNLOAD_SCRIPT" -token "$DOMDOWNLOAD_TOKEN"
 fi
 
+
 header "Installing Domino"
+
+cd /local/github/domino-container
 
 if [ -z "$INSTALL_OPTIONS" ]; then
 
   echo "Install native via menu"
-  "$BUILD_SCRIPT" menu -installnative
+  ./build.sh menu -installnative
 
 else
   echo "Install native silent"
-  "$BUILD_SCRIPT" domino $INSTALL_OPTIONS -installnative
+  ./build.sh domino $INSTALL_OPTIONS -installnative
 fi
 
+
 header "Installing Domino Start Script"
-"$INSTALL_DOMINO_SCRIPT"
+cd /local/github/domino-startscript
+./install_script
 
 config_sudo
+install_chrony
+cleanup_git
 
 cd $SAVED_DIR
-
-# Cleanup
-remove_directory "$INSTALL_TEMP_DIR"
-# remove_directory "$SOFTWARE_DIR"
 
 echo
 echo "Done"
 print_runtime
 echo
+
 
