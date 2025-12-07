@@ -43,36 +43,48 @@ header()
 }
 
 
+git_update_repo()
+{
+
+  local REPO_DIR="$1"
+
+  if [ -z "$REPO_DIR" ]; then
+    return 0
+  fi
+
+  if [ ! -e "$REPO_DIR" ]; then
+    return 0
+  fi
+
+  if [ "$(stat -c %u "$REPO_DIR")" != "$(id -u)" ]; then
+    log_error "Please pull repository with the correct owner: $REPO_DIR"
+    sleep 4
+    return 1
+  fi
+
+  cd "$REPO_DIR"
+  git pull
+  local rc=$?
+
+  if [ $rc -ne 0 ]; then
+    log_error "Git repo update failed:  $REPO_DIR"
+    sleep 5
+  fi
+
+  log_ok "Git repo pulled:  $REPO_DIR"
+  
+}
+
+
+
+
 update_github_repos()
 {
   local REPO_DIR=
   header "Updating GitHub projects"
 
-  REPO_DIR=/local/github/domino-container
-
-  if [ -e "$REPO_DIR" ]; then
-
-    if [ "$(stat -c %u "$REPO_DIR")" -eq "$(id -u)" ]; then
-      cd "$REPO_DIR"
-      git pull
-    else
-      log_error "Please pull repository with the correct owner: $$REPO_DIR"
-    fi
-  fi
-  echo
-
-  REPO_DIR=/local/github/domino-startscript
-
-  if [ -e "$REPO_DIR" ]; then
-
-    if [ "$(stat -c %u "$REPO_DIR")" -eq "$(id -u)" ]; then
-      cd "$REPO_DIR"
-      git pull
-    else
-      log_error "Please pull repository with the correct owner: $$REPO_DIR"
-    fi
-  fi
-  echo
+  git_update_repo /local/github/domino-container
+  git_update_repo /local/github/domino-startscript
 }
 
 
