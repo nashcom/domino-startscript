@@ -2,7 +2,7 @@
 
 ###########################################################################
 # Domino Software Download Script                                         #
-# Version 1.1.1  11.11.2025                                               #
+# Version 1.1.2  08.12.2025                                               #
 # Copyright Nash!Com, Daniel Nashed                                       #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #
@@ -53,11 +53,12 @@
 # 1.0.9  Performance optimization (parsing strings)
 # 1.1.0  New option to select software based on MHS Domino files JSON
 # 1.1.1  Ensure downloaded files have proper read permissions when downloaded by root
+# 1.1.2  Add update functionality to check version and help updating
 
 SCRIPT_NAME=$0
 SCRIPT_DIR=$(dirname $SCRIPT_NAME)
 
-DOMDOWNLOAD_SCRIPT_VERSION=1.1.1
+DOMDOWNLOAD_SCRIPT_VERSION=1.1.2
 
 # Just print version and exit
 case "$1" in

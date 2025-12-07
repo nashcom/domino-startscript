@@ -3,7 +3,7 @@
 # dominoctl                                                               #
 # ---------                                                               #
 # Nash!Com Domino Container Management Script                             #
-# Version 1.5.0 17.05.2025                                                #
+# Version 1.5.1 08.12.2025                                                #
 #                                                                         #
 # (C) Copyright Daniel Nashed/NashCom 2021-2025                           #
 # Feedback domino_unix@nashcom.de                                         #
@@ -52,7 +52,7 @@ CONTAINER_ENV_FILE=
 # Shutdown timeout increased for Domino proper shutdown
 DOMINO_SHUTDOWN_TIMEOUT=120
 
-CONTAINER_SCRIPT_VERSION=1.5.0
+CONTAINER_SCRIPT_VERSION=1.5.1
 MYHCL_DOWNLOAD_URL=https://my.hcltechsw.com/
 
 if [ "$1" == "--version" ]; then
