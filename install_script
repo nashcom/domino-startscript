@@ -418,10 +418,14 @@ fi
 if [ ${LARCH} = "linux" ]; then
   if [ -e /etc/systemd/system ]; then
 
+    if [ -e "etc/systemd/system/$DOMINO_SYSTEMD_NAME" ]; then
+      DOMINO_SYSTEMD_SERVICE_STATUS=INSTALLED
+    fi
+
     if [ "$PARAM1" = "upd" ]; then
-      install_file $START_SCRIPT_DIR/domino.service /etc/systemd/system/$DOMINO_SYSTEMD_NAME $ROOT_USER $ROOT_GROUP 644
+      install_file "$START_SCRIPT_DIR/domino.service" "/etc/systemd/system/$DOMINO_SYSTEMD_NAME" $ROOT_USER $ROOT_GROUP 644
     else
-      install_file_noupdate $START_SCRIPT_DIR/domino.service /etc/systemd/system/$DOMINO_SYSTEMD_NAME $ROOT_USER $ROOT_GROUP 644
+      install_file_noupdate "$START_SCRIPT_DIR/domino.service" "/etc/systemd/system/$DOMINO_SYSTEMD_NAME" $ROOT_USER $ROOT_GROUP 644
     fi
   fi
 
@@ -433,7 +437,12 @@ if [ ${LARCH} = "linux" ]; then
     echo "Info: System is not running systemd"
   else
     systemctl daemon-reload
-    $DOMINO_SCRIPT_BIN service add
+
+    if [ -z "DOMINO_SYSTEMD_SERVICE_STATUS" ] || [ "$PARAM1" = "upd" ] ; then
+      "$DOMINO_SCRIPT_BIN" service add
+    else
+      echo "Info: Not updating service status: $DOMINO_SYSTEMD_NAME"
+    fi
   fi
 
 fi
