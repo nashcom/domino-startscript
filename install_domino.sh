@@ -377,11 +377,11 @@ enable_chrony_service()
     if [ -z "$unit" ]; then
       echo "ERROR: Could not determine real chrony systemd unit" >&2
       return 1
-    else
-      echo "Info: NTP service $unit enabled. Ensure it can connect a configured NTP server"
     fi
 
     systemctl enable --now "$unit"
+
+    log_ok "Info: NTP service $unit enabled. Ensure it can connect a configured NTP server"
 }
 
 
@@ -469,10 +469,10 @@ cd /local/github
 git clone "$DOMINO_START_SCRIPT_GIT_REPO"
 git clone "$DOMINO_CONTAINER_GIT_REPO"
 
-cd /local/github/domino_container
+cd /local/github/domino-container
 git pull
 
-cd /local/github/domino_startscript
+cd /local/github/domino-startscript
 git pull
 
 

@@ -190,6 +190,7 @@ install_file "$START_SCRIPT_DIR/domino_container" "$DOMINO_START_SCRIPT_DIR/domi
 install_file "$START_SCRIPT_DIR/nshinfo.sh" "$DOMINO_START_SCRIPT_DIR/nshinfo.sh" $ROOT_USER $ROOT_GROUP 755
 install_file "$START_SCRIPT_DIR/DominoOneTouchSetup.sh" "$DOMINO_START_SCRIPT_DIR/DominoOneTouchSetup.sh" $ROOT_USER $ROOT_GROUP 755
 install_file "$START_SCRIPT_DIR/domsetup.sh" "$DOMINO_START_SCRIPT_DIR/domsetup.sh" $ROOT_USER $ROOT_GROUP 755
+install_file "$START_SCRIPT_DIR/nsh-update-check.sh" "$DOMINO_START_SCRIPT_DIR/nsh-update-check.sh" $ROOT_USER $ROOT_GROUP 755
 install_file "$START_SCRIPT_DIR/nshcfg.sh" "$DOMINO_START_SCRIPT_DIR/nshcfg.sh" $ROOT_USER $ROOT_GROUP 755
 install_file "$START_SCRIPT_DIR/sysconfig/domino_container" "$DOMINO_START_SCRIPT_DIR/domino_container_template.cfg" $ROOT_USER $ROOT_GROUP 644
 install_file "$START_SCRIPT_DIR/docker-compose.yml" "$DOMINO_START_SCRIPT_DIR/docker-compose_template.yml" "$DOMINO_USER" "$DOMINO_GROUP" 644
