@@ -191,7 +191,11 @@ print_infos()
   fi
 
   if [ -r  /etc/os-release ]; then
-    get_entry LINUX_VERSION /etc/os-release "VERSION_ID=" "="
+    get_entry LINUX_VERSION /etc/os-release "VERSION=" "="
+    if [ -z "$LINUX_VERSION" ]; then
+      get_entry LINUX_VERSION /etc/os-release "VERSION_ID=" "="
+    fi
+
     get_entry LINUX_PRETTY_NAME /etc/os-release "PRETTY_NAME=" "="
     get_entry LINUX_ID /etc/os-release "ID=" "="
   fi
@@ -312,6 +316,14 @@ print_infos()
       printf "DomDownload   :      $DOMINO_DOWNLOAD_VER\n"
   else
       printf "DomDownload   :      [not installed]\n"
+  fi
+
+  DOMINOCTL_VER=$(dominoctl --version 2> /dev/null)
+
+  if [ -n "$DOMINOCTL_VER" ]; then
+      printf "DominoCtl     :      $DOMINOCTL_VER\n"
+  else
+      printf "DominoCtl     :      [not installed]\n"
   fi
 
   printf "\n"

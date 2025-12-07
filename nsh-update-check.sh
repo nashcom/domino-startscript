@@ -163,7 +163,7 @@ update_components()
 
   if [ -n "$(which domdownload 2>/dev/null)" ]; then
 
-    header "Updating Domino Download Script (domdownload) installed"
+    header "Updating Domino Download Script (domdownload)"
 
     ./domdownload.sh --check-version
 

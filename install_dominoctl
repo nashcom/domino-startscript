@@ -38,7 +38,7 @@ fi
 if [ -e "$DOMINO_START_SCRIPT_DIR/domino_container" ]; then
   CURRENT_VERSION=$($DOMINO_START_SCRIPT_DIR/domino_container --version)
 else
-  CURRENT_VERSION
+  CURRENT_VERSION=
 fi
 
 SCRIPT_VERSION=$($START_SCRIPT_DIR/domino_container --version)
