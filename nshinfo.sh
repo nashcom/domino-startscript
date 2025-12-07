@@ -197,7 +197,9 @@ print_infos()
   fi
 
   LINUX_KERNEL=$(uname -r)
-  LINUX_GLIBC_VERSION=$(ldd --version| head -1 | rev | cut -f1 -d' ' | rev 2> /dev/null)
+  if [ ! -x /sbin/apk ]; then
+    LINUX_GLIBC_VERSION=$(ldd --version| head -1 | rev | cut -f1 -d' ' | rev 2> /dev/null)
+  fi
   LINUX_ARCH==$(uname -m)
   LINUX_UPTIME=$( awk '{x=$1/86400;y=($1%86400)/3600;z=($1%3600)/60} {printf("%d day, %d hour %d min\n",x,y,z)}' /proc/uptime )
   LINUX_LOAD_AVG=$(awk -F " " '{printf $1 "  " $2 "  " $3}' /proc/loadavg)
@@ -250,11 +252,26 @@ print_infos()
   printf "Linux OS      :      $LINUX_PRETTY_NAME\n"
   printf "Linux Version :      $LINUX_VERSION\n"
   printf "Kernel        :      $LINUX_KERNEL\n"
-  printf "GNU libc      :      $LINUX_GLIBC_VERSION\n"
+  if [ -n "$LINUX_GLIBC_VERSION" ]; then
+    printf "GNU libc      :      $LINUX_GLIBC_VERSION\n"
+  fi
   printf "Timezone      :      $(date +"%Z %z")\n"
   printf "Locale        :      $LANG\n"
 
 
+  if [ -n "$http_proxy" ]; then
+    if [ -n "$https_proxy" ]; then
+      printf "HTTP  Proxy   :      $http_proxy\n"
+    else
+      printf "HTTP Proxy    :      $http_proxy\n"
+    fi
+  fi
+
+  if [ -n "$https_proxy" ]; then
+    printf "HTTPS Proxy   :      $https_proxy\n"
+  fi
+
+  printf "\n"
   if [ -n "$LINUX_VIRT" ]; then
     printf "Virt          :      $LINUX_VIRT\n"
   fi
