@@ -23,6 +23,12 @@
 
 DOMINO_SCRIPT_VERSION=4.0.9
 
+if [ "$1" = "--version" ]; then
+  echo "$DOMINO_SCRIPT_VERSION"
+  exit 0
+fi
+
+
 if [ -z "$DOMINO_SCRIPT_VERBOSE_INFO" ]; then
   DOMINO_SCRIPT_VERBOSE_INFO="yes"
 fi

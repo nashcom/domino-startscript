@@ -32,13 +32,39 @@ DOMINO_DOCKER_SCRIPT=entrypoint.sh
 DONT_TOUCH_THIS_NASHCOM_PATH=/opt/nashcom/startscript
 DONT_TOUCH_THIS_STANDARD_USER=notes
 
-DOMINO_SCRIPT_VERSION=4.0.3
 
 # if you really really need to, change this and all files will be patched
 
 if [ -z "$DOMINO_START_SCRIPT_DIR" ]; then
   DOMINO_START_SCRIPT_DIR=/opt/nashcom/startscript
 fi
+
+if [ -e "$DOMINO_START_SCRIPT_DIR/rc_domino_script" ]; then
+  CURRENT_VERSION=$($DOMINO_START_SCRIPT_DIR/rc_domino_script --version)
+else
+  CURRENT_VERSION=
+fi
+
+
+DOMINO_SCRIPT_VERSION=$($SCRIPT_DIR/rc_domino_script --version)
+
+if [ "$CURRENT_VERSION" = "$DOMINO_SCRIPT_VERSION" ]; then
+
+  if [ "$1" = "--check-version" ]; then
+    exit 0
+  fi
+
+  echo
+  echo "Already latest Domino Start Script version installed: $CURRENT_VERSION"
+  echo
+  exit 0
+
+else
+  if [ "$1" = "--check-version" ]; then
+    exit 1
+  fi
+fi
+
 
 if [ -z "$DOMINO_USER" ]; then
   DOMINO_USER=notes

@@ -43,52 +43,6 @@ header()
 }
 
 
-git_update_repo()
-{
-
-  local REPO_DIR="$1"
-
-  if [ -z "$REPO_DIR" ]; then
-    return 0
-  fi
-
-  if [ ! -e "$REPO_DIR" ]; then
-    return 0
-  fi
-
-  if [ "$(stat -c %u "$REPO_DIR")" != "$(id -u)" ]; then
-    log_error "Please pull repository with the correct owner: $REPO_DIR"
-    sleep 4
-    return 1
-  fi
-
-  cd "$REPO_DIR"
-  git pull
-  local rc=$?
-
-  if [ $rc -ne 0 ]; then
-    log_error "Git repo update failed:  $REPO_DIR"
-    sleep 5
-  fi
-
-  log_ok "Git repo pulled:  $REPO_DIR"
-  
-}
-
-
-
-
-update_github_repos()
-{
-  local REPO_DIR=
-  header "Updating GitHub projects"
-
-  git_update_repo /local/github/domino-container
-  git_update_repo /local/github/domino-startscript
-}
-
-
-
 # Check if sudo is requested or fall back in case of error
 SUDO()
 {
@@ -120,6 +74,56 @@ SUDO()
 }
 
 
+git_update_repo()
+{
+
+  local REPO_DIR="$1"
+  local CURRENT_UID="$(id -u)"
+  local OWNER_UID=
+
+  if [ -z "$REPO_DIR" ]; then
+    return 0
+  fi
+
+  if [ ! -e "$REPO_DIR" ]; then
+    return 0
+  fi
+
+  OWNER_UID="$(stat -c %u "$REPO_DIR")"
+  cd "$REPO_DIR"
+
+  if [ "$OWNER_UID" = "$CURRENT_UID" ]; then
+    git pull
+
+  elif [ "$OWNER_UID" = "0" ]; then
+    SUDO git pull
+
+  else
+    log_error "Please pull repository with the correct owner: $REPO_DIR"
+    sleep 5
+    return 1
+  fi
+
+  local rc=$?
+
+  if [ $rc -ne 0 ]; then
+    log_error "Git repo update failed:  $REPO_DIR"
+    sleep 5
+  fi
+
+  log_ok "Git repo pulled:  $REPO_DIR"
+}
+
+
+update_github_repos()
+{
+  local REPO_DIR=
+  header "Updating GitHub projects"
+
+  git_update_repo /local/github/domino-container
+  git_update_repo /local/github/domino-startscript
+}
+
 
 update_components()
 {
@@ -132,22 +136,73 @@ update_components()
   cd /local/github/domino-startscript
 
   if [ -n "$(which domino 2>/dev/null)" ]; then
+
     header "Updating Domino Start Script"
-    SUDO ./install_script
-    echo
+
+    ./install_script --check-version
+
+    if [ "$?" = "0" ]; then
+      log_ok "Latest Domino Start Script already installed"
+    else
+      SUDO ./install_script
+    fi
   fi
 
   if [ -n "$(which dominoctl 2>/dev/null)" ]; then
+
     header "Updating Domino Container Control (dominoctl)"
-    SUDO ./install_dominoctl
-    echo
+
+    ./install_dominoctl --check-version
+
+    if [ "$?" = "0" ]; then
+      log_ok "Latest Domino Container Control (dominoctl) already installed"
+    else
+      SUDO ./install_dominoctl
+    fi
   fi
 
   if [ -n "$(which domdownload 2>/dev/null)" ]; then
-    header "Updating Domino Download Script (domdownload)"
-    SUDO ./domdownload.sh install
-    echo
+
+    header "Updating Domino Download Script (domdownload) installed"
+
+    ./domdownload.sh --check-version
+
+    if [ "$?" = "0" ]; then
+      log_ok "Latest Domino Download Script (domdownload) already installed"
+    else
+      SUDO ./domdownload.sh install
+    fi
   fi
+}
+
+
+process_updates()
+{
+  local ONLY_UPDATE_REPOS=
+
+  for a in "$@"; do
+    p=$(echo "$a" | awk '{print tolower($0)}')
+
+    case "$p" in
+      repo)
+        ONLY_UPDATE_REPOS=1
+        ;;
+      *)
+        log_error "Invalid parameter [$a]"
+        sleep 5
+	return 1
+        ;;
+    esac
+  done
+
+  update_github_repos
+
+  if [ "$ONLY_UPDATE_REPOS" = "1" ]; then
+    return 0
+  fi
+
+  update_components
+
 }
 
 
@@ -155,8 +210,8 @@ update_components()
 
 SAVED_DIR=$(pwd)
 
-update_github_repos
-update_components
+process_updates
 
 cd $SAVED_DIR
+
 

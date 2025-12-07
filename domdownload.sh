@@ -2517,10 +2517,19 @@ InstallScript()
 
     if [ "$DOMDOWNLOAD_SCRIPT_VERSION" = "$CURRENT_VERSION" ]; then
  
+      if [ "$1" = "--check-version" ]; then
+        exit 0
+      fi
+
       if [ "$1" = "-force" ]; then
         LogMessage "Forcing update to version $DOMDOWNLOAD_SCRIPT_VERSION"
       else
-        LogMessage "Requested version $CURRENT_VERSION already installed"
+
+        if [ "$1" = "--check-version" ]; then
+          exit 1
+        fi
+
+        LogMessage "Already latest Domino Download version installed: $CURRENT_VERSION"
         exit 0
       fi
     fi
@@ -2928,6 +2937,11 @@ for a in "$@"; do
 
     -install|install)
       ACTION=install
+      ;;
+
+    --check-version)
+      InstallScript --check-version
+      exit 0
       ;;
 
     perf)
