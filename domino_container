@@ -1939,7 +1939,7 @@ usage()
   echo
   echo "       start  | stop | restart | status | statusd | inspect | console | config | env"
   echo "       domino | bash | update  | attach | remove  | cleanup | rmi     | port"
-  echo "       load   | pull | restartpolicy    | setup   | install"
+  echo "       load   | pull | restartpolicy    | setup   | install | -update"
   echo "       about  | help | version"
 
   return 0
@@ -1982,6 +1982,7 @@ help()
   echo "disable|off     Disable systemd service for Podman"
   echo "clean           Cleanup container and systemd if configured"
   echo "version         Show script version information"
+  echo "-update         Update script before running it"
   echo
   echo "help            You already figured out what help does ;-)"
 
@@ -2717,6 +2718,25 @@ case "$PARAM1" in
 
   update)
     container_update "$PARAM2"
+    ;;
+
+  updatescript)
+    if [ -e /opt/nashcom/startscript/nsh-update-check.sh ]; then
+      /opt/nashcom/startscript/nsh-update-check.sh
+    else
+      log_space "Update script not found"
+    fi
+
+    exit 0
+    ;;
+
+  -update)
+    if [ -e /opt/nashcom/startscript/nsh-update-check.sh ]; then
+      /opt/nashcom/startscript/nsh-update-check.sh
+    else
+      log_space "Warning: Update script not found"
+      sleep 5
+    fi
     ;;
 
   domino)

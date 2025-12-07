@@ -243,6 +243,17 @@ if [ -e /etc/systemd/system ]; then
 
       exit 0
 
+    elif [ "$1" = "update" ]; then
+
+      if [ -e /opt/nashcom/startscript/nsh-update-check.sh ]; then
+        /opt/nashcom/startscript/nsh-update-check.sh
+      else
+        echo
+        echo "Warning: Update script not found"
+	sleep 5
+        echo
+      fi
+
     elif [ "$1" = "service" ]; then
       echo
 
