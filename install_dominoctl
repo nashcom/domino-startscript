@@ -34,13 +34,7 @@ if [ -z "$DOMINO_START_SCRIPT_DIR" ]; then
   DOMINO_START_SCRIPT_DIR=/opt/nashcom/startscript
 fi
 
-
-if [ -e "$DOMINO_START_SCRIPT_DIR/domino_container" ]; then
-  CURRENT_VERSION=$($DOMINO_START_SCRIPT_DIR/domino_container --version)
-else
-  CURRENT_VERSION=
-fi
-
+CURRENT_VERSION=$(dominoctl --version 2>/dev/null)
 SCRIPT_VERSION=$($START_SCRIPT_DIR/domino_container --version)
 
 if [ "$CURRENT_VERSION" = "$SCRIPT_VERSION" ]; then
