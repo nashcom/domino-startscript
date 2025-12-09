@@ -507,7 +507,6 @@ cd /local/github/domino-startscript
 ./install_script
 
 config_sudo
-install_chrony
 cleanup_git
 
 cd $SAVED_DIR
