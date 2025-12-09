@@ -199,6 +199,45 @@ remove_packages()
 }
 
 
+linux_update()
+{
+  if [ -x /usr/bin/zypper ]; then
+
+    header "Updating Linux via zypper"
+    zypper refresh
+    zypper update -y
+
+  elif [ -x /usr/bin/dnf ]; then
+
+    header "Updating Linux via dnf"
+    dnf update -y
+
+  elif [ -x /usr/bin/yum ]; then
+
+    header "Updating Linux via yum"
+    yum update -y
+
+  elif [ -x /usr/bin/apt-get ]; then
+
+    header "Updating Linux via apt-get"
+    apt-get update -y
+
+    # Needed by Astra Linux, Ubuntu and Debian. Should be installed before updating Linux but after updating the repo!
+    if [ -x /usr/bin/apt-get ]; then
+      install_package apt-utils
+    fi
+
+    apt-get upgrade -y
+
+  elif [ -x /sbin/apk ]; then
+    header "Updating Linux via apk"
+    apk update
+    apk upgrade
+
+  fi
+}
+
+
 config_firewall()
 {
   if [ -n "$1" ]; then
@@ -387,6 +426,10 @@ enable_chrony_service()
 
 install_chrony()
 {
+  if [ "$DOMINO_INSTALL_CHRONY" != "1" ]; then
+    return 0
+  fi
+
   header "Install NTP client: chrony"
 
   install_package chrony
@@ -437,6 +480,7 @@ fi
 header "Nash!Com Domino Installer for $LINUX_PRETTY_NAME $LINUX_VM_INFO"
 
 must_be_root
+linux_update
 add_notes_user
 create_directories
 
@@ -507,6 +551,7 @@ cd /local/github/domino-startscript
 ./install_script
 
 config_sudo
+install_chrony
 cleanup_git
 
 cd $SAVED_DIR
