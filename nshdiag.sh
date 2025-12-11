@@ -229,28 +229,19 @@ list_files()
 
 tar_files()
 {
-
   if [ -z "$1" ]; then
     return 0
   fi
 
   local CURRENT_DIR=$(pwd)
-  local pattern=
-
-  if [ -z "$2" ]; then
-    pattern="*.log"
-  else
-    pattern="$2"
-  fi
-
   local max_days=30
 
-  if [ -n "$3" ]; then
-    max_days="$3"
+  if [ -n "$2" ]; then
+    max_days="$2"
   fi
 
   cd "$1"
-  find . -type f -name "$pattern" -mtime -$max_days -printf '%P\n' | tar -czf "$DOMINO_DIAG_TAR" --files-from=-
+  find . -type f -mtime -$max_days -printf '%P\n' | tar -czf "$DOMINO_DIAG_TAR" --files-from=-
 
   cd "$CURRENT_DIR"
   echo "Created $DOMINO_DIAG_TAR ($(du -sh "$DOMINO_DIAG_TAR" | cut -f1))"
@@ -326,16 +317,9 @@ collect_diag()
 
   header "Collecting files"
 
-  tar_files "$DIAG_DIRECTORY" "*" "$DIAG_DAYS"
+  tar_files "$DIAG_DIRECTORY" "$DIAG_DAYS"
 
   echo
-}
-
-
-collect_files()
-{
-  header "Collecting files"
-  tar_files "$DIAG_DIRECTORY" "*" "$DIAG_DAYS"
 }
 
 
