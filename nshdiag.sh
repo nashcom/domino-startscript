@@ -205,16 +205,9 @@ tar_files()
   local SOURCE_DIR="$1"
   local CURRENT_DIR=$(pwd)
 
-  local PATTERN
-  if [ -z "$2" ]; then
-    PATTERN="*.log"
-  else
-    PATTERN="$2"
-  fi
-
   local MAX_DAYS=2
-  if [ -n "$3" ]; then
-    MAX_DAYS="$3"
+  if [ -n "$2" ]; then
+    MAX_DAYS="$2"
   fi
 
   cd "$SOURCE_DIR"
@@ -247,7 +240,7 @@ tar_files()
   fi
 
   # Build consistent file list (NULL terminated)
-  find . -type f -name "$PATTERN" \
+  find . -type f \
       -newermt "@$START" \
       ! -newermt "@$TAR_START" \
       ! -name "domdiag_*" \
@@ -255,14 +248,15 @@ tar_files()
 
   tar --null -T "$DOMINO_DIAG_TMP_FILE_LIST" -czf "$DOMINO_DIAG_TAR"
 
-  tr '\0' '\n' < "$DOMINO_DIAG_TMP_FILE_LIST" \
-    | while IFS= read -r file; do
-      printf "%s %s\n" "$(stat -c %Y "$file")" "$file"
-      done \
-    | sort -nr \
-    | while read -r ts file; do
-        showfile "$file"
-      done
+  tr '\0' '\n' < "$DOMINO_DIAG_TMP_FILE_LIST" |
+  while IFS= read -r file; do
+    ts=$(stat -c %Y "$file" 2>/dev/null) || continue
+    printf "%s\t%s\n" "$ts" "$file"
+  done |
+  sort -k1,1nr |
+  while IFS=$'\t' read -r ts file; do
+    showfile "$file"
+  done
 
   remove_file "$DOMINO_DIAG_TMP_FILE_LIST"
 
@@ -342,10 +336,8 @@ collect_diag()
 
   header "Collecting files"
 
-  tar_files "$DIAG_DIRECTORY" "*" "$DOMINO_DIAG_DAYS"
+  tar_files "$DIAG_DIRECTORY" "$DOMINO_DIAG_DAYS"
   cat "$DOMINO_DIAG_LOG"
-
-
   echo
 }
 
