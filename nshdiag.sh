@@ -641,7 +641,7 @@ process_explorer_menu()
 {
   trap cleanup_session INT TERM EXIT
 
-  mapfile -t options < <(grep "^1" /local/notesdata/pid.nbf | grep -v -e "nsd.sh" | awk '{ printf "%6s  %s  \n", $2, $4 }')
+  mapfile -t options < <(grep "^1" "$DOMINO_DATA_PATH/pid.nbf" | grep -v -e "nsd.sh" | awk '{ printf "%6s  %s  \n", $2, $4 }')
 
   selected=0
 
@@ -1302,7 +1302,11 @@ if [ ! -e "$LAST_NSD" ]; then
 fi
 
 if [ -z "$DIAG_HOSTNAME" ]; then
-  DIAG_HOSTNAME=$(hostname -f)
+  DIAG_HOSTNAME=$(hostname -f 2>/dev/null)
+
+  if [ -z "$DIAG_HOSTNAME" ]; then
+    DIAG_HOSTNAME=$(hostname 2>/dev/null)
+  fi
 fi
 
 if [ -z "$DOMINO_DIAG_DAYS" ]; then

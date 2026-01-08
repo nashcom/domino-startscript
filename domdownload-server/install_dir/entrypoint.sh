@@ -259,7 +259,7 @@ echo $SERVER_HOSTNAME:$NGINX_PORT
 echo
 echo
 
-nginx -g 'daemon off;'
+exec nginx -g 'daemon off;'
 
 # Dump configurations if start failed. Else we are killed before dumping
 

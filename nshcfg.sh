@@ -316,7 +316,7 @@ DownloadConfig()
 
   # Use server's domain for target URL, if not specified
   if [ -z "$URL" ]; then
-    DOMAIN=$(hostname -d)
+    DOMAIN=$(hostname -d 2>/dev/null)
     if [ -n "$DOMAIN" ]; then
       URL=https://$DOMAIN/.well-known/domino.cfg
     fi
