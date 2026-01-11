@@ -48,11 +48,17 @@ if [ "$CURRENT_VERSION" = "$DOMINO_SCRIPT_VERSION" ]; then
   if [ "$1" = "--check-version" ]; then
     exit 0
   fi
-
-  echo
-  echo "Already latest Domino Start Script version installed: $CURRENT_VERSION"
-  echo
-  exit 0
+  
+  if [ "$PARAM1" = "upd" ] || [ "$PARAM1" = "force" ] ; then
+    echo
+    echo "Reinstalling version: $CURRENT_VERSION"
+    echo
+  else
+    echo
+    echo "Already latest Domino Start Script version installed: $CURRENT_VERSION"
+    echo
+    exit 0
+  fi
 
 else
   if [ "$1" = "--check-version" ]; then
@@ -77,6 +83,7 @@ if [ -z "$DOMINO_DATA_PATH" ]; then
 fi
 
 DOMINO_SCRIPT_BIN=/usr/bin/domino
+DOMINO_DIAG_COLLECT_BIN=/usr/bin/domdiagcollect.sh
 
 #DOMINO_DEBUG_MODE="yes"
 
@@ -370,6 +377,7 @@ install_file "$START_SCRIPT_DIR/rc_domino_readme.txt" "$DOMINO_START_SCRIPT_DIR/
 
 install_file "$START_SCRIPT_DIR/nshinfo.sh" "$DOMINO_START_SCRIPT_DIR/nshinfo.sh" $ROOT_USER $ROOT_GROUP 755
 install_file "$START_SCRIPT_DIR/nshdiag.sh" "$DOMINO_START_SCRIPT_DIR/nshdiag.sh" $ROOT_USER $ROOT_GROUP 755
+install_file "$START_SCRIPT_DIR/domdiagcollect.sh" "$DOMINO_DIAG_COLLECT_BIN" $ROOT_USER $ROOT_GROUP 755
 install_file "$START_SCRIPT_DIR/nsh-update-check.sh" "$DOMINO_START_SCRIPT_DIR/nsh-update-check.sh" $ROOT_USER $ROOT_GROUP 755
 install_file "$START_SCRIPT_DIR/DominoOneTouchSetup.sh" "$DOMINO_START_SCRIPT_DIR/DominoOneTouchSetup.sh" $ROOT_USER $ROOT_GROUP 755
 install_file "$START_SCRIPT_DIR/domsetup.sh" "$DOMINO_START_SCRIPT_DIR/domsetup.sh" $ROOT_USER $ROOT_GROUP 755
