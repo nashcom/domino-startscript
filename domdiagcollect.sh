@@ -471,6 +471,7 @@ upload_file()
     fi
 
     nshmailx "$DIAG_RCPT" -name "$DIAG_FULL_SERVER_NAME" -from "$DIAG_FROM" -subject "Domino Diag [$DIAG_FULL_SERVER_NAME]" -att "$DOMINO_DIAG_ARCHIVE_FILE"
+    echo
 
   else
     echo
@@ -522,7 +523,7 @@ edit_config()
     echo "# --- Mail config ---" >> "$DOM_DIAG_COLLECT_CFG"
     echo >> "$DOM_DIAG_COLLECT_CFG"
     echo "#DIAG_RCPT=admin@example.com" >> "$DOM_DIAG_COLLECT_CFG"
-    echo "#DIAG_FROM" >> "$DOM_DIAG_COLLECT_CFG"
+    echo "#DIAG_FROM=" >> "$DOM_DIAG_COLLECT_CFG"
     echo >> "$DOM_DIAG_COLLECT_CFG"
 
   fi

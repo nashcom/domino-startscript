@@ -2546,7 +2546,7 @@ menu()
 
       l)
         if [ -x $SCRIPT_DIR_NAME/nshinfo.sh ]; then
-          $SCRIPT_DIR_NAME/nshinfo.sh
+          NSHINFO_MODE=dominoctl $SCRIPT_DIR_NAME/nshinfo.sh
           wait_for_key
         fi
         ;;
@@ -2845,14 +2845,14 @@ case "$PARAM1" in
   about)
 
     if [ -x $SCRIPT_DIR_NAME/nshinfo.sh ]; then
-      $SCRIPT_DIR_NAME/nshinfo.sh
+      NSHINFO_MODE=dominoctl $SCRIPT_DIR_NAME/nshinfo.sh
     fi
     ;;
 
   About|about+)
 
     if [ -x $SCRIPT_DIR_NAME/nshinfo.sh ]; then
-      $SCRIPT_DIR_NAME/nshinfo.sh ipinfo
+      NSHINFO_MODE=dominoctl $SCRIPT_DIR_NAME/nshinfo.sh ipinfo
     fi
     ;;
 
