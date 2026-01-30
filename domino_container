@@ -3,7 +3,7 @@
 # dominoctl                                                               #
 # ---------                                                               #
 # Nash!Com Domino Container Management Script                             #
-# Version 1.5.1 08.12.2025                                                #
+# Version 1.5.3 30.01.2026                                                #
 #                                                                         #
 # (C) Copyright Daniel Nashed/NashCom 2021-2025                           #
 # Feedback domino_unix@nashcom.de                                         #
@@ -20,7 +20,6 @@
 # See the License for the specific language governing permissions and     #
 # limitations under the License.                                          #
 ###########################################################################
-
 
 SCRIPT_NAME=$(readlink -f $0)
 SCRIPT_DIR_NAME=$(dirname $SCRIPT_NAME)
@@ -52,7 +51,7 @@ CONTAINER_ENV_FILE=
 # Shutdown timeout increased for Domino proper shutdown
 DOMINO_SHUTDOWN_TIMEOUT=120
 
-CONTAINER_SCRIPT_VERSION=1.5.1
+CONTAINER_SCRIPT_VERSION=1.5.3
 MYHCL_DOWNLOAD_URL=https://my.hcltechsw.com/
 
 if [ "$1" == "--version" ]; then
@@ -186,24 +185,6 @@ else
   fi
 
 fi
-
-echo
-echo "-----------------------------------------"
-echo "$CONFIG_FILE"
-
-if [ -n "$CONTAINER_FULL_ENV_FILE" ]; then
-  echo "$CONTAINER_FULL_ENV_FILE"
-fi
-
-if [ -n "$CONTAINER_FULL_LABEL_FILE" ]; then
-  echo "$CONTAINER_FULL_LABEL_FILE"
-fi
-
-if [ -n "$CONTAINER_COMPOSE_FILE" ]; then
-  echo "$CONTAINER_COMPOSE_FILE"
-fi
-
-echo
 
 IMAGE_BUILD_VERSION=$IMAGE_VERSION
 
@@ -1176,6 +1157,21 @@ container_show_infos()
     echo " Image-ID IMG  :  $IMAGE_SHORTID"
   fi
   
+  echo
+  echo " Config File   :  $CONFIG_FILE"
+
+  if [ -n "$CONTAINER_FULL_ENV_FILE" ]; then
+    echo " Env File      :  $CONTAINER_FULL_ENV_FILE"
+  fi
+
+  if [ -n "$CONTAINER_FULL_LABEL_FILE" ]; then
+    echo " Label File    :  $CONTAINER_FULL_LABEL_FILE"
+  fi
+
+  if [ -n "$CONTAINER_COMPOSE_FILE" ]; then
+    echo " Compose File  :  $CONTAINER_COMPOSE_FILE"
+  fi
+
   print_delim
 
   return 0
@@ -2602,6 +2598,22 @@ menu()
 }
 
 
+list_images()
+{
+
+  if [ "$CONTAINER_CMD" != "docker" ]; then
+    "$CONTAINER_CMD" images
+    return 0
+  fi
+
+  if [ -z "$CONTAINER_IMAGES_LIST_FORMAT" ]; then
+    "$CONTAINER_CMD" images --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.Size}}\t{{.CreatedSince}}\t{{.Repository}}:{{.Tag}}" "$@"
+  else
+    "$CONTAINER_CMD" images --format "$CONTAINER_IMAGES_LIST_FORMAT" "$@"
+  fi
+}
+
+
 # --- Main logic ---
 
 case "$PARAM1" in
@@ -2629,6 +2641,7 @@ if [ -z "$PARAM1" ]; then
   exit 0
 fi
 
+echo
 
 case "$PARAM1" in
 
@@ -2840,6 +2853,10 @@ case "$PARAM1" in
 
   install)
     install_software
+    ;;
+
+  images)
+    list_images "$PARAM2"
     ;;
 
   about)
