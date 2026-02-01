@@ -1686,7 +1686,29 @@ container_remove()
     return 0
   fi
 
-  $CONTAINER_CMD rm $CONTAINER_NAME
+  $CONTAINER_CMD rm "$CONTAINER_NAME"
+  return 0
+}
+
+
+container_kill()
+{
+  if [ -z "$CONTAINER_STATUS" ]; then log_space "Container [$CONTAINER_NAME] does not exist"; return 1; fi
+
+  if [ "$CONTAINER_STATUS" = "running" ]; then
+    $CONTAINER_CMD kill "$CONTAINER_NAME"
+  fi
+
+  if [ -n "$CONTAINER_COMPOSE_FILE" ]; then
+
+    container_compose_exports
+    echo
+    $CONTAINER_COMPOSE_CMD -f "$CONTAINER_COMPOSE_FILE" rm
+    echo
+    return 0
+  fi
+
+  $CONTAINER_CMD rm "$CONTAINER_NAME"
   return 0
 }
 
@@ -2723,6 +2745,10 @@ case "$PARAM1" in
 
   remove|rm)
     container_remove "$PARAM2"
+    ;;
+
+  KILL)
+    container_kill
     ;;
 
   removeimage|rmi)
