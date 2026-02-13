@@ -316,6 +316,7 @@ get_last_collect_time()
   fi
 }
 
+
 collect_diag()
 {
 
@@ -640,6 +641,11 @@ dump_process_environment()
 process_explorer_menu()
 {
   trap cleanup_session INT TERM EXIT
+
+  if [ ! -e "$DOMINO_DATA_PATH/pid.nbf" ]; then
+    log_delay "No diagnostic information found"
+    return 0
+  fi
 
   mapfile -t options < <(grep "^1" "$DOMINO_DATA_PATH/pid.nbf" | grep -v -e "nsd.sh" | awk '{ printf "%6s  %s  \n", $2, $4 }')
 
@@ -1074,7 +1080,11 @@ menu()
   while [ 1 ];
   do
 
-    LAST_NSD=$(head -1 "$NSD_INDEX_FILE")
+    if [ -e "$NSD_INDEX_FILE" ]; then
+      LAST_NSD=$(head -1 "$NSD_INDEX_FILE")
+    else
+      LAST_NSD=
+    fi
 
     ClearScreen
     echo
@@ -1275,8 +1285,19 @@ fi
 NSD_INDEX_FILE="$DOMINO_DATA_PATH/nsdindex.nbf"
 DIAG_INDEX_FILE="$DOMINO_DATA_PATH/diagindex.nbf"
 
-LAST_NSD=$(head -1 "$NSD_INDEX_FILE")
-DIAG_DIRECTORY=$(head -1 "$DIAG_INDEX_FILE")
+if [ -e "$NSD_INDEX_FILE" ]; then
+  LAST_NSD=$(head -1 "$NSD_INDEX_FILE")
+else
+  LAST_NSD=
+fi
+
+if [ -e "$DIAG_INDEX_FILE" ]; then
+  DIAG_DIRECTORY=$(head -1 "$DIAG_INDEX_FILE")
+else
+  # If no diag index file found yet, assume the standard path
+  DIAG_DIRECTORY="$DOMINO_DATA_PATH/IBM_TECHNICAL_SUPPORT"
+fi
+
 SEMDEBUG_FILE="$DIAG_DIRECTORY/SEMDEBUG.TXT"
 DATE_STR=$(LANG=C date +"%Y_%m_%d@%H_%M_%S")
 DOMINO_DIAG_LOG="$DIAG_DIRECTORY/domdiag_${DATE_STR}.log"
