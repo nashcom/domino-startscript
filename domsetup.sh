@@ -7,7 +7,7 @@ SCRIPT_DIR=$(dirname $SCRIPT_NAME)
 # Domino One-Touch JSON remote setup configuration script                 #
 # Helper Script to send OTS JSON to a remotely running domsetup.sh        #
 #                                                                         #
-# (C) Copyright Daniel Nashed/NashCom 2025                                #
+# (C) Copyright Daniel Nashed/NashCom 2025-2026                           #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #
 # you may not use this file except in compliance with the License.        #
@@ -445,6 +445,11 @@ for a in "$@"; do
 
   case "$p" in
 
+    # Passthru options for OTS setup script
+    https://*|http://*|file:/*|auto|remote|local)
+      DOMSETUP_OTS_OPTIONS="$a"
+      ;;
+
     -prompt)
       DOMSETUP_NOPROMPT=0
       ;;
@@ -495,11 +500,6 @@ for a in "$@"; do
 
     -password=*)
       DOMSETUP_PASSWORD=$(echo "$a" | cut -f2 -d= -s)
-      ;;
-
-    # Passthru options for OTS setup script
-    https://*|http://*|file:/*|auto|remote|local)
-      DOMSETUP_OTS_OPTIONS="$a"
       ;;
 
     -reset)
