@@ -194,7 +194,18 @@ copy_one_touch_templates()
   return 0
 }
 
+
+# --- Main ---
+
 header "Installing Domino Container Script & Config"
+
+if [ -z "$DOMINO_USER" ]; then
+  DOMINO_USER=notes
+fi
+
+if [ -z "$DOMINO_GROUP" ]; then
+  DOMINO_GROUP=notes
+fi
 
 if [ ! -e "$DOMINO_START_SCRIPT_DIR" ]; then
   mkdir -p -m 755 "$DOMINO_START_SCRIPT_DIR"
