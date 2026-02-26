@@ -370,6 +370,11 @@ if [ ! -e "$DOMINO_DATA_PATH" ]; then
   exit 1
 fi
 
+# create /etc/sysconfig if not present
+if [ ! -e "/etc/sysconfig" ]; then
+  mkdir -m 755 /etc/sysconfig
+fi
+
 install_file "$START_SCRIPT_DIR/rc_domino" "$DOMINO_SCRIPT_BIN" $ROOT_USER $ROOT_GROUP 755
 
 install_file "$START_SCRIPT_DIR/rc_domino_script" "$DOMINO_START_SCRIPT_DIR/rc_domino_script" $ROOT_USER $ROOT_GROUP 755
@@ -395,11 +400,6 @@ if [ -e "$START_SCRIPT_CONFIG_LATEST" ]; then
 fi
 
 create_link $START_SCRIPT_CONFIG_VER $START_SCRIPT_CONFIG_LATEST
-
-# create /etc/sysconfig if not present
-if [ ! -e "/etc/sysconfig" ]; then
-  mkdir -m 755 /etc/sysconfig
-fi
 
 if [ "$PARAM1" = "upd" ]; then
   install_file "$DOMINO_INSTALL_CONFIG_FILE" "$DOMINO_INSTALL_CONFIG_TARGET" "$DOMINO_USER" "$DOMINO_GROUP" 644
