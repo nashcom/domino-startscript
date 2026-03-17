@@ -2,8 +2,8 @@
 
 ###########################################################################
 # Domino Software Download Script                                         #
-# Version 1.1.2  08.12.2025                                               #
-# Copyright Nash!Com, Daniel Nashed                                       #
+# Version 1.1.3  17.03.2026                                               #
+# Copyright 2025-2026 Nash!Com, Daniel Nashed                             #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #
 # you may not use this file except in compliance with the License.        #
@@ -54,11 +54,12 @@
 # 1.1.0  New option to select software based on MHS Domino files JSON
 # 1.1.1  Ensure downloaded files have proper read permissions when downloaded by root
 # 1.1.2  Add update functionality to check version and help updating
+# 1.1.3  Enhance command detection to use more standard methods like "command -v"
 
 SCRIPT_NAME=$0
 SCRIPT_DIR=$(dirname $SCRIPT_NAME)
 
-DOMDOWNLOAD_SCRIPT_VERSION=1.1.2
+DOMDOWNLOAD_SCRIPT_VERSION=1.1.3
 
 # Just print version and exit
 case "$1" in
@@ -293,6 +294,23 @@ create_link()
 }
 
 
+CheckRequiredCommand()
+{
+  local cmd="$1"
+
+  if command -v "$cmd" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  AssistInstallPackage "$cmd"
+
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    LogError "$cmd is required!"
+    exit 1
+  fi
+}
+
+
 install_package()
 {
   local SUDO=
@@ -426,6 +444,7 @@ InstallJQ()
     AssistInstallPackage jq "$HOME_PAGE"
   fi
 
+  JQ_CMD=jq
   JQ_VERSION=$($JQ_CMD --version 2>/dev/null)
   if [ -z "$JQ_VERSION" ]; then
     LogError "This script requires JQ!"
@@ -433,13 +452,11 @@ InstallJQ()
   fi
 
   LogMessage "$JQ_VERSION installed"
-
 }
 
 
 InstallCurl()
 {
-
   local HOME_PAGE="https://curl.se/"
 
   header "Curl package required"
@@ -465,22 +482,8 @@ InstallCurl()
 }
 
 
-CheckBin()
-{
-  if [ ! -x "/usr/bin/$1" ] && [ ! -x "/bin/$1" ] ; then
-    AssistInstallPackage "$1"
-  fi
-
-  if [ ! -x "/usr/bin/$1" ] && [ ! -x "/bin/$1" ] ; then
-    LogError "$1 is required!"
-    exit 1
-  fi
-}
-
-
 CheckEnvironment()
 {
-
   OS_PLATFORM=$(uname -s)
   CPU_TYPE=$(uname -m)
 
@@ -496,82 +499,22 @@ CheckEnvironment()
       LogError "No shasum found"
       exit 1
     fi
-
-  else
-
-    if [ -x /usr/bin/sha256sum ]; then
-      CHECKSUM_CMD="/usr/bin/sha256sum"
-    elif [ -x /usr/local/bin/sha256sum ]; then
-      CHECKSUM_CMD="/usr/local/bin/sha256sum"
-    fi
-
-    if [ -z "$CHECKSUM_CMD" ]; then
-      LogError "No sha256sum found"
-      exit 1
-    fi
-
   fi
 
-  if [ -e /usr/bin/curl ]; then
-    CURL_BIN=/usr/bin/curl
-  elif [ -e /bin/curl ]; then
-    CURL_BIN=/bin/curl
-  elif [ -e /mingw64/bin/curl ]; then
-    CURL_BIN=/mingw64/bin/curl
-  else
-    CURL_BIN=
-  fi
+  CheckRequiredCommand curl
+  CheckRequiredCommand jq
+  CheckRequiredCommand awk
+  CheckRequiredCommand cut
+  CheckRequiredCommand stat
+  CheckRequiredCommand du
 
-  if [ -z "$CURL_BIN" ]; then
-    InstallCurl
-    CURL_BIN=/usr/bin/curl
-  fi
-
+  CURL_BIN=curl
+  JQ_CMD=jq
   CURL_VERSION=$($CURL_BIN --version 2>/dev/null)
-  if [ -z "$CURL_VERSION" ]; then
-    LogError "This script requires Curl!"
-    exit 1
-  fi
-
-  if [ -e /usr/bin/jq ]; then
-    JQ_CMD=/usr/bin/jq
-  elif [ -e /bin/jq ]; then
-    JQ_CMD=/bin/jq
-  elif [ -e /usr/local/bin/jq ]; then
-    JQ_CMD=/usr/local/bin/jq
-  elif [ -e /mingw64/bin/jq ]; then
-    JQ_CMD=/mingw64/bin/jq
-  else
-    JQ_CMD=
-  fi
-
-  if [ -z "$JQ_CMD" ]; then
-    JQ_CMD=/usr/bin/jq
-    InstallJQ
-
-    # Check JQ again
-    if [ -e /usr/bin/jq ]; then
-      JQ_CMD=/usr/bin/jq
-    elif [ -e /bin/jq ]; then
-      JQ_CMD=/bin/jq
-    elif [ -e /usr/local/bin/jq ]; then
-      JQ_CMD=/usr/local/bin/jq
-    elif [ -e /mingw64/bin/jq ]; then
-      JQ_CMD=/mingw64/bin/jq
-    else
-      JQ_CMD=
-    fi
-  fi
-
   JQ_VERSION=$($JQ_CMD --version 2>/dev/null | head -1)
 
   DebugText "Curl : $CURL_VERSION"
   DebugText "JQ   : $JQ_VERSION"
-
-  CheckBin awk
-  CheckBin cut
-  CheckBin stat
-  CheckBin du
 }
 
 
@@ -3190,3 +3133,4 @@ if [ -n "$FILE_ID" ]; then
 fi
 
 exit 0
+
