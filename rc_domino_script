@@ -155,7 +155,7 @@ fi
 
 # Show log command
 if [ -z "$SHOW_LOG_COMMAND" ]; then
-  SHOW_LOG_COMMAND="vi"
+  SHOW_LOG_COMMAND="less"
 fi
 
 # Extension command descriptions

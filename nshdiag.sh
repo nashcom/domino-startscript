@@ -319,6 +319,9 @@ get_last_collect_time()
 
 collect_diag()
 {
+  # New Domino Diagnostic collection
+  domdiagcollect
+  return 0
 
   if [ -n "$DOMINO_DIAG_TAR" ]; then
     echo "Log already collected: $DOMINO_DIAG_TAR"
