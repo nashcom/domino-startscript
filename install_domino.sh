@@ -18,6 +18,9 @@
 SCRIPT_NAME=$(readlink -f $0)
 SCRIPT_DIR=$(dirname $SCRIPT_NAME)
 
+# Ensure installation always uses the system locale
+export LC_ALL=C
+
 # Get install options if specified
 if [ -n "$1" ]; then
   INSTALL_OPTIONS="$@"
@@ -495,7 +498,7 @@ fi
 
 header "Installing required software"
 
-install_packages unzip ncurses jq procps openssl git
+install_packages unzip ncurses jq procps openssl git curl
 
 # Install sudo if not present. It's required for systemd
 if [ ! -e /usr/bin/sudo ]; then
