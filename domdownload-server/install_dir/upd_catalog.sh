@@ -30,6 +30,7 @@ CATALOG_FILE="$TARGET_DIR/catalog.list"
 CATALOG_JSON="$TARGET_DIR/catalog.json"
 CATALOG_JSON_RAW="$TARGET_DIR/mhs_files_domino.json"
 CATALOG_TEMP="$TARGET_DIR/catalog.tmp"
+MHS_DOMINO_CATALOG_JSON_FILE=mhs_domino_files.json
 
 
 if [ "$1" = "-v" ]; then
@@ -199,7 +200,7 @@ jq .files[] "$CATALOG_JSON_RAW" > "$CATALOG_JSON"
 check_file_smaller "$CATALOG_JSON" 32768
 
 # Read MHS the Domino catalog JSON data for providing it to other services
-curl -sL https://my.hcltechsw.com/catalog/domino -o "$MHS_DOMINO_CATALOG"
+curl -sL https://my.hcltechsw.com/catalog/domino -o "$MHS_DOMINO_CATALOG_JSON_FILE"
 
 LogTrace "Generating $CATALOG_FILE"
 
