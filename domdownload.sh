@@ -499,6 +499,10 @@ CheckEnvironment()
       LogError "No shasum found"
       exit 1
     fi
+
+  else
+    CheckRequiredCommand sha256sum
+    CHECKSUM_CMD="sha256sum"
   fi
 
   CheckRequiredCommand curl

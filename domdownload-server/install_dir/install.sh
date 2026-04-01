@@ -7,7 +7,7 @@
 adduser nginx -D
 
 apk update
-apk add openresty openresty-mod-http-lua envsubst openssl curl bash jq libcap apache2-utils
+apk add openresty envsubst openssl curl bash jq libcap apache2-utils
 
 cd /
 
