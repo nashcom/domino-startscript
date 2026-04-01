@@ -83,7 +83,7 @@ html_begin()
   echo "<head>" >> "$FILE"
   echo "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">" >> "$FILE"
   echo "<link rel=\"stylesheet\" href=\"style.css\"/>" >> "$FILE"
-  echo "<title>$2</title" >> "$FILE"
+  echo "<title>$2</title>" >> "$FILE"
   echo "</head>" >> "$FILE"
   echo "<body>" >> "$FILE"
   echo "<div class=\"header\"><h1>$2</h1></div><br>" >> "$FILE"
@@ -135,7 +135,7 @@ html_entry()
     TEXT="$LINK"
   fi
 
-  echo "<tr> <td class=\"c1\"> <a class=\"links\" href=\"$LINK\">$TEXT</a> </td> <td class=\"c3\"> $DESCRIPTION </td> <td class=\"c3\"> <span class=\"hash\">$HASH</span> </td> </tr>" >> "$FILE"
+  echo "<tr> <td class=\"c1\"> <a class=\"links\" href=\"$LINK\">$TEXT</a> </td> <td class=\"c2\"> $DESCRIPTION </td> <td class=\"c3\"> <span class=\"hash\">$HASH</span> </td> </tr>" >> "$FILE"
 }
 
 
@@ -193,7 +193,7 @@ touch "$CATALOG_JSON"
 
 LogTrace "Reading $CATALOG_JSON"
 curl -sL https://my.hcltechsw.com/files/domino -o "$CATALOG_JSON_RAW"
-cat "$CATALOG_JSON_RAW" | jq .files[] > "$CATALOG_JSON"
+jq .files[] "$CATALOG_JSON_RAW" > "$CATALOG_JSON"
 
 # If file is too small (32k), this isn't a valid JSON file
 check_file_smaller "$CATALOG_JSON" 32768
@@ -203,7 +203,7 @@ curl -sL https://my.hcltechsw.com/catalog/domino -o "$MHS_DOMINO_CATALOG"
 
 LogTrace "Generating $CATALOG_FILE"
 
-cat "$CATALOG_JSON"| jq -r '.locations[0] + "|" + .name + "|" + .description  + "|" + .checksums.sha256'  | sort -V | cut -d'/' -f2- > "$CATALOG_TEMP"
+jq -r '.locations[0] + "|" + .name + "|" + .description + "|" + .checksums.sha256' "$CATALOG_JSON" | sort -V | cut -d'/' -f2- > "$CATALOG_TEMP"
 
 if [ -z "$CATALOG_EXCLUDE_PATTERN" ]; then
   CATALOG_EXCLUDE_PATTERN="12.0.1|IBMi|verse|mobile|versemobile|voltscript|appdev/|caa/|dlau/|domino/11|notes/11|ccm/|htmo/|hei/11|traveler/apnscerts|.pdf|.txt|consap/|14ea|14.5ea1|14.5ea2"
@@ -213,8 +213,7 @@ fi
 cat "$CATALOG_TEMP" | grep -v -E "$CATALOG_EXCLUDE_PATTERN"  > "$CATALOG_FILE"
 
 rm -f "$CATALOG_TEMP"
-LogTrace "Catalog entries generated: $(cat "$CATALOG_FILE" | wc -l | xargs)"
-
+LogTrace "Catalog entries generated: $(wc -l < "$CATALOG_FILE")"
 
 # Create temporary directory to store HTML files
 mkdir -p "$HTML_DIR"
@@ -263,7 +262,7 @@ do
 done
 
 COUNT=0
-COUNT_ENTRIES=$(cat "$CATALOG_FILE" | wc -l | xargs)
+COUNT_ENTRIES=$(wc -l < "$CATALOG_FILE")
 DONE_SECONDS=$SECONDS
 
 LogTrace "Adding $COUNT_ENTRIES entries ..."
@@ -285,11 +284,11 @@ while read LINE; do
 
   html_entry "$COMBINED.html" "$FILE" "$FILE" "$DESCRIPTION" "$HASH" "$SERVER_URL"
 
-  COUNT=$(expr $COUNT + 1)
+  ((COUNT++))
 
   # Log every two seconds
   if [ -n "$LOG_LEVEL" ]; then
-    if [ $(expr $SECONDS % 2) -eq 0 ]; then
+    if (( SECONDS % 2 == 0 )); then
       if [ "$DONE_SECONDS" != "$SECONDS" ]; then
         DONE_SECONDS=$SECONDS
         LogTrace "$(printf "%03d" "$COUNT") done"
@@ -322,3 +321,4 @@ find "$TARGET_DIR" ! -newer "$CATALOG_JSON" -type f -name "*.html" -exec rm {} \
 rmdir "$HTML_DIR"
 
 LogTrace "Completed"
+
