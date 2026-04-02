@@ -2,7 +2,7 @@
 
 ###########################################################################
 # Domino Software Download Script                                         #
-# Version 1.1.3  17.03.2026                                               #
+# Version 1.1.4  02.04.2026                                               #
 # Copyright 2025-2026 Nash!Com, Daniel Nashed                             #
 #                                                                         #
 # Licensed under the Apache License, Version 2.0 (the "License");         #
@@ -55,11 +55,12 @@
 # 1.1.1  Ensure downloaded files have proper read permissions when downloaded by root
 # 1.1.2  Add update functionality to check version and help updating
 # 1.1.3  Enhance command detection to use more standard methods like "command -v"
+# 1.1.4  Fixed a regression introduced in 1.1.3. sha256sum was not detected correctly causing downloads to fail
 
 SCRIPT_NAME=$0
 SCRIPT_DIR=$(dirname $SCRIPT_NAME)
 
-DOMDOWNLOAD_SCRIPT_VERSION=1.1.3
+DOMDOWNLOAD_SCRIPT_VERSION=1.1.4
 
 # Just print version and exit
 case "$1" in
