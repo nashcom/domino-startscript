@@ -3,7 +3,7 @@
 
 ###########################################################################
 # Main Script Logic - Start/Stop Script for Domino on xLinux/zLinux/AIX   #
-# Version  4.1.3 19.02.2026                                               #
+# Version  4.1.4 06.04.2026                                               #
 #                                                                         #
 # (C) Copyright Daniel Nashed/NashCom 2005-2026                           #
 # Feedback domino_unix@nashcom.de                                         #
@@ -21,7 +21,7 @@
 # limitations under the License.                                          #
 ###########################################################################
 
-DOMINO_SCRIPT_VERSION=4.1.3
+DOMINO_SCRIPT_VERSION=4.1.4
 
 if [ "$1" = "--version" ]; then
   echo "$DOMINO_SCRIPT_VERSION"

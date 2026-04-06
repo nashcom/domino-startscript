@@ -262,6 +262,14 @@ ConfigJSON()
     fi
   fi
 
+  if [ -z "$SERVERSETUP_NETWORK_HOSTNAME" ]; then
+     SERVERSETUP_NETWORK_HOSTNAME=$(hostname -f)
+  fi
+
+  if [ -z "$SERVERSETUP_SERVER_NAME" ]; then
+    SERVERSETUP_SERVER_NAME="$SERVERSETUP_NETWORK_HOSTNAME"
+  fi
+
   CHECKED_VAR=
   SETUP_VARS=$(cat "$JSON_TEMPLATE" | sed 's/{{ /${/g;s/{{/${/g;s/ }}/}/g;s/}}/}/g' | grep '${' | awk -F'[$]{' '{print $2}' | awk -F'}' '{print $1}')
 
