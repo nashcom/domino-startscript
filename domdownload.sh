@@ -57,11 +57,12 @@
 # 1.1.3  Enhance command detection to use more standard methods like "command -v"
 # 1.1.4  Fixed a regression introduced in 1.1.3. sha256sum was not detected correctly causing downloads to fail
 # 1.1.5  Ignoring missing HCL Domino Download configuration to still allow MHS to work
+# 1.1.6  Set umask 0022 to ensure files can be read by NGINX when using the container image build
 
 SCRIPT_NAME=$0
 SCRIPT_DIR=$(dirname $SCRIPT_NAME)
 
-DOMDOWNLOAD_SCRIPT_VERSION=1.1.5
+DOMDOWNLOAD_SCRIPT_VERSION=1.1.6
 
 # Just print version and exit
 case "$1" in
@@ -2925,6 +2926,10 @@ for a in "$@"; do
 done
 
 CheckEnvironment
+
+# Ensure files are always written that world can read them.
+# NGINX uses user 101 in their standard container. Notes user has ID 1000.
+umask 0022
 
 CURL_CMD="$CURL_BIN --max-redirs 10 --connect-timeout 15 --max-time 300 $SPECIAL_CURL_ARGS"
 CURL_DOWNLOAD_CMD="$CURL_BIN --max-redirs 10 --fail --connect-timeout 15 --max-time $CURL_DOWNLOAD_TIMEOUT $SPECIAL_CURL_ARGS"
