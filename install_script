@@ -31,6 +31,7 @@ DOMINO_INSTALL_CONFIG_TARGET=/etc/sysconfig/rc_domino_config
 DOMINO_DOCKER_SCRIPT=entrypoint.sh
 DONT_TOUCH_THIS_NASHCOM_PATH=/opt/nashcom/startscript
 DONT_TOUCH_THIS_STANDARD_USER=notes
+DOMINO_NOTESDATA_UPD_SCRIPT=notesdata_update.sh
 
 
 # if you really really need to, change this and all files will be patched
@@ -471,6 +472,12 @@ if [ ${LARCH} = "linux" ]; then
     else
       echo "Info: Not updating service status: $DOMINO_SYSTEMD_NAME"
     fi
+  fi
+
+  if [ "$INSTALL_DOMINO_NATIVE" = "LXC" ]; then
+    install_file "$START_SCRIPT_DIR/$DOMINO_NOTESDATA_UPD_SCRIPT" "$DOMINO_START_SCRIPT_DIR/$DOMINO_NOTESDATA_UPD_SCRIPT" $ROOT_USER $ROOT_GROUP 755
+    echo "Enabling Domino systemd service"
+    systemctl enable "$DOMINO_SYSTEMD_NAME"
   fi
 
 fi
