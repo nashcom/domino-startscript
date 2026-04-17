@@ -1,0 +1,27 @@
+services:
+
+  clamav:
+    image: clamav/clamav-debian:latest
+    container_name: clamav
+    restart: always
+    network_mode: host
+
+    volumes:
+      - ./clamd.conf:/etc/clamav/clamd.conf
+      - clamav_db:/var/lib/clamav
+      - ./data:/clamav
+
+    environment:
+      CLAMAV_NO_FRESHCLAMD: "false"
+      CLAMAV_NO_CLAMD:      "false"
+
+    healthcheck:
+      test: ["CMD", "clamdcheck.sh"]
+      interval: 60s
+      retries: 3
+      start_period: 120s
+
+volumes:
+  clamav_db:
+  clamav_run:
+
