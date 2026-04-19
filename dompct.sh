@@ -712,6 +712,7 @@ create_cfg_file()
     return 0
   fi
 
+  mkdir -p "$(dirname "$1")"
   touch "$1"
 
   if [ -n "$1" ]; then
@@ -749,6 +750,10 @@ menu_profiles()
   local profiles=()
 
   PCT_SELECTED_PROFILE_NAME=
+
+  if [ ! -d "$HOME/.dompct" ]; then
+    return 0
+  fi
 
   mapfile -t profiles < <(
     find "$HOME/.dompct" -name "*.cfg" -printf "%f\n" |
@@ -1465,6 +1470,7 @@ if [ "$CMD" = "profile" ]; then
 
   # If profile specified edit the profile, else prompt and edit if selected
   if [ -n "$PCT_CONFIG_FILE" ]; then
+    create_cfg_file "$PCT_CONFIG_FILE" "$PCT_PROFILE_NAME"
     edit_file "$PCT_CONFIG_FILE"
   else
     run_action "$CMD"
