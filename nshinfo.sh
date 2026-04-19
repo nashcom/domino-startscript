@@ -42,6 +42,18 @@ format_mem()
 }
 
 
+format_size()
+{
+  local val="$1"
+
+  if [[ "$val" =~ ^([0-9]+)(\.[0-9]+)?([KMGTP])$ ]]; then
+    printf "%.1f%s" "${BASH_REMATCH[1]}${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}"
+  else
+    printf "%s" "$val"
+  fi
+}
+
+
 domino_uptime()
 {
   local LOTUS_BIN_DIR
@@ -154,7 +166,7 @@ check_free_space()
       ;;
   esac
 
-  printf "$FORMAT" "$DISK" "$size" "$used" "$avail" "$pcent" "$fstype" "$source" "$target"
+  printf "$FORMAT" "$DISK" "$(format_size "$size")" "$(format_size "$used")" "$(format_size "$avail")" "$pcent" "$fstype" "$source" "$target"
 }
 
 
