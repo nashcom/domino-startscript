@@ -40,6 +40,9 @@ TimeoutSec=600
 TimeoutStopSec=300
 RemainAfterExit=no
 
+# Environment file used if exists
+EnvironmentFile=-/local/domino.env
+
 # Can be also set in Domino configuration (DOMINO_LANG, DOMINO_TZ)
 
 #Environment=LANG=en_US.UTF-8

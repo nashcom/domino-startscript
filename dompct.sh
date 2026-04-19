@@ -286,8 +286,6 @@ pct_create()
 
   zfs create -o refquota=${PCT_DISK_SIZE_GB}G "$PCT_DOMINO_VOL_LOCAL" > "$LOG_OUTPUT" 2>&1
 
-  pct set $VMID -memory $PCT_RAM_MB -swap $PCT_SWAP_MB -cores $PCT_CPU > "$LOG_OUTPUT" 2>&1
-
   if [ -z "$PCT_RAM_MB" ]; then
     print_info "Warning: Parameter not specified: PCT_RAM_MB"
   else
@@ -342,7 +340,13 @@ pct_create()
   # Ensure container 1000 is owner of the volume
   chown 101000:101000 "/$PCT_DOMINO_VOL_LOCAL" > "$LOG_OUTPUT" 2>&1
 
-  pct set $VMID -hostname "$PCT_HOSTNAME" > "$LOG_OUTPUT" 2>&1
+  if [ -z "$PCT_HOSTNAME" ]; then
+    print_info "Warning: Parameter not specified: PCT_HOSTNAME"
+  else
+    pct set $VMID -hostname "$PCT_HOSTNAME" > "$LOG_OUTPUT" 2>&1
+    print_info "Hostname: $PCT_HOSTNAME"
+  fi
+
   pct set $VMID -mp0 $PCT_DOMINO_VOL_OPT,mp=/opt,ro=1 > "$LOG_OUTPUT" 2>&1
   pct set $VMID -mp1 /$PCT_DOMINO_VOL_LOCAL,mp=/local > "$LOG_OUTPUT" 2>&1
 
@@ -875,7 +879,7 @@ menu_select_vmid()
   fi
 
   [ ${#vms[@]} -eq 0 ] && {
-    echo "No containers found"
+    log "No VMID specified & No existing containers found!"
     return 1
   }
 
@@ -1398,6 +1402,11 @@ fi
 if [ -f "$PCT_CONFIG_FILE" ]; then
   source "$PCT_CONFIG_FILE"
   print_info "Using $PCT_CONFIG_FILE"
+fi
+
+if [ -z "$PCT_HOSTNAME" ]; then
+  PCT_HOSTNAME=localhost
+  print_info "No host name specified. Setting localhost"
 fi
 
 # command-line overrides
