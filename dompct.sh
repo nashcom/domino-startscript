@@ -288,6 +288,24 @@ pct_create()
 
   pct set $VMID -memory $PCT_RAM_MB -swap $PCT_SWAP_MB -cores $PCT_CPU > "$LOG_OUTPUT" 2>&1
 
+  if [ -z "$PCT_RAM_MB" ]; then
+    print_info "Warning: Parameter not specified: PCT_RAM_MB"
+  else
+    pct set $VMID -memory $PCT_RAM_MB
+  fi
+
+  if [ -z "$PCT_SWAP_MB" ]; then
+    print_info "Warning: Parameter not specified: PCT_SWAP_MB"
+  else
+    pct set $VMID -swap $PCT_SWAP_MB
+  fi
+
+  if [ -z "$PCT_CPU" ]; then
+    print_info "Warning: Parameter not specified: PCT_CPU"
+  else
+    pct set $VMID -cores $PCT_CPU
+  fi
+
   # Ensure container 1000 is owner of the volume
   chown 101000:101000 "/$PCT_DOMINO_VOL_LOCAL" > "$LOG_OUTPUT" 2>&1
 
@@ -1374,6 +1392,7 @@ esac
 
 if [ -z "$PCT_PROFILE_NAME" ]; then
   PCT_PROFILE_NAME=default
+  PCT_CONFIG_FILE="$HOME/.dompct/$PCT_PROFILE_NAME.cfg"
 fi
 
 if [ -f "$PCT_CONFIG_FILE" ]; then
