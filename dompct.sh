@@ -344,7 +344,7 @@ pct_create()
     print_info "Warning: Parameter not specified: PCT_HOSTNAME"
   else
     pct set $VMID -hostname "$PCT_HOSTNAME" > "$LOG_OUTPUT" 2>&1
-    print_info "Hostname: $PCT_HOSTNAME"
+    print_info "Hostname -> $PCT_HOSTNAME"
   fi
 
   pct set $VMID -mp0 $PCT_DOMINO_VOL_OPT,mp=/opt,ro=1 > "$LOG_OUTPUT" 2>&1
@@ -380,8 +380,8 @@ pct_create()
   if [ -n "$PCT_NET0" ]; then
     header "Updating Network Configuration"
     pct set "$VMID" -net0 "$PCT_NET0"
-    print_info "IP  : $PCT_IP"
-    print_info "NET0: $PCT_NET0"
+    print_info "IP -> $PCT_IP"
+    print_info "NET0 -> $PCT_NET0"
   fi
 
   pct start $VMID
