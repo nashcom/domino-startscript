@@ -4,7 +4,7 @@
 # Copyright Nash!Com, Daniel Nashed 2026  - APACHE 2.0 see LICENSE
 ############################################################################
 
-VERSION="0.9.4"
+VERSION="0.9.5"
 
 
 print_delim()
@@ -88,7 +88,8 @@ log_error()
   log "ERROR: $1"
 }
 
- log_error_exit()
+
+log_error_exit()
 {
   if [ "$OUTPUT_FORMAT" = "json" ]; then
 
@@ -102,6 +103,7 @@ log_error()
 
   exit 1
 }
+
 
 inject_ssh_pubkey()
 {
@@ -235,6 +237,66 @@ print_status()
 }
 
 
+calculate_server_config()
+{
+  if [ -n "$PCT_CONFIG_FILE" ]; then
+    if [ -f "$PCT_CONFIG_FILE" ]; then
+      source "$PCT_CONFIG_FILE"
+      print_info "Using $PCT_CONFIG_FILE"
+    else
+     log_error_exit "Cannot find profile: $PCT_CONFIG_FILE"
+    fi
+  fi
+
+  # Memory is specified in MB but the profile specifies it usually in GB
+  if [ -n "$PCT_RAM_GB" ]; then
+    PCT_RAM_MB=$((1024 * PCT_RAM_GB))
+  fi
+
+  if [ -n "$PCT_SWAP_GB" ]; then
+    PCT_SWAP_MB=$((1024 * PCT_SWAP_GB))
+  fi
+
+  # Calculate volume names based on configuration for create and for reference
+  # LATER: Check if it would be better to read the current config and move this logic into pct_create for consistency
+
+  if [ -z "$PCT_DAOS_POOL" ]; then
+    PCT_DAOS_POOL="$PCT_DATA_POOL"
+  fi
+
+  if [ -z "$PCT_TRANSLOG_POOL" ]; then
+    PCT_TRANSLOG_POOL="$PCT_DATA_POOL"
+  fi
+
+  PCT_DOMINO_VOL_LOCAL="${PCT_DATA_POOL}/subvol-${VMID}-domino-local"
+  PCT_DOMINO_VOL_NSF="${PCT_DATA_POOL}/subvol-${VMID}-domino-nsf"
+  PCT_DOMINO_VOL_TRANSLOG="${PCT_TRANSLOG_POOL}/subvol-${VMID}-domino-translog"
+  PCT_DOMINO_VOL_DAOS="${PCT_DAOS_POOL}/subvol-${VMID}-domino-daos"
+  PCT_DOMINO_VOL_BACKUP="${PCT_DATA_POOL}/subvol-${VMID}-domino-backup"
+
+  if [ -z "$PCT_DOMINO_OPT_LATEST" ]; then
+    PCT_DOMINO_OPT_LATEST="/$PCT_DATA_POOL/domino-opt-latest"
+  fi
+
+  if [ -z "$PCT_DOMINO_VOL_OPT" ]; then
+
+    if [ ! -e "$PCT_DOMINO_OPT_LATEST" ]; then
+      log_error_exit "Domino /opt volume not found: $PCT_DOMINO_OPT_LATEST"
+    fi
+
+    PCT_DOMINO_VOL_OPT=$(readlink -f "$PCT_DOMINO_OPT_LATEST")
+  fi
+
+  if [ -z "$PCT_DOMINO_VOL_OPT" ]; then
+   log_error_exit "Domino /opt volume link is invalid: $PCT_DOMINO_OPT_LATEST"
+  fi
+
+  if [ ! -e "$PCT_DOMINO_VOL_OPT" ]; then
+    log_error_exit "Domino /opt volume not found: $PCT_DOMINO_VOL_OPT"
+  fi
+}
+
+
 pct_create()
 {
   header "Creating LXC $VMID"
@@ -247,6 +309,18 @@ pct_create()
   if ! command -v zfs >/dev/null 2>&1; then
     log_error_exit "No ZFS found"
   fi
+
+  if [ -z "$PCT_HOSTNAME" ]; then
+    echo
+    read -p "Enter host name: " PCT_HOSTNAME
+    echo
+  fi
+
+  if [ -z "$PCT_HOSTNAME" ]; then
+    log_error_exit "No hostname specified!"
+  fi
+
+  calculate_server_config
 
   if ! zfs list -H "$PCT_DATA_POOL" >/dev/null 2>&1; then
     log_error_exit "ZFS dataset not found: $PCT_DATA_POOL"
@@ -289,6 +363,7 @@ pct_create()
   if [ -z "$PCT_RAM_MB" ]; then
     print_info "Warning: Parameter not specified: PCT_RAM_MB"
   else
+    print_info "RAM -> $PCT_RAM_MB"
     pct set $VMID -memory $PCT_RAM_MB
   fi
 
@@ -380,7 +455,10 @@ pct_create()
   if [ -n "$PCT_NET0" ]; then
     header "Updating Network Configuration"
     pct set "$VMID" -net0 "$PCT_NET0"
-    print_info "IP -> $PCT_IP"
+
+    if [ -n "$PCT_IP" ]; then
+      print_info "IP -> $PCT_IP"
+    fi
     print_info "NET0 -> $PCT_NET0"
   fi
 
@@ -426,7 +504,7 @@ pct_create()
 
   header "LXC $VMID created"
 
-  print_info "Use the following command to jump into your new Domino LXC container"
+  print_info "Use the following command to open a bash in your new Domino LXC container"
   print_info
   print_info "pct enter $VMID"
   print_info
@@ -478,6 +556,11 @@ pct_shutdown()
   fi
 
   pct shutdown $VMID
+
+  if [ "$LXC_STATUS" = "running" ]; then
+    header "Stopping container LXC $VMID after shutdown timeout"
+    pct stop $VMID
+  fi
 }
 
 
@@ -539,11 +622,13 @@ pct_kill_disks()
   # Core datasets (always present)
   destroy_dataset "$PCT_DOMINO_VOL_LOCAL"
 
-  # Optional datasets
-  [ -n "$PCT_NSF_SIZE_GB" ] && destroy_dataset "$PCT_DOMINO_VOL_NSF"
-  [ -n "$PCT_TRANSLOG_SIZE_GB" ] && destroy_dataset "$PCT_DOMINO_VOL_TRANSLOG"
-  [ -n "$PCT_DAOS_SIZE_GB" ] && destroy_dataset "$PCT_DOMINO_VOL_DAOS"
-  [ -n "$PCT_BACKUP_SIZE_GB" ] && destroy_dataset "$PCT_DOMINO_VOL_BACKUP"
+  local DISK_PREFIX="subvol-${VMID}-domino"
+
+  zfs list -H -o name | grep "${DISK_PREFIX}" | while read -r ds
+  do
+     echo "Deleting $ds"
+     zfs destroy "$ds"
+  done
 
   log "ZFS cleanup completed for LXC $VMID"
 }
@@ -575,15 +660,48 @@ pct_bash()
 
 pct_config()
 {
+  local cfg desc decoded
+  local line
+
   header "Config LXC $VMID"
 
-  if [ -z "$LXC_STATUS" ]; then
-    log_error "Container not found"
-    return 0
+  # validate VMID
+  if [[ -z "$VMID" || ! "$VMID" =~ ^[0-9]+$ ]]; then
+    log_error "Invalid or missing VMID"
+    return 1
   fi
 
-  pct config "$VMID"
-  echo
+  # check container exists
+  pct status "$VMID" >/dev/null 2>&1 || {
+    log_error "Container $VMID not found"
+    return 1
+  }
+
+  # read config once
+  cfg="$(pct config "$VMID")"
+
+  # print everything except description
+  while IFS= read -r line; do
+    [[ "$line" =~ ^description: ]] && continue
+    printf '%s\n' "$line"
+  done <<< "$cfg"
+
+  # extract description
+  desc="$(sed -n 's/^description: //p' <<< "$cfg")"
+  [[ -z "$desc" ]] && return 0
+
+  # decode %XX → characters
+  decoded="$(printf '%b' "${desc//%/\\x}")"
+
+  # print header
+  printf '\ndescription:\n'
+
+  # print each line (no indent)
+  while IFS= read -r line; do
+    line="${line#"${line%%[![:space:]]*}"}"
+    [[ -z "$line" ]] && continue
+    printf '%s\n' "$line"
+  done <<< "$decoded"
 }
 
 
@@ -634,10 +752,10 @@ Arguments:
 Examples:
 
   $0 list
-  $0 start 200
+  $0 start $PCT_RANGE_BEGIN
   $0 create -profile=mail
   $0 profile
-  $0 destroy 200
+  $0 destroy $PCT_RANGE_BEGIN
 
 Notes:
 
@@ -871,11 +989,11 @@ menu_select_vmid()
   else
 
     mapfile -t vms < <(
-      pct list | awk 'NR>1 && $1 >= 200 && $1 < 300 {
+      pct list | awk -v begin="$PCT_RANGE_BEGIN" -v end="$PCT_RANGE_END" '
+      NR > 1 && $1 >= begin && $1 < end {
         printf "%-5s %-8s %s\n", $1, $2, $NF
       }'
     )
-
   fi
 
   [ ${#vms[@]} -eq 0 ] && {
@@ -1043,8 +1161,6 @@ OPTIONS_RUNNING=(
   "about"
   "update"
   "config"
-  "profile"
-  "edit"
   "destroy"
   "quit"
 )
@@ -1056,8 +1172,6 @@ OPTIONS_STOPPED=(
   "about"
   "update"
   "config"
-  "profile"
-  "edit"
   "destroy"
   "quit"
 )
@@ -1082,10 +1196,13 @@ menu()
     if [ -n "$LXC_STATUS" ]; then
       echo " Host    :  $PCT_CFG_HOSTNAME"
       echo " Tags    :  $PCT_CFG_TAGS"
-      echo " Profile :  $PCT_PROFILE_NAME"
       echo
       echo " VMID    :  $VMID"
       echo " Status  :  $LXC_STATUS"
+    else
+      echo " VMID    :  $VMID"
+      echo " Host    :  $PCT_HOSTNAME"
+      echo " Profile :  $PCT_PROFILE_NAME"
     fi
     echo
 
@@ -1229,16 +1346,51 @@ install_script()
   return 0
 }
 
+get_free_vmid()
+{
+    local start=${1:-$PCT_RANGE_BEGIN}
+
+    {
+        pct list 2>/dev/null | awk 'NR>1 {print $1}'
+        qm list 2>/dev/null  | awk 'NR>1 {print $1}'
+    } | sort -n | awk -v start="$start" '
+    BEGIN {
+        expected = start
+        found = 0
+    }
+    {
+        if ($1 < expected)
+            next
+
+        if ($1 == expected) {
+            expected++
+        } else if ($1 > expected) {
+            print expected
+            found = 1
+            exit
+        }
+    }
+    END {
+        if (!found)
+            print expected
+    }'
+}
 
 # --- Main logic ---
 
+if [ -z "$PCT_RANGE_BEGIN" ]; then
+  PCT_RANGE_BEGIN=800
+fi
+
+if [ -z "$PCT_RANGE_END" ]; then
+  PCT_RANGE_END=999
+fi
 
 LOG_OUTPUT="/dev/stdout"
 
 if ! command -v pct >/dev/null 2>&1; then
   log_error_exit "No Proxmox PCT environment found"
 fi
-
 
 case "$VMID" in
   0)
@@ -1348,8 +1500,14 @@ if [ "$OUTPUT_FORMAT" = "json" ]; then
   LOG_OUTPUT="/dev/null"
 fi
 
-if [ -n "$VMID" ] && [ -n "$VM_HOST" ]; then
-  log_error_exit "Invalid parameter combination"
+if [ -n "$VMID" ]; then
+  if [ -n "$VM_HOST" ]; then
+    log_error_exit "Invalid parameter combination"
+  fi
+
+  if qm status "$VMID" >/dev/null 2>&1; then
+    log_error_exit "VMID $VMID is a VM instead of a LXC container"
+  fi
 fi
 
 
@@ -1378,6 +1536,31 @@ case $CMD in
   profile)
     ;;
 
+  create)
+
+    if [ -z "$VMID" ]; then
+      VMID=$(get_free_vmid $PCT_RANGE_BEGIN)
+    fi
+
+    if [ -z "$VMID" ]; then
+      log_error_exit "No VMID specified!"
+    fi
+
+    if [ -z "$PCT_PROFILE_NAME" ]; then
+
+      menu_profiles
+
+      if [ -n "$PCT_SELECTED_PROFILE_NAME" ]; then
+        PCT_PROFILE_NAME="$PCT_SELECTED_PROFILE_NAME"
+        PCT_CONFIG_FILE="$HOME/.dompct/$PCT_PROFILE_NAME.cfg"
+      else
+        log_error_exit "No Profile specified"
+      fi
+
+      PCT_CONFIG_FILE="$HOME/.dompct/$PCT_PROFILE_NAME.cfg"
+    fi
+    ;;
+
   *)
     if [ -z "$VMID" ] && [ -n "$OUTPUT_FORMAT" ]; then
       log_error_exit "Numeric container ID required"
@@ -1394,69 +1577,10 @@ case $CMD in
 
 esac
 
-if [ -z "$PCT_PROFILE_NAME" ]; then
-  PCT_PROFILE_NAME=default
-  PCT_CONFIG_FILE="$HOME/.dompct/$PCT_PROFILE_NAME.cfg"
-fi
-
-if [ -f "$PCT_CONFIG_FILE" ]; then
-  source "$PCT_CONFIG_FILE"
-  print_info "Using $PCT_CONFIG_FILE"
-fi
-
-if [ -z "$PCT_HOSTNAME" ]; then
-  PCT_HOSTNAME=localhost
-  print_info "No host name specified. Setting localhost"
-fi
-
 # command-line overrides
 
 if [ -n "$PCT_SET_TAGS" ]; then
   PCT_TAGS="$PCT_SET_TAGS"
-fi
-
-# Calculate variables after the configuration was read
-
-# Memory is specifed in MB but we want to specify GB
-PCT_RAM_MB=$((1024 * PCT_RAM_GB))
-PCT_SWAP_MB=$((1024 * PCT_SWAP_GB))
-
-# Calculate volume names based on configuration for create and for reference
-# LATER: Check if it would be better to read the current config and move this logic into pct_create for consistency
-
-if [ -z "$PCT_DAOS_POOL" ]; then
-  PCT_DAOS_POOL="$PCT_DATA_POOL"
-fi
-
-if [ -z "$PCT_TRANSLOG_POOL" ]; then
-  PCT_TRANSLOG_POOL="$PCT_DATA_POOL"
-fi
-
-PCT_DOMINO_VOL_LOCAL="${PCT_DATA_POOL}/subvol-${VMID}-domino-local"
-PCT_DOMINO_VOL_NSF="${PCT_DATA_POOL}/subvol-${VMID}-domino-nsf"
-PCT_DOMINO_VOL_TRANSLOG="${PCT_TRANSLOG_POOL}/subvol-${VMID}-domino-translog"
-PCT_DOMINO_VOL_DAOS="${PCT_DAOS_POOL}/subvol-${VMID}-domino-daos"
-PCT_DOMINO_VOL_BACKUP="${PCT_DATA_POOL}/subvol-${VMID}-domino-backup"
-
-if [ -z "$PCT_DOMINO_OPT_LATEST" ]; then
-  PCT_DOMINO_OPT_LATEST="/$PCT_DATA_POOL/domino-opt-latest"
-fi
-
-if [ -z "$PCT_DOMINO_VOL_OPT" ]; then
-
-  if [ ! -e "$PCT_DOMINO_OPT_LATEST" ]; then
-    log_error_exit "Domino /opt volume not found: $PCT_DOMINO_OPT_LATEST"
-  fi
-
-  PCT_DOMINO_VOL_OPT=$(readlink -f "$PCT_DOMINO_OPT_LATEST")
-fi
-
-if [ -z "$PCT_DOMINO_VOL_OPT" ]; then
-  log_error_exit "Domino /opt volume link is invalid: $PCT_DOMINO_OPT_LATEST"
-fi
-
-if [ ! -e "$PCT_DOMINO_VOL_OPT" ]; then
-  log_error_exit "Domino /opt volume not found: $PCT_DOMINO_VOL_OPT"
 fi
 
 # First get status (Relevant for almost every command)
@@ -1471,15 +1595,16 @@ if [ -z "$CMD" ]; then
 
   PCT_MENU=1
 
-  if [ -z "$PCT_PROFILE_NAME" ]; then
-    PCT_PROFILE_NAME="default"
-    PCT_CONFIG_FILE="$HOME/.dompct/$PCT_PROFILE_NAME.cfg"
-  fi
-
   while true
   do
     if [ -z "$LXC_STATUS" ]; then
       OPTIONS=("${OPTIONS_CREATE[@]}")
+
+      if [ -z "$PCT_PROFILE_NAME" ]; then
+        PCT_PROFILE_NAME="default"
+        PCT_CONFIG_FILE="$HOME/.dompct/$PCT_PROFILE_NAME.cfg"
+      fi
+
     elif [ "$LXC_STATUS" = "running" ]; then
       OPTIONS=("${OPTIONS_RUNNING[@]}")
     else
@@ -1510,11 +1635,6 @@ if [ "$CMD" = "profile" ]; then
   fi
 
 else
-
-  if [ -z "$PCT_PROFILE_NAME" ]; then
-    PCT_PROFILE_NAME="default"
-    PCT_CONFIG_FILE="$HOME/.dompct/$PCT_PROFILE_NAME.cfg"
-  fi
 
   run_action "$CMD"
 fi
