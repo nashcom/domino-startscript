@@ -4,7 +4,7 @@
 # Copyright Nash!Com, Daniel Nashed 2026  - APACHE 2.0 see LICENSE
 ############################################################################
 
-VERSION="0.9.5"
+VERSION="0.9.6"
 
 
 print_delim()
@@ -161,7 +161,7 @@ print_server_config()
   print_size "PCT_RAM_GB" "RAM Size" "$PCT_RAM_GB"
   print_size "PCT_SWAP_GB" "Swap Size" "$PCT_SWAP_GB"
   print_size "PCT_DISK_SIZE_GB" "Data disk size" "$PCT_DISK_SIZE_GB"
-  [ -n "$PCT_NSF_SIZE_GB" ] && print_size "PCT_NSF_SIZE_GB" "NSF size" "$PCT_NSF_SIZE_GB"
+  [ -n "$PCT_NOTESDATA_SIZE_GB" ] && print_size "PCT_NOTESDATA_SIZE_GB" "NOTESDATA size" "$PCT_NOTESDATA_SIZE_GB"
   [ -n "$PCT_TRANSLOG_SIZE_GB" ] && print_size "PCT_TRANSLOG_SIZE_GB" "Translog size" "$PCT_TRANSLOG_SIZE_GB"
   [ -n "$PCT_DAOS_SIZE_GB" ] && print_size "PCT_DAOS_SIZE_GB" "DAOS size" "$PCT_DAOS_SIZE_GB"
   [ -n "$PCT_BACKUP_SIZE_GB" ] && print_size "PCT_BACKUP_SIZE_GB" "Backup size" "$PCT_BACKUP_SIZE_GB"
@@ -237,63 +237,110 @@ print_status()
 }
 
 
-calculate_server_config()
+# Helper: resolve ZFS pool from storage
+get_zfs_pool_from_storage()
 {
-  if [ -n "$PCT_CONFIG_FILE" ]; then
-    if [ -f "$PCT_CONFIG_FILE" ]; then
-      source "$PCT_CONFIG_FILE"
-      print_info "Using $PCT_CONFIG_FILE"
+  local storage="$1"
+
+  awk -v s="$storage" '
+    $1=="zfspool:" && $2==s {found=1}
+    found && $1=="pool" {print $2; exit}
+  ' /etc/pve/storage.cfg
+}
+
+# Helper: create volume
+create_vol()
+{
+  local role="$1"
+  local vol="$2"
+  local pool="$3"
+  local size="$4"
+  local storage="$5"
+
+  [ -z "$size" ] && return
+
+  local path
+  local mount_point
+
+  header "Creating ZFS Volume $role"
+
+  if [ "$STORAGE_MODE" = "zfs" ]; then
+
+    path="${pool}/${vol}"
+    zfs create -o refquota=${size}G "$path" >> "$LOG_OUTPUT" 2>&1 || log_error_exit "ZFS create failed: $path"
+
+  else
+
+    if [ "$role" = "local" ]; then
+      mount_point="/local"
     else
-     log_error_exit "Cannot find profile: $PCT_CONFIG_FILE"
-    fi
-  fi
-
-  # Memory is specified in MB but the profile specifies it usually in GB
-  if [ -n "$PCT_RAM_GB" ]; then
-    PCT_RAM_MB=$((1024 * PCT_RAM_GB))
-  fi
-
-  if [ -n "$PCT_SWAP_GB" ]; then
-    PCT_SWAP_MB=$((1024 * PCT_SWAP_GB))
-  fi
-
-  # Calculate volume names based on configuration for create and for reference
-  # LATER: Check if it would be better to read the current config and move this logic into pct_create for consistency
-
-  if [ -z "$PCT_DAOS_POOL" ]; then
-    PCT_DAOS_POOL="$PCT_DATA_POOL"
-  fi
-
-  if [ -z "$PCT_TRANSLOG_POOL" ]; then
-    PCT_TRANSLOG_POOL="$PCT_DATA_POOL"
-  fi
-
-  PCT_DOMINO_VOL_LOCAL="${PCT_DATA_POOL}/subvol-${VMID}-domino-local"
-  PCT_DOMINO_VOL_NSF="${PCT_DATA_POOL}/subvol-${VMID}-domino-nsf"
-  PCT_DOMINO_VOL_TRANSLOG="${PCT_TRANSLOG_POOL}/subvol-${VMID}-domino-translog"
-  PCT_DOMINO_VOL_DAOS="${PCT_DAOS_POOL}/subvol-${VMID}-domino-daos"
-  PCT_DOMINO_VOL_BACKUP="${PCT_DATA_POOL}/subvol-${VMID}-domino-backup"
-
-  if [ -z "$PCT_DOMINO_OPT_LATEST" ]; then
-    PCT_DOMINO_OPT_LATEST="/$PCT_DATA_POOL/domino-opt-latest"
-  fi
-
-  if [ -z "$PCT_DOMINO_VOL_OPT" ]; then
-
-    if [ ! -e "$PCT_DOMINO_OPT_LATEST" ]; then
-      log_error_exit "Domino /opt volume not found: $PCT_DOMINO_OPT_LATEST"
+      mount_point="/local/$role"
     fi
 
-    PCT_DOMINO_VOL_OPT=$(readlink -f "$PCT_DOMINO_OPT_LATEST")
+    PCT_MP_COUNT=$((PCT_MP_COUNT + 1))
+    pct set "$VMID" -mp${PCT_MP_COUNT} ${storage}:${size},mp=${mount_point} >> "$LOG_OUTPUT" 2>&1 || log_error_exit "Volume alloc failed"
+
+    # extract actual volume ID
+    volid=$(pct config "$VMID" | sed -n "s/^mp${PCT_MP_COUNT}: ${storage}:\([^,]*\).*/\1/p")
+    [ -z "$volid" ] && log_error_exit "Failed to resolve volume ID for mp${PCT_MP_COUNT}"
+
+    # resolve ZFS pool behind storage
+    local resolved_pool=$(get_zfs_pool_from_storage "$storage")
+    [ -z "$resolved_pool" ] && log_error_exit "Cannot resolve pool for storage: $storage"
+
+    # final ZFS dataset path
+    path="${resolved_pool}/${volid}"
   fi
 
-  if [ -z "$PCT_DOMINO_VOL_OPT" ]; then
-   log_error_exit "Domino /opt volume link is invalid: $PCT_DOMINO_OPT_LATEST"
-  fi
+  # Apply ZFS tuning
+  case "$role" in
 
-  if [ ! -e "$PCT_DOMINO_VOL_OPT" ]; then
-    log_error_exit "Domino /opt volume not found: $PCT_DOMINO_VOL_OPT"
+    local|notesdata)
+      zfs set recordsize=${PCT_RECORD_SIZE}K "$path"
+
+      if [ "$role" = "local" ]; then
+        PCT_NOTES_DATA_DIR="/$path/notesdata"
+      else
+        PCT_NOTES_DATA_DIR="/$path"
+      fi
+
+      echo "path: $path -> $PCT_NOTES_DATA_DIR"
+      ;;
+    translog)
+      zfs set recordsize=16K "$path"
+      ;;
+    daos|backup)
+      zfs set recordsize=128K "$path"
+      zfs set dedup=on "$path"
+      ;;
+
+  esac
+
+  zfs set compression=lz4 "$path"
+  zfs set atime=off "$path"
+
+  # Change ownership to notes:notes
+  chown 101000:101000 "/$path"
+}
+
+# Helper: mount volume
+mount_vol()
+{
+  local idx="$1"
+  local vol="$2"
+  local pool="$3"
+  local storage="$4"
+  local mp="$5"
+
+  if [ "$STORAGE_MODE" = "zfs" ]; then
+    pct set $VMID -mp${idx} /${pool}/${vol},mp="$mp"
   fi
+}
+
+check_pool()
+{
+  local pool="$1"
+  zfs list -H "$pool" >/dev/null 2>&1 || log_error_exit "ZFS dataset not found: $pool"
 }
 
 
@@ -301,167 +348,117 @@ pct_create()
 {
   header "Creating LXC $VMID"
 
+  # Basic validation
   if [ -n "$LXC_STATUS" ]; then
     log_error "Container already exists: $LXC_STATUS"
     return 0
   fi
 
-  if ! command -v zfs >/dev/null 2>&1; then
-    log_error_exit "No ZFS found"
+  command -v zfs >/dev/null 2>&1 || log_error_exit "No ZFS found"
+
+  # Load config
+  if [ -n "$PCT_CONFIG_FILE" ]; then
+    [ -f "$PCT_CONFIG_FILE" ] || log_error_exit "Cannot find profile: $PCT_CONFIG_FILE"
+    source "$PCT_CONFIG_FILE"
+    print_info "Using $PCT_CONFIG_FILE"
   fi
 
-  if [ -z "$PCT_HOSTNAME" ]; then
-    echo
-    read -p "Enter host name: " PCT_HOSTNAME
-    echo
-  fi
+  # Input & normalization
+  echo
+  [ -z "$PCT_HOSTNAME" ] && read -p "Enter host name: " PCT_HOSTNAME
+  [ -z "$PCT_HOSTNAME" ] && log_error_exit "No hostname specified!"
 
-  if [ -z "$PCT_HOSTNAME" ]; then
-    log_error_exit "No hostname specified!"
-  fi
+  [ -n "$PCT_RAM_GB"   ] && PCT_RAM_MB=$((1024 * PCT_RAM_GB))
+  [ -n "$PCT_SWAP_GB"  ] && PCT_SWAP_MB=$((1024 * PCT_SWAP_GB))
 
-  calculate_server_config
-
-  if ! zfs list -H "$PCT_DATA_POOL" >/dev/null 2>&1; then
-    log_error_exit "ZFS dataset not found: $PCT_DATA_POOL"
-  fi
-
-  if [ -n "$PCT_TRANSLOG_SIZE_GB" ] && [ "$PCT_TRANSLOG_POOL" != "$PCT_DATA_POOL" ]; then
-    if ! zfs list -H "$PCT_TRANSLOG_POOL" >/dev/null 2>&1; then
-      log_error_exit "ZFS dataset not found: $PCT_TRANSLOG_POOL"
-    fi
-  fi
-
-  if [ -n "$PCT_DAOS_SIZE_GB" ] && [ "$PCT_DAOS_POOL" != "$PCT_DATA_POOL" ]; then
-    if ! zfs list -H "$PCT_DAOS_POOL" >/dev/null 2>&1; then
-      log_error_exit "ZFS dataset not found: $PCT_DAOS_POOL"
-    fi
-  fi
-
-  header "Clone container image $PCT_TEMPLATE_ID -> $VMID"
-
-  pct clone "$PCT_TEMPLATE_ID" "$VMID" --full > "$LOG_OUTPUT" 2>&1
-
-  header "Configuring LXC $VMID"
-
-  if [ -z "$PCT_DESCRIPTION" ]; then
-    PCT_DESCRIPTION="HCL Domino server $VMID"
-  fi
-
-  if [ -n "$PCT_DESCRIPTION" ]; then
-    pct set $VMID --description "$PCT_DESCRIPTION" > "$LOG_OUTPUT" 2>&1
-    print_info "Description -> $PCT_DESCRIPTION"
-  fi
-
-  if [ -n "$PCT_TAGS" ]; then
-    pct set $VMID --tags "$PCT_TAGS" > "$LOG_OUTPUT" 2>&1
-    print_info "Tags -> $PCT_TAGS"
-  fi
-
-  zfs create -o refquota=${PCT_DISK_SIZE_GB}G "$PCT_DOMINO_VOL_LOCAL" > "$LOG_OUTPUT" 2>&1
-
-  if [ -z "$PCT_RAM_MB" ]; then
-    print_info "Warning: Parameter not specified: PCT_RAM_MB"
+  # Storage mode
+  if [ -n "$PCT_STORAGE" ]; then
+    STORAGE_MODE="proxmox"
   else
-    print_info "RAM -> $PCT_RAM_MB"
-    pct set $VMID -memory $PCT_RAM_MB
+    STORAGE_MODE="zfs"
   fi
 
-  if [ -z "$PCT_SWAP_MB" ]; then
-    print_info "Warning: Parameter not specified: PCT_SWAP_MB"
-  else
-    pct set $VMID -swap $PCT_SWAP_MB
+  # Defaults
+  PCT_DATA_POOL="${PCT_DATA_POOL:-rpool/data}"
+  PCT_DAOS_POOL="${PCT_DAOS_POOL:-$PCT_DATA_POOL}"
+  PCT_TRANSLOG_POOL="${PCT_TRANSLOG_POOL:-$PCT_DATA_POOL}"
+
+  PCT_STORAGE_DEFAULT="${PCT_STORAGE}"
+  PCT_STORAGE_DAOS="${PCT_STORAGE_DAOS:-$PCT_STORAGE_DEFAULT}"
+  PCT_STORAGE_TRANSLOG="${PCT_STORAGE_TRANSLOG:-$PCT_STORAGE_DEFAULT}"
+
+  # Volume names (logical only)
+  VOL_LOCAL="subvol-${VMID}-domino-local"
+  VOL_NOTESDATA="subvol-${VMID}-domino-notesdata"
+  VOL_TRANSLOG="subvol-${VMID}-domino-translog"
+  VOL_DAOS="subvol-${VMID}-domino-daos"
+  VOL_BACKUP="subvol-${VMID}-domino-backup"
+
+  # Validate pools
+  if [ "$STORAGE_MODE" = "zfs" ]; then
+    zfs list -H "$PCT_DATA_POOL" >/dev/null 2>&1 || log_error_exit "Missing $PCT_DATA_POOL"
+
+    [ "$PCT_TRANSLOG_POOL" != "$PCT_DATA_POOL" ] && check_pool "$PCT_TRANSLOG_POOL"
+    [ "$PCT_DAOS_POOL" != "$PCT_DATA_POOL" ] && check_pool "$PCT_DAOS_POOL"
+
   fi
 
-  if [ -z "$PCT_CPU" ]; then
-    print_info "Warning: Parameter not specified: PCT_CPU"
-  else
-    pct set $VMID -cores $PCT_CPU
+  if [ -z "$PCT_DOMINO_OPT_LATEST" ]; then
+    PCT_DOMINO_OPT_LATEST="/$PCT_DATA_POOL/domino-opt-latest"
   fi
 
-  # Ensure container 1000 is owner of the volume
-  chown 101000:101000 "/$PCT_DOMINO_VOL_LOCAL" > "$LOG_OUTPUT" 2>&1
+  # Resolve /opt
+  [ -z "$PCT_DOMINO_VOL_OPT" ] && PCT_DOMINO_VOL_OPT=$(readlink -f "$PCT_DOMINO_OPT_LATEST")
+  [ -e "$PCT_DOMINO_VOL_OPT" ] || log_error_exit "Invalid /opt volume"
 
-  # Domino NSF/NIF/FT data should have 32K or smaller
-  zfs set recordsize=${PCT_RECORD_SIZE}K "$PCT_DOMINO_VOL_LOCAL" > "$LOG_OUTPUT" 2>&1
+  # Clone container
+  header "Clone LXC Template $PCT_TEMPLATE_ID -> LXC $VMID"
+  pct clone "$PCT_TEMPLATE_ID" "$VMID" --full >> "$LOG_OUTPUT" 2>&1 || log_error_exit "clone failed"
 
-  if [ -n "$PCT_NSF_SIZE_GB" ]; then
-    zfs create -o refquota=${PCT_NSF_SIZE_GB}G "$PCT_DOMINO_VOL_NSF" > "$LOG_OUTPUT" 2>&1
-    zfs set recordsize=${PCT_RECORD_SIZE}K "$PCT_DOMINO_VOL_NSF" > "$LOG_OUTPUT" 2>&1
-    chown 101000:101000 "/$PCT_DOMINO_VOL_NSF" > "$LOG_OUTPUT" 2>&1
-  fi
+  # Basic config
+  pct set $VMID --description "${PCT_DESCRIPTION:-HCL Domino server $VMID}"
+  [ -n "$PCT_TAGS" ] && pct set $VMID --tags "$PCT_TAGS"
+  [ -n "$PCT_RAM_MB" ] && pct set $VMID -memory $PCT_RAM_MB
+  [ -n "$PCT_SWAP_MB" ] && pct set $VMID -swap $PCT_SWAP_MB
+  [ -n "$PCT_CPU" ] && pct set $VMID -cores $PCT_CPU
+  pct set $VMID -hostname "$PCT_HOSTNAME"
 
-  if [ -n "$PCT_TRANSLOG_SIZE_GB" ]; then
-    zfs create -o refquota=${PCT_TRANSLOG_SIZE_GB}G "$PCT_DOMINO_VOL_TRANSLOG" > "$LOG_OUTPUT" 2>&1
-    zfs set recordsize=16K "$PCT_DOMINO_VOL_TRANSLOG" > "$LOG_OUTPUT" 2>&1
-    chown 101000:101000 "/$PCT_DOMINO_VOL_TRANSLOG" > "$LOG_OUTPUT" 2>&1
-  fi
+  PCT_MP_COUNT=0
 
-  if [ -n "$PCT_DAOS_SIZE_GB" ]; then
+  # Create volumes
+  create_vol local "$VOL_LOCAL" "$PCT_DATA_POOL" "$PCT_DISK_SIZE_GB" "$PCT_STORAGE_DEFAULT"
+  create_vol notesdata "$VOL_NOTESDATA" "$PCT_DATA_POOL" "$PCT_NOTESDATA_SIZE_GB" "$PCT_STORAGE_DEFAULT"
+  create_vol translog "$VOL_TRANSLOG" "$PCT_TRANSLOG_POOL" "$PCT_TRANSLOG_SIZE_GB" "$PCT_STORAGE_TRANSLOG"
+  create_vol daos "$VOL_DAOS" "$PCT_DAOS_POOL" "$PCT_DAOS_SIZE_GB" "$PCT_STORAGE_DAOS"
+  create_vol backup "$VOL_BACKUP" "$PCT_DATA_POOL" "$PCT_BACKUP_SIZE_GB" "$PCT_STORAGE_DEFAULT"
 
-    zfs create -o refquota=${PCT_DAOS_SIZE_GB}G "$PCT_DOMINO_VOL_DAOS" > "$LOG_OUTPUT" 2>&1
-    zfs set recordsize=128K "$PCT_DOMINO_VOL_DAOS" > "$LOG_OUTPUT" 2>&1
-    zfs set dedup=on "$PCT_DOMINO_VOL_DAOS" > "$LOG_OUTPUT" 2>&1
-    chown 101000:101000 "/$PCT_DOMINO_VOL_DAOS" > "$LOG_OUTPUT" 2>&1
-  fi
+  # Mount volumes
+  pct set $VMID -mp0 $PCT_DOMINO_VOL_OPT,mp=/opt,ro=1
 
-  if [ -n "$PCT_BACKUP_SIZE_GB" ]; then
-    zfs create -o refquota=${PCT_BACKUP_SIZE_GB}G "$PCT_DOMINO_VOL_BACKUP" > "$LOG_OUTPUT" 2>&1
-    zfs set recordsize=128K "$PCT_DOMINO_VOL_BACKUP" > "$LOG_OUTPUT" 2>&1
-    zfs set dedup=on "$PCT_DOMINO_VOL_BACKUP" > "$LOG_OUTPUT" 2>&1
-    chown 101000:101000 "/$PCT_DOMINO_VOL_BACKUP" > "$LOG_OUTPUT" 2>&1
-  fi
+  mount_vol 1 "$VOL_LOCAL" "$PCT_DATA_POOL" "$PCT_STORAGE_DEFAULT" "/local"
 
-  # Ensure container 1000 is owner of the volume
-  chown 101000:101000 "/$PCT_DOMINO_VOL_LOCAL" > "$LOG_OUTPUT" 2>&1
+  [ -n "$PCT_NOTESDATA_SIZE_GB" ] && mount_vol 2 "$VOL_NOTESDATA" "$PCT_DATA_POOL" "$PCT_STORAGE_DEFAULT" "/local/notesdata"
 
-  if [ -z "$PCT_HOSTNAME" ]; then
-    print_info "Warning: Parameter not specified: PCT_HOSTNAME"
-  else
-    pct set $VMID -hostname "$PCT_HOSTNAME" > "$LOG_OUTPUT" 2>&1
-    print_info "Hostname -> $PCT_HOSTNAME"
-  fi
+  [ -n "$PCT_TRANSLOG_SIZE_GB" ] && mount_vol 3 "$VOL_TRANSLOG" "$PCT_TRANSLOG_POOL" "$PCT_STORAGE_TRANSLOG" "/local/translog"
 
-  pct set $VMID -mp0 $PCT_DOMINO_VOL_OPT,mp=/opt,ro=1 > "$LOG_OUTPUT" 2>&1
-  pct set $VMID -mp1 /$PCT_DOMINO_VOL_LOCAL,mp=/local > "$LOG_OUTPUT" 2>&1
+  [ -n "$PCT_DAOS_SIZE_GB" ] && mount_vol 4 "$VOL_DAOS" "$PCT_DAOS_POOL" "$PCT_STORAGE_DAOS" "/local/daos"
 
-  if [ -n "$PCT_NSF_SIZE_GB" ]; then
-    pct set $VMID -mp2 /$PCT_DOMINO_VOL_NSF,mp=/local/notesdata > "$LOG_OUTPUT" 2>&1
-  fi
+  [ -n "$PCT_BACKUP_SIZE_GB" ] && mount_vol 5 "$VOL_BACKUP" "$PCT_DATA_POOL" "$PCT_STORAGE_DEFAULT" "/local/backup"
 
-  if [ -n "$PCT_TRANSLOG_SIZE_GB" ]; then
-    pct set $VMID -mp3 /$PCT_DOMINO_VOL_TRANSLOG,mp=/local/translog > "$LOG_OUTPUT" 2>&1
-  fi
+  # Environment config
+  DOMINO_ENV_FILE="$PCT_NOTES_DATA_DIR/domino.env"
+  config_to_env_file "$PCT_CONFIG_FILE" "$DOMINO_ENV_FILE"
+  chown 101000:101000 "$DOMINO_ENV_FILE"
 
-  if [ -n "$PCT_DAOS_SIZE_GB" ]; then
-    pct set $VMID -mp4 /$PCT_DOMINO_VOL_DAOS,mp=/local/daos > "$LOG_OUTPUT" 2>&1
-  fi
-
-  if [ -n "$PCT_BACKUP_SIZE_GB" ]; then
-    pct set $VMID -mp5 /$PCT_DOMINO_VOL_BACKUP,mp=/local/backup > "$LOG_OUTPUT" 2>&1
-  fi
-
-  config_to_env_file "$PCT_CONFIG_FILE" "/$PCT_DOMINO_VOL_LOCAL/domino.env"
-  chown 101000:101000 "/$PCT_DOMINO_VOL_LOCAL/domino.env" > "$LOG_OUTPUT" 2>&1
-
+  # Networking
   if [ -n "$PCT_IP" ]; then
-    if [ -z "$PCT_NET0_TEMPLATE" ]; then
-      log_error_exit "IP address specified but no network template configured"
-    fi
-
+    [ -z "$PCT_NET0_TEMPLATE" ] && log_error_exit "Missing network template"
     PCT_NET0="${PCT_NET0_TEMPLATE//%PCT_IP%/$PCT_IP}"
   fi
 
-  if [ -n "$PCT_NET0" ]; then
-    header "Updating Network Configuration"
-    pct set "$VMID" -net0 "$PCT_NET0"
+  [ -n "$PCT_NET0" ] && pct set "$VMID" -net0 "$PCT_NET0"
 
-    if [ -n "$PCT_IP" ]; then
-      print_info "IP -> $PCT_IP"
-    fi
-    print_info "NET0 -> $PCT_NET0"
-  fi
-
+  # Start container
   pct start $VMID
   sleep 5
   get_pct_status
@@ -472,7 +469,6 @@ pct_create()
   pct exec $VMID -- ssh-keygen -A > "$LOG_OUTPUT" 2>&1
   sleep 5
   pct exec $VMID -- systemctl restart ssh > "$LOG_OUTPUT" 2>&1
-
 
   header "Adding SSH public key to 'notes' user"
 
@@ -503,12 +499,10 @@ pct_create()
   fi
 
   header "LXC $VMID created"
-
   print_info "Use the following command to open a bash in your new Domino LXC container"
   print_info
   print_info "pct enter $VMID"
   print_info
-
   print_status
 }
 
@@ -866,7 +860,7 @@ create_cfg_file()
   echo "PCT_TRANSLOG_POOL=rpool/data" >> "$1"
   echo  >> "$1"
   echo "PCT_TRANSLOG_SIZE_GB=5" >> "$1"
-  echo "PCT_NSF_SIZE_GB=100" >> "$1"
+  echo "PCT_NOTESDATA_SIZE_GB=100" >> "$1"
   echo "PCT_BACKUP_SIZE_GB=100" >> "$1"
   echo "PCT_DAOS_SIZE_GB=100" >> "$1"
   echo  >> "$1"
