@@ -4,7 +4,7 @@
 # Copyright Nash!Com, Daniel Nashed 2026  - APACHE 2.0 see LICENSE
 ############################################################################
 
-VERSION="0.9.6"
+VERSION="0.9.7"
 
 
 print_delim()
@@ -26,6 +26,7 @@ header()
   echo
 }
 
+
 print_info()
 {
   if [ -n "$OUTPUT_FORMAT" ]; then
@@ -35,12 +36,14 @@ print_info()
   echo "$@"
 }
 
+
 log()
 {
   echo
   echo "$1"
   echo
 }
+
 
 get_config()
 {
@@ -145,10 +148,10 @@ print_server_config()
   header "Configuration"
 
   format_size()   { local size="$1"; if [ "$size" -ge 1024 ]; then awk "BEGIN { printf \"%6.1f TB\", $size/1024 }"; else printf "%4d GB" "$size"; fi; }
-  print_cfg()     { printf "%-20s %-16s :  %s\n" "$1" "$2" "$3"; }
-  print_size()    { printf "%-20s %-16s :  %s\n" "$1" "$2" "$(format_size "$3")"; }
-  print_size_mb() { printf "%-20s %-16s :  %4d MB\n" "$1" "$2" "$3"; }
-  print_size_kb() { printf "%-20s %-16s :  %4d KB\n" "$1" "$2" "$3"; }
+  print_cfg()     { printf "%-22s %-16s :  %s\n" "$1" "$2" "$3"; }
+  print_size()    { printf "%-22s %-16s :  %s\n" "$1" "$2" "$(format_size "$3")"; }
+  print_size_mb() { printf "%-22s %-16s :  %4d MB\n" "$1" "$2" "$3"; }
+  print_size_kb() { printf "%-22s %-16s :  %4d KB\n" "$1" "$2" "$3"; }
 
   print_cfg "PCT_DATA_POOL" "Data pool" "$PCT_DATA_POOL"
   print_cfg "PCT_NET0" "Network config" "$PCT_NET0"
@@ -299,6 +302,7 @@ create_vol()
       zfs set recordsize=${PCT_RECORD_SIZE}K "$path"
 
       if [ "$role" = "local" ]; then
+        PCT_LOCAL_DIR="/$path"
         PCT_NOTES_DATA_DIR="/$path/notesdata"
       else
         PCT_NOTES_DATA_DIR="/$path"
@@ -446,7 +450,8 @@ pct_create()
   [ -n "$PCT_BACKUP_SIZE_GB" ] && mount_vol 5 "$VOL_BACKUP" "$PCT_DATA_POOL" "$PCT_STORAGE_DEFAULT" "/local/backup"
 
   # Environment config
-  DOMINO_ENV_FILE="$PCT_NOTES_DATA_DIR/domino.env"
+  DOMINO_ENV_FILE="$PCT_LOCAL_DIR/domino.env"
+
   config_to_env_file "$PCT_CONFIG_FILE" "$DOMINO_ENV_FILE"
   chown 101000:101000 "$DOMINO_ENV_FILE"
 
@@ -812,12 +817,14 @@ print_line()
   printf "%s\n" "  $1  "
 }
 
+
 press_any_key()
 {
   if [ "$PCT_MENU" = "1" ]; then
     read -n1 -p "Press any key to continue..." || cleanup
   fi
 }
+
 
 edit_file()
 {
@@ -835,6 +842,7 @@ edit_file()
 
   "$EDIT_COMMAND" "$1"
 }
+
 
 create_cfg_file()
 {
@@ -868,6 +876,7 @@ create_cfg_file()
   echo "PCT_SWAP_GB=0" >> "$1"
   echo "PCT_CPU=4" >> "$1"
 }
+
 
 cleanup_profiles_menu()
 {
