@@ -307,6 +307,7 @@ domsetup()
   get_variable DOMSETUP_IP "Address"
   get_variable DOMSETUP_HTTPS_PORT "Port"
   get_variable DOMSETUP_BEARER "Bearer"
+  get_variable DOMSETUP_TOKEN "Token"
 
   if [ -z "$DOMSETUP_BEARER" ]; then
     get_variable DOMSETUP_USER "User"
@@ -689,12 +690,36 @@ for a in "$@"; do
   esac
 done
 
+# Check stdin fir input
+if [ "$DOMSETUP_OTS_JSON_FILE" = "-" ]; then
+
+  if [ -t 0 ]; then
+    log_error "No stdin specified"
+    exit 1
+  fi
+
+  log_space "Info: Using JSON from stdin"
+
+  if [ -n "$DOMINO_AUTO_CONFIG_JSON_FILE" ]; then
+    DOMSETUP_OTS_JSON_FILE="$DOMINO_AUTO_CONFIG_JSON_FILE"
+  else
+    DOMSETUP_OTS_JSON_FILE="/tmp/domsetup.json"
+  fi
+
+  cat > "$DOMSETUP_OTS_JSON_FILE"
+
+  if [ ! -s "$DOMSETUP_OTS_JSON_FILE" ]; then
+    log_error "No data received on stdin"
+    exit 1
+  fi
+fi
+
 if [ -z "$DOMSETUP_OTS_JSON_FILE" ]; then
 
   if [ -n "$DOMINO_AUTO_CONFIG_JSON_FILE" ]; then
     DOMSETUP_OTS_JSON_FILE="$DOMINO_AUTO_CONFIG_JSON_FILE"
   else
-    DOMSETUP_OTS_JSON_FILE=/tmp/domsetup.json
+    DOMSETUP_OTS_JSON_FILE="/tmp/domsetup.json"
   fi
 fi
 
