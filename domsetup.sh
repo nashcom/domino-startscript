@@ -1,6 +1,7 @@
 #!/bin/bash
 SCRIPT_NAME=$(readlink -f $0)
 SCRIPT_DIR=$(dirname $SCRIPT_NAME)
+VERSION=1.0.1
 
 
 ###########################################################################
@@ -38,6 +39,14 @@ log_debug()
 
 
 log_space()
+{
+  log
+  log "$@"
+  log
+}
+
+
+log_error()
 {
   log
   log "$@"
@@ -105,25 +114,21 @@ show_cert()
     return 0
   fi
 
-  if [ ! -e "$1" ]; then
-    return 0
-  fi
-
-  openssl x509 -in "$1" -noout > /dev/null 2>&1
+  echo "$1" | openssl x509 -noout > /dev/null 2>&1
 
   if [ "$?" != "0" ]; then
     log_space "No certificates found"
     exit 1
   fi
 
-  local SAN=$(openssl x509 -in "$1" -noout -ext subjectAltName | grep "DNS:" | xargs )
-  local SUBJECT=$(openssl x509 -in "$1" -noout -subject | cut -d '=' -f 2- )
-  local ISSUER=$(openssl x509 -in "$1" -noout -issuer | cut -d '=' -f 2- )
-  local EXPIRATION=$(openssl x509 -in "$1" -noout -enddate | cut -d '=' -f 2- )
-  local FINGERPRINT=$(openssl x509 -in "$1" -noout -fingerprint | cut -d '=' -f 2- )
-  local SERIAL=$(openssl x509 -in "$1" -noout -serial | cut -d '=' -f 2- )
+  local SAN=$(echo "$1" | openssl x509 -noout -ext subjectAltName | grep "DNS:" | xargs )
+  local SUBJECT=$(echo "$1" | openssl x509 -noout -subject | cut -d '=' -f 2- )
+  local ISSUER=$(echo "$1" | openssl x509 -noout -issuer | cut -d '=' -f 2- )
+  local EXPIRATION=$(echo "$1" | openssl x509 -noout -enddate | cut -d '=' -f 2- )
+  local FINGERPRINT=$(echo "$1" | openssl x509 -noout -fingerprint | cut -d '=' -f 2- )
+  local SERIAL=$(echo "$1" | openssl x509 -noout -serial | cut -d '=' -f 2- )
 
-  header "Certificate [$1]"
+  header "Certificate $2"
   log "SAN         : $SAN"
   log "Subject     : $SUBJECT"
   log "Issuer      : $ISSUER"
@@ -136,6 +141,70 @@ show_cert()
 
 check_domsetup_ready()
 {
+  local TOKEN=
+  local RESPONSE=
+  local CLIENT_NONCE=
+  local CLIENT_TOKEN=
+  local SERVER_NONCE=
+  local SERVER_TOKEN=
+
+  if [ -n "$DOMSETUP_TOKEN" ] && [ "$DOMSETUP_SERVER_VERIFIED" != "1" ]; then
+
+    # First get the server nonce to ensure server can issue nonces
+    RESPONSE="$(curl -s $DOMSETUP_CURL_OPTIONS "https://$DOMSETUP_HOST:$DOMSETUP_HTTPS_PORT/nonce")"
+
+    # If it fails it is either we got no connection, no trusted cert
+    if [ -z "$RESPONSE" ]; then
+      CURL_STATUS=60
+      return 0
+    fi
+
+    case "$RESPONSE" in
+      nonce:*)
+        SERVER_NONCE=$(printf "%s\n" "$RESPONSE" | cut -d':' -f2- | xargs)
+        ;;
+
+      *)
+        log_error "Server verification failed - Invalid nonce returned: $RESPONSE"
+        CURL_STATUS=403
+        return 0
+        ;;
+
+    esac
+
+    if [ "$SERVER_NONCE" = "-" ]; then
+      log_error "Server has no token specified"
+      CURL_STATUS=403
+      return 0
+    fi
+
+    # Generate a client nonce and validate the server
+    CLIENT_NONCE=$(openssl rand -hex 16)
+    SERVER_TOKEN="$(curl -s $DOMSETUP_CURL_OPTIONS "https://$DOMSETUP_HOST:$DOMSETUP_HTTPS_PORT/validateserver/$CLIENT_NONCE")"
+
+    if [ -z "$SERVER_TOKEN" ]; then
+      log_error "Server verification failed - No Server Token returned"
+      CURL_STATUS=403
+      return 0
+    fi
+
+    # Validate server token
+    TOKEN=$(printf "%s" "$CLIENT_NONCE" | openssl dgst -sha256 -hmac "$DOMSETUP_TOKEN" | awk '{print $2}')
+
+    if [ "$SERVER_TOKEN" = "$TOKEN" ]; then
+      DOMSETUP_SERVER_VERIFIED=1
+      log_space "Info: Server token verified"
+    else
+      log_error "Server verification failed. Server Token: $SERVER_TOKEN"
+      CURL_STATUS=403
+      return 0
+    fi
+
+    # Finally generate a client token for client authorization
+    CLIENT_TOKEN=$(printf "%s" "$SERVER_NONCE" | openssl dgst -sha256 -hmac "$DOMSETUP_TOKEN" | awk '{print $2}')
+    CURL_AUTHORIZATION="Bearer $CLIENT_TOKEN"
+  fi
+
   if [ -z "$CURL_AUTHORIZATION" ]; then
     HTTP_RESPONSE=$(curl -s $DOMSETUP_CURL_OPTIONS "https://$DOMSETUP_HOST:$DOMSETUP_HTTPS_PORT/status" --show-error -w "\n%{http_code}\n" 2>&1)
   else
@@ -216,17 +285,17 @@ domsetup()
     DOMSETUP_CACERT_FILE=/tmp/domsetup_cacert.pem
   fi
 
-  echo
+  log
 
   get_variable DOMSETUP_OTS_JSON_FILE "OTS-JSON"
 
   if [ -z "$DOMSETUP_OTS_JSON_FILE" ]; then
-    log_space " No DOMSETUP_OTS_JSON_FILE defined"
+    log_error " No DOMSETUP_OTS_JSON_FILE defined"
     return 1
   fi
 
   if [ ! -e "$DOMSETUP_OTS_JSON_FILE" ]; then
-    log_space " No OTS JSON file not found: $DOMSETUP_OTS_JSON_FILE"
+    log_error " No OTS JSON file not found: $DOMSETUP_OTS_JSON_FILE"
     return 1
   fi
 
@@ -263,9 +332,13 @@ domsetup()
 
   if [ -n "$DOMSETUP_SERVER_ID" ]; then
     if [ ! -e "$DOMSETUP_SERVER_ID" ]; then
-      log_space "server.id not found: $DOMSETUP_SERVER_ID"
+      log_error "server.id not found: $DOMSETUP_SERVER_ID"
       return 1
     fi
+  fi
+
+  if [ -z "$DOMSETUP_TOKEN" ]; then
+    log_space "Warning: Skipping server verification (No DOMSETUP_TOKEN configured)"
   fi
 
   set_curl_option "--connect-timeout 5"
@@ -287,19 +360,87 @@ domsetup()
       OPENSSL_CONNECT="$DOMSETUP_IP:$DOMSETUP_HTTPS_PORT"
     fi
 
-    openssl s_client -servername $DOMSETUP_HOST --connect "$OPENSSL_CONNECT" -showcerts  </dev/null 2>/dev/null | awk '/BEGIN CERTIFICATE/{x=""} {x = x $0 ORS} /END CERTIFICATE/{last=x} END{print last}' > "$DOMSETUP_CACERT_FILE"
-    show_cert "$DOMSETUP_CACERT_FILE"
+    # Get full chain once
+    local CERT_CHAIN=$(openssl s_client -servername "$DOMSETUP_HOST" --connect "$OPENSSL_CONNECT" -showcerts </dev/null 2>/dev/null)
 
-    local QUESTION=
-    echo
-    read -p "Trust certificate : (yes/no) ? " QUESTION
-
-    if [ "$QUESTION" = "yes" ] || [ "$QUESTION" = "y" ]; then
-      set_curl_option "--cacert $DOMSETUP_CACERT_FILE"
-    else
-      log_space "Terminating setup"
-      remove_file "$DOMSETUP_CACERT_FILE"
+    if [ -z "$CERT_CHAIN" ]; then
+      log_error "Terminating setup because no certificate data was received from $DOMSETUP_HOST"
       return 2
+    fi
+
+    # Extract leaf (first cert)
+    local LEAF_CERT=$(echo "$CERT_CHAIN" | awk '/BEGIN CERTIFICATE/{c++} c==1{print} /END CERTIFICATE/ && c==1{exit}')
+
+    if [ -z "$LEAF_CERT" ]; then
+      log_error "Terminating setup because no leaf certificate was found"
+      return 2
+    fi
+
+    # Extract root (last cert) into variable
+    ROOT_CERT=$(echo "$CERT_CHAIN" | awk '/BEGIN CERTIFICATE/{x=""} {x = x $0 ORS} /END CERTIFICATE/{last=x} END{print last}')
+
+    if [ -z "$ROOT_CERT" ]; then
+      log_error "Terminating setup because no root certificate could be extracted"
+      return 2
+    fi
+
+    # Check hostname
+    echo "$LEAF_CERT" | openssl x509 -noout -checkhost "$DOMSETUP_HOST" >/dev/null 2>&1
+    if [ $? -ne 0 ]; then
+      log_error "Terminating setup because server certificate does not match hostname: $DOMSETUP_HOST"
+      show_cert "$LEAF_CERT" "Leaf"
+      return 2
+    fi
+
+    # Check expiration
+    echo "$LEAF_CERT" | openssl x509 -noout -checkend 0 >/dev/null 2>&1
+    if [ $? -ne 0 ]; then
+      log_error "Terminating setup because server certificate is expired for: $DOMSETUP_HOST"
+      show_cert "$LEAF_CERT" "Leaf"
+      return 2
+    fi
+
+
+    if [ -n "$DOMSETUP_TRUST_ISSUER" ]; then
+
+      local ISSUER=$(echo "$ROOT_CERT" | openssl x509 -noout -issuer | cut -d '=' -f 2- )
+
+      case "$ISSUER" in
+        *$DOMSETUP_TRUST_ISSUER*)
+          echo "$ROOT_CERT" > "$DOMSETUP_CACERT_FILE"
+          set_curl_option "--cacert $DOMSETUP_CACERT_FILE"
+          log_space "Trusting root: $ISSUER"
+          ;;
+
+        *)
+          log_error "Terminating setup because root certificate issuer does not match expected value: $DOMSETUP_TRUST_ISSUER"
+          show_cert "$ROOT_CERT" "Root"
+          return 2
+          ;;
+      esac
+
+    elif [ "$DOMSETUP_ALLOW_UNTRUSTED" = "1" ]; then
+
+      echo "$ROOT_CERT" > "$DOMSETUP_CACERT_FILE"
+      set_curl_option "--cacert $DOMSETUP_CACERT_FILE"
+      log_space "Trusting root"
+      show_cert "$LEAF_CERT" "Leaf"
+
+    else
+      show_cert "$ROOT_CERT" "Root"
+
+      local QUESTION=
+      log
+      read -p "Trust certificate : (yes/no) ? " QUESTION
+
+      if [ "$QUESTION" = "yes" ] || [ "$QUESTION" = "y" ]; then
+        # Write root to file
+        echo "$ROOT_CERT" > "$DOMSETUP_CACERT_FILE"
+        set_curl_option "--cacert $DOMSETUP_CACERT_FILE"
+      else
+        log_space "Terminating setup"
+        return 2
+      fi
     fi
 
     # Now try again
@@ -312,18 +453,19 @@ domsetup()
   log_debug "HTTP-Status: [$HTTP_STATUS]"
 
   if [ "$HTTP_STATUS" = "401" ]; then
-    log_space "Not authorized to use DomSetup"
+    log_error "Not authorized to use DomSetup"
     return 3
   fi
 
   if [ "$HTTP_STATUS" != "202" ]; then
     log
     if [ "$HTTP_STATUS" = "000" ]; then
-      log "Remote server is not ready for DomSetup"
+      log_space "Remote server is not ready for DomSetup"
     else
-      log "Remote server is not ready for DomSetup ($HTTP_STATUS)"
+      log_error "Remote server is not ready for DomSetup ($HTTP_STATUS)"
     fi
-    log
+
+    delim
     log "$HTTP_TEXT"
     log
     return 4
@@ -354,12 +496,12 @@ domsetup()
       if [ -n "$(echo "$HTTP_TEXT" | grep "$SERVER_ID_SHA256")" ]; then
         log_space "Server.ID upload successful (hash verified)."
       else
-        log_space "Server.ID upload failed: [$HTTP_STATUS] $HTTP_TEXT"
+        log_error "Server.ID upload failed: [$HTTP_STATUS] $HTTP_TEXT"
         return 5
       fi
 
     else
-      log_space "Server.ID upload failed: [$HTTP_STATUS] $HTTP_TEXT"
+      log_error "Server.ID upload failed: [$HTTP_STATUS] $HTTP_TEXT"
       return 5
     fi
   fi
@@ -387,15 +529,26 @@ domsetup()
     return 0
   fi
 
-  log_space "DomSetup failed: [$HTTP_STATUS] $HTTP_TEXT"
+  log_error "DomSetup failed: [$HTTP_STATUS] $HTTP_TEXT"
   return 5
 }
 
+print_banner()
+{
+  header "Domino Remote OTS Setup  $VERSION"
+}
 
 usage()
 {
 
-  header "Domino One-Touch JSON remote setup configuration script"
+  print_banner
+  echo "A Domino One-Touch JSON remote setup configuration script."
+  echo "It works hand in hand with domsetup, which is part of the container image."
+  echo "domsetup connects to the server over the specified port and posts a OTS file."
+  echo "In addition for additional server setups a server.id can be pushed."
+  echo "Note: OTS setup also supports embedded server.ids in Base64 format."
+  echo
+  echo
   echo "Usage: $(basename $SCRIPT_NAME) <ots.json> <server.id> [options]"
   echo
   echo "Command line parameters"
@@ -409,10 +562,13 @@ usage()
   echo "-bearer=<bearer token>       Bearer token for authentication"
   echo "-user=<username>             User name for authentication (default: admin)"
   echo "-password=<password>         Password for authentication"
+  echo "-token=<tokenvalue>          Token value for client authentication and server verification"
   echo "-prompt                      Interactively prompt for all parameters"
   echo "-promptempty                 Interactively prompt for empty parameters only"
   echo "-silent                      Do not prompt"
   echo "-reset                       Remove existing OTS file and restart configuration"
+  echo "-allow_untrusted             Allow untrusted connections"
+  echo "-trust_issuer=<name>         Allow connection even untrusted if the specified name is part of the root's subject"
   echo
   echo "Environment variables"
   echo "---------------------"
@@ -426,6 +582,9 @@ usage()
   echo "DOMSETUP_BEARER              Bearer token"
   echo "DOMSETUP_USER                User name"
   echo "DOMSETUP_PASSWORD            Password"
+  echo "DOMSETUP_TOKEN               Token value for client authentication and server verification"
+  echo "DOMSETUP_ALLOW_UNTRUSTED     Allow connections even untrusted and don't prompt"
+  echo "DOMSETUP_TRUST_ISSUER        Even untrusted, allow the following issuer"
   echo "DOMSETUP_NOPROMPT            0=always prompt, 1=only prompt if empty, 2=never prompt"
   echo "DOMSETUP_RESET_OTS=1         Remove existing OTS file and restart configuration"
   echo "DOMSETUP_KEEP_OTS_FILE       Keep OTS file after successful setup"
@@ -506,6 +665,18 @@ for a in "$@"; do
       DOMSETUP_RESET_OTS=1
       ;;
 
+    -allow_untrusted)
+      DOMSETUP_ALLOW_UNTRUSTED=1
+      ;;
+
+    -token=*)
+      DOMSETUP_TOKEN=$(echo "$a" | cut -f2 -d= -s)
+      ;;
+
+    -trust_issuer=*)
+      DOMSETUP_TRUST_ISSUER=$(echo "$a" | cut -f2 -d= -s)
+      ;;
+
     -h|/h|-?|/?|-help|--help|help|usage)
       usage
       exit 0
@@ -545,7 +716,7 @@ elif [ -n "$DOMSETUP_OTS_OPTIONS" ]; then
   echo "$SCRIPT_DIR/DominoOneTouchSetup.sh" $DOMSETUP_OTS_OPTIONS
 fi
 
-header "Domino Remote OTS Setup"
+print_banner
 
 domsetup
 exit "$?"
