@@ -322,6 +322,11 @@ domsetup()
     CURL_AUTHORIZATION="Bearer $DOMSETUP_BEARER"
   fi
 
+  if [ -n "$DOMSETUP_CACERT_FILE" ] && [ -e "$DOMSETUP_CACERT_FILE" ]; then
+    set_curl_option "--cacert $DOMSETUP_CACERT_FILE"
+    log_space "Info: Trusting $DOMSETUP_CACERT_FILE"
+  fi
+
   if [ -n "$DOMSETUP_IP" ]; then
     set_curl_option "--connect-to $DOMSETUP_HOST:$DOMSETUP_HTTPS_PORT:$DOMSETUP_IP:$DOMSETUP_HTTPS_PORT"
   fi
@@ -400,7 +405,6 @@ domsetup()
       show_cert "$LEAF_CERT" "Leaf"
       return 2
     fi
-
 
     if [ -n "$DOMSETUP_TRUST_ISSUER" ]; then
 
@@ -570,6 +574,7 @@ usage()
   echo "-reset                       Remove existing OTS file and restart configuration"
   echo "-allow_untrusted             Allow untrusted connections"
   echo "-trust_issuer=<name>         Allow connection even untrusted if the specified name is part of the root's subject"
+  echo "-cacerts=<filename>          Specify cacerts file (default: /tmp/domsetup_cacert.pem)"
   echo
   echo "Environment variables"
   echo "---------------------"
@@ -586,6 +591,7 @@ usage()
   echo "DOMSETUP_TOKEN               Token value for client authentication and server verification"
   echo "DOMSETUP_ALLOW_UNTRUSTED     Allow connections even untrusted and don't prompt"
   echo "DOMSETUP_TRUST_ISSUER        Even untrusted, allow the following issuer"
+  echo "DOMSETUP_CACERT_FILE         Trusted root file (default: /tmp/domsetup_cacert.pem)"
   echo "DOMSETUP_NOPROMPT            0=always prompt, 1=only prompt if empty, 2=never prompt"
   echo "DOMSETUP_RESET_OTS=1         Remove existing OTS file and restart configuration"
   echo "DOMSETUP_KEEP_OTS_FILE       Keep OTS file after successful setup"
@@ -676,6 +682,10 @@ for a in "$@"; do
 
     -trust_issuer=*)
       DOMSETUP_TRUST_ISSUER=$(echo "$a" | cut -f2 -d= -s)
+      ;;
+
+    -cacerts=*)
+      DOMSETUP_CACERT_FILE=$(echo "$a" | cut -f2 -d= -s)
       ;;
 
     -h|/h|-?|/?|-help|--help|help|usage)
