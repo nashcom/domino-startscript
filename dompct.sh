@@ -1,10 +1,13 @@
 #!/bin/bash
 ############################################################################
-# Proxmox LXC Container Management Script
+#
+# Proxmox LXC Container Management Script Version 0.9.8  08.05.2026
+#
 # Copyright Nash!Com, Daniel Nashed 2026  - APACHE 2.0 see LICENSE
+#
 ############################################################################
 
-VERSION="0.9.7"
+VERSION="0.9.8"
 
 
 print_delim()
@@ -65,6 +68,12 @@ get_config()
       hostname:*)
         PCT_CFG_HOSTNAME="${line#hostname: }"
         ;;
+
+      mp0:*)
+        PCT_CFG_MP0="${line#mp0: }"
+        PCT_CFG_MP0="${PCT_CFG_MP0%%,*}"
+        ;;
+
       tags:*)
         PCT_CFG_TAGS="${line#tags: }"
         PCT_CFG_TAGS="${PCT_CFG_TAGS//;/|}"
@@ -537,8 +546,23 @@ pct_update()
     return 0
   fi
 
+  if [ -z "$PCT_DOMINO_OPT_LATEST" ]; then
+    PCT_DOMINO_OPT_LATEST="/$PCT_DATA_POOL/domino-opt-latest"
+  fi
+
+  # Resolve /opt
+  [ -z "$PCT_DOMINO_VOL_OPT" ] && PCT_DOMINO_VOL_OPT=$(readlink -f "$PCT_DOMINO_OPT_LATEST")
+  [ -e "$PCT_DOMINO_VOL_OPT" ] || log_error_exit "Invalid /opt volume"
+
+  if [ "$PCT_CFG_MP0" = "$PCT_DOMINO_VOL_OPT" ]; then
+    log "No volume update needed: $PCT_CFG_MP0"
+    return 0
+  fi
+
+  log "Shutting down $VMID ..."
   pct shutdown $VMID
-  pct set $VMID -mp1 $PCT_DOMINO_VOL_OPT,mp=/opt,ro=1
+  log "Updating Domino: $PCT_CFG_MP0 -> $PCT_DOMINO_VOL_OPT"
+  pct set $VMID -mp0 $PCT_DOMINO_VOL_OPT,mp=/opt,ro=1
   pct start $VMID
 }
 
