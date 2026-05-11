@@ -7,7 +7,7 @@
 #
 ############################################################################
 
-VERSION="0.9.8"
+VERSION="0.9.9"
 
 
 print_delim()
@@ -80,6 +80,26 @@ get_config()
         ;;
     esac
   done < "$PCT_LXC_CFG_FILE"
+
+  local LABEL_FILE="$PCT_CFG_MP0/labels.txt"
+
+  while IFS= read -r line
+  do
+    case "$line" in
+      domino=*)
+        DOMINO_VERSION="${line#domino=}"
+        ;;
+
+      addons=*)
+        DOMINO_ADDONS="${line#addons=}"
+        ;;
+
+      custom_addons=*)
+        DOMINO_CUSTOM_ADDONS="${line#custom_addons=}"
+        ;;
+    esac
+  done < "$LABEL_FILE"
+
 }
 
 
@@ -1223,6 +1243,11 @@ menu()
     if [ -n "$LXC_STATUS" ]; then
       echo " Host    :  $PCT_CFG_HOSTNAME"
       echo " Tags    :  $PCT_CFG_TAGS"
+      echo " Version :  $DOMINO_VERSION"
+      echo " AddOns  :  $DOMINO_ADDONS"
+      if [ -n "$DOMINO_CUSTOM_ADDONS" ]; then
+        echo " Custom  :  $DOMINO_CUSTOM_ADDONS"
+      fi
       echo
       echo " VMID    :  $VMID"
       echo " Status  :  $LXC_STATUS"
@@ -1230,7 +1255,8 @@ menu()
       echo " VMID    :  $VMID"
       echo " Host    :  $PCT_HOSTNAME"
       echo " Profile :  $PCT_PROFILE_NAME"
-    fi
+     fi
+
     echo
 
     for i in "${!OPTIONS[@]}"
@@ -1667,4 +1693,5 @@ else
 fi
 
 exit 0
+
 
