@@ -17,58 +17,29 @@ One script provides both sides: it stands up the mirror service and is also the 
 uses to pull from it. There is nothing else to deploy -- `dom-git-mirror.sh` generates its own nginx config,
 docker-compose definition, and private CA at runtime.
 
-```text
-                            Internet
+```mermaid
+flowchart TB
+    GH[GitHub]
+    PROXY[Customer HTTP Proxy]
 
-                   +-----------------------+
-                   |        GitHub         |
-                   +-----------+-----------+
-                               |
-                               | HTTPS
-                               v
-                   +-----------------------+
-                   |  Customer HTTP Proxy  |
-                   +-----------+-----------+
-                               |
-                               | HTTPS / controlled outbound access
-                               v
+    subgraph NET[Customer Network]
+        subgraph MIRROR[dom-git-mirror host]
+            DGM[dom-git-mirror.sh mirror]
+            REPOS[Bare Git Mirrors]
+            NGINX[nginx HTTP / HTTPS]
 
-+-----------------------------------------------------------------------------------+
-|                                Customer Network                                   |
-|                                                                                   |
-|                    +---------------------------------------+                      |
-|                    |         dom-git-mirror host           |                      |
-|                    |                                       |                      |
-|                    |  +-------------------------------+    |                      |
-|                    |  |   dom-git-mirror.sh mirror    |    |                      |
-|                    |  +---------------+---------------+    |                      |
-|                    |                  |                    |                      |
-|                    |                  v                    |                      |
-|                    |  +-------------------------------+    |                      |
-|                    |  |       Bare Git Mirrors        |    |                      |
-|                    |  +---------------+---------------+    |                      |
-|                    |                  |                    |                      |
-|                    |                  v                    |                      |
-|                    |  +-------------------------------+    |                      |
-|                    |  |      nginx HTTP / HTTPS       |    |                      |
-|                    |  +---------------+---------------+    |                      |
-|                    +------------------|--------------------+                      |
-|                                       |                                           |
-|                                       | Internal HTTP / HTTPS                     |
-|                                       |                                           |
-|                    +------------------+------------------+                        |
-|                    |                                     |                        |
-|                    v                                     v                        |
-|      +-------------------------------+   +-------------------------------+        |
-|      |     Domino / Build Server     |   |     Domino / Build Server     |        |
-|      |                               |   |                               |        |
-|      |   dom-git-mirror.sh pull      |   |   dom-git-mirror.sh pull      |        |
-|      |               |               |   |               |               |        |
-|      |               v               |   |               v               |        |
-|      |        /local/github/         |   |        /local/github/         |        |
-|      +-------------------------------+   +-------------------------------+        |
-|                                                                                   |
-+-----------------------------------------------------------------------------------+
+            DGM --> REPOS --> NGINX
+        end
+
+        SERVER1[Domino / Build Server]
+        SERVER2[Domino / Build Server]
+
+        NGINX -->|Internal HTTP / HTTPS| SERVER1
+        NGINX -->|Internal HTTP / HTTPS| SERVER2
+    end
+
+    GH -->|HTTPS| PROXY
+    PROXY -->|HTTPS / controlled outbound access| DGM
 ```
 
 ## Requirements
