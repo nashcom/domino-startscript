@@ -1,0 +1,11 @@
+---
+---
+
+@import "{{ site.theme }}";
+
+.highlight pre,
+pre.highlight,
+pre code {
+  line-height: 1.2;
+}
+
