@@ -7,35 +7,69 @@
 
 set -e
 
-DGM_VERSION="0.9.11"
-
-# Per-user client state: cached CA cert + persisted config. Kept separate
-# from DGM_CLONE_DIR (the shared git checkouts) specifically because git
-# repo ownership needs to stay consistent across runs -- a plain config/
-# cert file has no such constraint, so it's fine per-user.
+DGM_VERSION="0.10.28"
 
 DGM_HOME="${DGM_HOME:-$HOME/.dom-git-mirror}"
 
+# Client-side cache of repo names, written by "pull --all"/"clone --all"
+# so a repo discovered that way is remembered for future plain "pull"
+# (see client_repo_names()) -- not sourced like DGM_CONFIG_FILE, just a
+# plain newline list read on demand.
+
+DGM_CLIENT_REPOS_FILE="$DGM_HOME/repos"
+
 # Any client-side setting can be persisted here (written by "ca" the first
-# time trust is established with a mirror). Sourced early, before any of
-# the defaults below, so precedence is: explicit env var > persisted
-# config > hardcoded default.
+# time trust is established with a mirror, or by "cfg"). The file itself is
+# plain "VAR=value" -- easy to hand-edit -- so instead of complicating the
+# file, an explicitly-exported env var is saved off, the file is sourced,
+# then the explicit value (if any) is restored -- that's what actually
+# guarantees precedence: explicit env var > persisted config > hardcoded
+# default, without the file needing "${VAR:-default}" syntax to achieve it.
 
 DGM_CONFIG_FILE="$DGM_HOME/config"
+_dgm_url_env="$DGM_URL"
+_dgm_clone_dir_env="$DGM_CLONE_DIR"
+
 if [ -f "$DGM_CONFIG_FILE" ]; then
   . "$DGM_CONFIG_FILE"
 fi
 
-# DGM_HOST is intentionally left unresolved here. Servers default to their
-# own "hostname -f" (see cmd_cert -- needs the real FQDN, not just
-# $HOSTNAME, since that's what goes into the cert's CN/SAN). Clients have
-# no sensible default at all -- their own hostname is never the mirror's
-# address -- so it must be set explicitly, or persisted via a prior "ca"
-# run (see require_dgm_host).
+[ -n "$_dgm_url_env" ]       && DGM_URL="$_dgm_url_env"
+[ -n "$_dgm_clone_dir_env" ] && DGM_CLONE_DIR="$_dgm_clone_dir_env"
+unset _dgm_url_env _dgm_clone_dir_env
+
+# DGM_HOST is intentionally left unresolved here. It's a server-only
+# variable now -- servers default it to their own "hostname -f" (see
+# cmd_cert -- needs the real FQDN, not just $HOSTNAME, since that's what
+# goes into the cert's CN/SAN). Clients don't use DGM_HOST at all; see
+# DGM_URL and require_dgm_url instead.
+
+DGM_BASE_DIR="${DGM_BASE_DIR:-/local/dom-git-mirror}"
+
+# Same idea as DGM_CONFIG_FILE above, but for server-side settings (written
+# by "env" the first time it's run). Sourced right after DGM_BASE_DIR
+# resolves -- needed to know where to look -- but before the defaults
+# below, using the same "preserve explicit env vars across sourcing"
+# approach so the .env file stays plain too.
+
+DGM_ENV_FILE="$DGM_BASE_DIR/.env"
+_dgm_host_env="$DGM_HOST"
+_dgm_http_port_env="$DGM_HTTP_PORT"
+_dgm_https_port_env="$DGM_HTTPS_PORT"
+_dgm_repos_dir_env="$DGM_REPOS_DIR"
+_dgm_ca_name_env="$DGM_CA_NAME"
+if [ -f "$DGM_ENV_FILE" ]; then
+  . "$DGM_ENV_FILE"
+fi
+[ -n "$_dgm_host_env" ]       && DGM_HOST="$_dgm_host_env"
+[ -n "$_dgm_http_port_env" ]  && DGM_HTTP_PORT="$_dgm_http_port_env"
+[ -n "$_dgm_https_port_env" ] && DGM_HTTPS_PORT="$_dgm_https_port_env"
+[ -n "$_dgm_repos_dir_env" ]  && DGM_REPOS_DIR="$_dgm_repos_dir_env"
+[ -n "$_dgm_ca_name_env" ]    && DGM_CA_NAME="$_dgm_ca_name_env"
+unset _dgm_host_env _dgm_http_port_env _dgm_https_port_env _dgm_repos_dir_env _dgm_ca_name_env
 
 DGM_HTTP_PORT="${DGM_HTTP_PORT:-8080}"
 DGM_HTTPS_PORT="${DGM_HTTPS_PORT:-8443}"
-DGM_BASE_DIR="${DGM_BASE_DIR:-/local/dom-git-mirror}"
 DGM_REPOS_DIR="${DGM_REPOS_DIR:-/local/git-mirror}"
 DGM_CLONE_DIR="${DGM_CLONE_DIR:-/local/github}"
 DGM_CA_NAME="${DGM_CA_NAME:-git-mirror-ca}"
@@ -54,18 +88,53 @@ case "$(uname -s 2>/dev/null)" in
   MINGW*|MSYS*) CN_PREFIX="//" ;;
 esac
 
-# Known repos: "name=url" per line, any git host -- nothing here is
-# GitHub-specific, "git clone --mirror" works the same against any of
-# them. Add a repo by adding a line; no other change needed anywhere.
-DGM_REPOS="domino-startscript=https://github.com/nashcom/domino-startscript.git
-domino-container=https://github.com/HCL-TECH-SOFTWARE/domino-container.git"
+# Known repos, one per line. Two forms:
+#   org/repo            -- GitHub shorthand, expands to
+#                           https://github.com/org/repo.git; local name is
+#                           just "repo" (the part after the last "/").
+#   name|url            -- explicit, for any other git host, or to use a
+#                           local name that doesn't match the upstream repo.
+#
+# Precedence: explicit DGM_REPOS env var > $DGM_REPOS_FILE (edited via
+# "repos") > this hardcoded default.
+
+DGM_REPOS_DEFAULT="nashcom/domino-startscript
+HCL-TECH-SOFTWARE/domino-container"
+
+DGM_REPOS_FILE="$DGM_BASE_DIR/repos.list"
+if [ -n "$DGM_REPOS" ]; then
+  : # explicit env var already set -- leave it alone
+elif [ -f "$DGM_REPOS_FILE" ]; then
+  DGM_REPOS="$(cat "$DGM_REPOS_FILE")"
+else
+  DGM_REPOS="$DGM_REPOS_DEFAULT"
+fi
+
+# $1 = one line from $DGM_REPOS -- returns the local name for that entry.
+_repo_line_name()
+{
+  case "$1" in
+    *"|"*) echo "${1%%|*}" ;;
+    *)     echo "${1##*/}" ;;
+  esac
+}
+
+# $1 = one line from $DGM_REPOS -- returns the clone URL for that entry.
+_repo_line_url()
+{
+  case "$1" in
+    *"|"*) echo "${1#*|}" ;;
+    *)     echo "https://github.com/$1.git" ;;
+  esac
+}
 
 repo_names()
 {
   local line
   while IFS= read -r line; do
     [ -z "$line" ] && continue
-    echo "${line%%=*}"
+    case "$line" in "#"*) continue ;; esac
+    _repo_line_name "$line"
   done <<< "$DGM_REPOS"
 }
 
@@ -74,23 +143,71 @@ repo_url()
   local name="$1" line
   while IFS= read -r line; do
     [ -z "$line" ] && continue
-    case "$line" in
-      "$name="*) echo "${line#*=}"; return 0 ;;
-    esac
+    case "$line" in "#"*) continue ;; esac
+    if [ "$(_repo_line_name "$line")" = "$name" ]; then
+      _repo_line_url "$line"
+      return 0
+    fi
   done <<< "$DGM_REPOS"
   echo ""
 }
 
 build_repo_url()
 {
-  local name="$1"
-  local scheme="https"
-  local port="$DGM_HTTPS_PORT"
-  if [ "$USE_HTTP" = "1" ]; then
-    scheme="http"
-    port="$DGM_HTTP_PORT"
+  echo "$DGM_URL/$1.git"
+}
+
+url_scheme()
+{
+  echo "${1%%://*}"
+}
+
+url_host()
+{
+  local rest="${1#*://}"
+  rest="${rest%%/*}"
+  echo "${rest%%:*}"
+}
+
+# Falls back to the scheme's standard port (443/80) if DGM_URL doesn't
+# specify one -- matches normal URL conventions (curl, browsers, git all
+# do this). A hand-configured URL for a deployment behind a reverse proxy
+# on standard ports shouldn't be forced to spell out ":443".
+
+url_port()
+{
+  local rest="${1#*://}"
+  rest="${rest%%/*}"
+  if [ "$rest" = "${rest%%:*}" ]; then
+    case "$(url_scheme "$1")" in
+      https) echo 443 ;;
+      http)  echo 80 ;;
+    esac
+  else
+    echo "${rest#*:}"
   fi
-  echo "$scheme://$DGM_HOST:$port/$name.git"
+}
+
+dgm_is_https()
+{
+  case "$DGM_URL" in
+    https://*) return 0 ;;
+    *)         return 1 ;;
+  esac
+}
+
+# Builds "scheme://host[:port]", omitting the port when it's already the
+# scheme's standard one (443/80) -- the mirror image of url_port()'s
+# fallback, so a standard-port deployment doesn't get an unnecessary
+# ":443" baked into every generated/guessed URL.
+
+build_url()
+{
+  local scheme="$1" host="$2" port="$3"
+  case "$scheme:$port" in
+    https:443|http:80) echo "$scheme://$host" ;;
+    *)                 echo "$scheme://$host:$port" ;;
+  esac
 }
 
 print_delim()
@@ -132,21 +249,33 @@ usage()
   echo "Run on the mirror host:"
   echo
   printf "  %-${cw}s%s\n" "cert" 'Generate/reuse the micro CA, refresh the TLS leaf cert'
-  printf "  %-${cw}s%s\n" "start" 'Bring the mirror container up (auto-runs "cert" first)'
+  printf "  %-${cw}s%s\n" "start [-ip]" 'Bring the mirror container up (auto-runs "cert" first)'
   printf "  %-${cw}s%s\n" "stop" "Bring the mirror container down"
   printf "  %-${cw}s%s\n" "restart" "Stop then start"
-  printf "  %-${cw}s%s\n" "status" "Show container status"
   printf "  %-${cw}s%s\n" "logs" "Show container logs"
   printf "  %-${cw}s%s\n" "mirror [name|url ...]" "Create/refresh git mirrors (default: all known repos)"
+  printf "  %-${cw}s%s\n" "env" "Open the persisted server config (\$DGM_BASE_DIR/.env) in \$EDITOR"
+  printf "  %-${cw}s%s\n" "repos" "Edit the known repos list (\$DGM_BASE_DIR/repos.list) in \$EDITOR"
+  echo
+
+  echo "\"start -ip\" prints the install line using this host's detected IP instead of its hostname --"
+  echo "the cert already covers both either way, this only matters for ad-hoc setups with no DNS record."
   echo
 
   echo "Run on any machine pulling from the mirror:"
   echo
   printf "  %-${cw}s%s\n" "ca" "Fetch/cache the mirror's CA cert (via openssl s_client)"
-  printf "  %-${cw}s%s\n" "pull [name|url ...] [--http]" "Clone (if missing) or update repo(s) (default: all known repos)"
-  printf "  %-${cw}s%s\n" "clone [name|url ...] [--dest DIR] [--http]" "Explicit clone, e.g. to a custom --dest"
+  printf "  %-${cw}s%s\n" "pull [name|url ...] [--all]" "Clone (if missing) or update repo(s) (default: your known repos)"
+  printf "  %-${cw}s%s\n" "clone [name|url ...] [--dest DIR] [--all]" "Explicit clone, e.g. to a custom --dest"
   printf "  %-${cw}s%s\n" "update" "Swap the local script for the mirror's current version"
   printf "  %-${cw}s%s\n" "check" "Compare local checkouts against the mirror's /status by commit hash"
+  printf "  %-${cw}s%s\n" "server" "List repos on the mirror, fetched live -- no local checkout needed"
+  printf "  %-${cw}s%s\n" "cfg" "Open the persisted client config (\$DGM_HOME/config) in \$EDITOR"
+  echo
+
+  echo "\"--all\" fetches the mirror's current repo list live and syncs everything found there --"
+  echo "deliberate opt-in, so a repo added server-side doesn't silently show up on a routine pull."
+  echo "It also remembers that list (\$DGM_HOME/repos), so it becomes your new default from then on."
   echo
 
   echo "Works either side:"
@@ -154,35 +283,154 @@ usage()
   printf "  %-${cw}s%s\n" "ls" "List known repos with branch, last commit time + hash"
   echo
 
-  echo "Known repos:"
-  echo
-  echo "  $(repo_names | tr '\n' ' ')"
-  echo
-
-  echo "Config:"
+  echo "Config (mirror host):"
   print_delim
   printf "  %-16s %-26s %-26s\n" "ENV VAR" "DEFAULT" "CURRENT"
-  printf "  %-16s %-26s %-26s\n" "DGM_HOST" "hostname -f (server only)" "${DGM_HOST:-<not set>}"
+  printf "  %-16s %-26s %-26s\n" "DGM_HOST" "<derived from hostname>" "${DGM_HOST:-<not set>}"
   printf "  %-16s %-26s %-26s\n" "DGM_HTTP_PORT" "8080" "$DGM_HTTP_PORT"
   printf "  %-16s %-26s %-26s\n" "DGM_HTTPS_PORT" "8443" "$DGM_HTTPS_PORT"
   printf "  %-16s %-26s %-26s\n" "DGM_BASE_DIR" "/local/dom-git-mirror" "$DGM_BASE_DIR"
   printf "  %-16s %-26s %-26s\n" "DGM_REPOS_DIR" "/local/git-mirror" "$DGM_REPOS_DIR"
-  printf "  %-16s %-26s %-26s\n" "DGM_CLONE_DIR" "/local/github" "$DGM_CLONE_DIR"
-  printf "  %-16s %-26s %-26s\n" "DGM_HOME" "\$HOME/.dom-git-mirror" "$DGM_HOME"
   printf "  %-16s %-26s %-26s\n" "DGM_CA_NAME" "git-mirror-ca" "$DGM_CA_NAME"
   echo
 
-  local display_host="${DGM_HOST:-$(timeout 2 hostname -f 2>/dev/null || echo "$HOSTNAME")}"
+  local url="$DGM_URL"
+  [ -z "$url" ] && { default_dgm_url || true; url="$DGM_URL"; }
+
+  echo "Config (client):"
+  print_delim
+  printf "  %-16s %-26s %-26s\n" "ENV VAR" "DEFAULT" "CURRENT"
+  printf "  %-16s %-26s %-26s\n" "DGM_URL" "<derived from hostname>" "${url:-<not set>}"
+  printf "  %-16s %-26s %-26s\n" "DGM_CLONE_DIR" "/local/github" "$DGM_CLONE_DIR"
+  printf "  %-16s %-26s %-26s\n" "DGM_HOME" "\$HOME/.dom-git-mirror" "$DGM_HOME"
+  echo
+
+  echo "Known repos:"
+  echo
+  local name
+  for name in $(repo_names); do
+    echo "  $name"
+  done
+  echo
+
   echo "Install on a new client:"
   echo
-  echo "  export DGM_HOST=$display_host; curl -fsSL \"http://\$DGM_HOST:$DGM_HTTP_PORT/setup.sh\" | bash -s -- pull"
+  echo "  export DGM_URL=$url; curl -fsSLk \"\$DGM_URL/setup.sh\" | bash -s -- pull"
   echo
 
   print_delim
   echo
 }
 
-# ---- server: cert ----
+# Convention-based fallback: "https://dom-git-mirror.<client's own
+# domain>:<https port>". Sets DGM_URL directly; leaves it untouched (and
+# returns 1) if no domain can be found, e.g. a bare hostname with no dot.
+
+default_dgm_url()
+{
+  local fqdn domain
+  fqdn="$(timeout 2 hostname -f 2>/dev/null || echo "$HOSTNAME")"
+  domain="${fqdn#*.}"
+
+  if [ "$domain" = "$fqdn" ]; then
+    return 1
+  fi
+
+  DGM_URL="$(build_url https "dom-git-mirror.$domain" "$DGM_HTTPS_PORT")"
+}
+
+# Fast, bounded-timeout reachability probe for a URL that might be wrong
+# -- deliberately doesn't go through curl_mirror/ensure_ca, since that
+# calls "openssl s_client" (fetch_ca_openssl), which has no timeout of
+# its own and could hang on an unreachable host, exactly what this
+# function exists to avoid. Verifies against the cached CA when one
+# already exists (the common case, zero extra risk); "-k" only applies
+# to the genuinely-first-contact case, where nothing is established yet
+# and this is a probe of an untrusted, possibly-wrong address anyway.
+
+check_dgm_url()
+{
+  if dgm_is_https && [ -f "$DGM_HOME/ca.crt" ]; then
+    curl -fsSL --cacert "$DGM_HOME/ca.crt" --connect-timeout 3 --max-time 5 "$1/version" </dev/null 2>/dev/null
+  else
+    curl -fsSLk --connect-timeout 3 --max-time 5 "$1/version" </dev/null 2>/dev/null
+  fi
+}
+
+# Fetches a path under $DGM_URL, always verified -- never "-k". For
+# https this calls ensure_ca itself (establishing trust via TOFU if this
+# is genuinely the first contact ever, otherwise just reusing the cached
+# CA for free) so every data fetch in the script is either verified or
+# genuinely can't be yet, never silently unverified. $2, if given, is a
+# file to save to ("-o"); otherwise the content goes to stdout.
+
+curl_mirror()
+{
+  local path="$1" out="$2" ca_file=""
+  dgm_is_https && ca_file="$(ensure_ca)"
+
+  if [ -n "$out" ]; then
+    if [ -n "$ca_file" ]; then
+      curl -fsSL --cacert "$ca_file" "$DGM_URL$path" -o "$out" </dev/null 2>/dev/null
+    else
+      curl -fsSL "$DGM_URL$path" -o "$out" </dev/null 2>/dev/null
+    fi
+  else
+    if [ -n "$ca_file" ]; then
+      curl -fsSL --cacert "$ca_file" "$DGM_URL$path" </dev/null 2>/dev/null
+    else
+      curl -fsSL "$DGM_URL$path" </dev/null 2>/dev/null
+    fi
+  fi
+}
+
+# Live repo names from the mirror's own /status (same data "check" already
+# fetches -- name is the first pipe-delimited field of each line). Used
+# only for "--all", a deliberate opt-in -- routine "pull"/"clone" with no
+# args keeps using the client's own known-repos table, so a repo added
+# server-side doesn't silently start showing up on every client's next
+# routine run.
+
+remote_repo_names()
+{
+  curl_mirror "/status" | awk -F'|' '{print $1}'
+}
+
+# The client's own known-repo names for "pull"/"clone" (no args), "ls",
+# and "check": the cache written by a previous "--all" if it exists,
+# otherwise whatever repo_names() currently resolves to (hardcoded
+# default, or the server's repos.list if this happens to also be a
+# mirror host).
+
+client_repo_names()
+{
+  if [ -f "$DGM_CLIENT_REPOS_FILE" ]; then
+    cat "$DGM_CLIENT_REPOS_FILE"
+  else
+    repo_names
+  fi
+}
+
+require_dgm_url()
+{
+  if [ -z "$DGM_URL" ]; then
+    default_dgm_url || true
+  fi
+
+  if [ -z "$DGM_URL" ]; then
+    local msg
+    msg="$(printf 'DGM_URL is not set and no default could be determined.\nThere is no default for a client -- your own hostname is never the mirror address, and "dom-git-mirror.<your domain>" could not be guessed either (no domain on this host).\nSet it explicitly, e.g.: DGM_URL=https://<mirror-host>:8443 %s %s\nOnce set, running "ca" will remember it in %s for future runs.' "$0" "$*" "$DGM_CONFIG_FILE")"
+    log_err "$msg"
+    exit 1
+  fi
+
+  if ! check_dgm_url "$DGM_URL" >/dev/null; then
+    local msg
+    msg="$(printf 'Could not reach %s/version.\nEither the mirror is down, or the URL is wrong.\nSet DGM_URL explicitly if needed, e.g.: DGM_URL=https://<mirror-host>:8443 %s %s' "$DGM_URL" "$0" "$*")"
+    log_err "$msg"
+    exit 1
+  fi
+}
 
 show_cert()
 {
@@ -194,7 +442,9 @@ show_cert()
     return 0
   fi
 
-  local SAN=$(openssl x509 -in "$1" -noout -ext subjectAltName 2>/dev/null | grep -E 'DNS:|IP Address:' | xargs )
+  local SAN_LINE=$(openssl x509 -in "$1" -noout -ext subjectAltName 2>/dev/null | grep -E 'DNS:|IP Address:' | xargs )
+  local SAN_DNS=$(echo "$SAN_LINE" | tr ',' '\n' | sed 's/^ *//' | grep '^DNS:' | sed 's/^DNS://' | paste -sd'~' - | sed 's/~/, /g')
+  local SAN_IP=$(echo "$SAN_LINE" | tr ',' '\n' | sed 's/^ *//' | grep '^IP Address:' | sed 's/^IP Address://' | paste -sd'~' - | sed 's/~/, /g')
   local SUBJECT=$(openssl x509 -in "$1" -noout -subject | cut -d '=' -f 2- )
   local ISSUER=$(openssl x509 -in "$1" -noout -issuer | cut -d '=' -f 2- )
   local EXPIRATION=$(openssl x509 -in "$1" -noout -enddate | cut -d '=' -f 2- )
@@ -202,7 +452,8 @@ show_cert()
   local SERIAL=$(openssl x509 -in "$1" -noout -serial | cut -d '=' -f 2- )
 
   echo
-  [ -n "$SAN" ] && printf "%-14s: %s\n" "SAN" "$SAN"
+  [ -n "$SAN_DNS" ] && printf "%-14s: %s\n" "SAN (DNS)" "$SAN_DNS"
+  [ -n "$SAN_IP" ] && printf "%-14s: %s\n" "SAN (IP)" "$SAN_IP"
   if [ "$SUBJECT" = "$ISSUER" ]; then
     printf "%-14s: %s\n" "CA Root" "$SUBJECT"
   else
@@ -216,6 +467,123 @@ show_cert()
   echo
 }
 
+cmd_cfg()
+{
+  mkdir -p "$DGM_HOME"
+
+  if [ ! -f "$DGM_CONFIG_FILE" ]; then
+    cat > "$DGM_CONFIG_FILE" <<EOF
+# dom-git-mirror client config -- uncomment a line to override its default.
+# "ca" also rewrites DGM_URL below once trust is established with a
+# mirror, so anything left commented here just falls back to that. An
+# explicitly-exported env var always wins over whatever is set here, for
+# a single run -- e.g. "DGM_URL=... ./dom-git-mirror.sh pull".
+#
+# DGM_URL has no default unless "https://dom-git-mirror.<your domain>:$DGM_HTTPS_PORT"
+# resolves -- see "help" for what was guessed, if anything. Must include
+# an explicit scheme and port, e.g. https://mirror.example.com:8443
+# DGM_URL=${DGM_URL}
+# DGM_CLONE_DIR=${DGM_CLONE_DIR}
+EOF
+  fi
+
+  header "Editing Config: $DGM_CONFIG_FILE"
+
+  local editor="${EDITOR:-vi}"
+  "$editor" "$DGM_CONFIG_FILE"
+}
+
+cmd_env()
+{
+  mkdir -p "$DGM_BASE_DIR"
+
+  if [ ! -f "$DGM_ENV_FILE" ]; then
+    local host="${DGM_HOST:-$(timeout 2 hostname -f 2>/dev/null || echo "$HOSTNAME")}"
+    cat > "$DGM_ENV_FILE" <<EOF
+# dom-git-mirror server config -- uncomment a line to override its default.
+# "cert" resolves DGM_HOST from "hostname -f" if not set here or via env
+# var. An explicitly-exported env var always wins over whatever is set
+# here, for a single run -- e.g. "DGM_HOST=... ./dom-git-mirror.sh cert".
+#
+# DGM_HOST=${host}
+# DGM_HTTP_PORT=${DGM_HTTP_PORT}
+# DGM_HTTPS_PORT=${DGM_HTTPS_PORT}
+# DGM_REPOS_DIR=${DGM_REPOS_DIR}
+# DGM_CA_NAME=${DGM_CA_NAME}
+EOF
+  fi
+
+  header "Editing Server Config: $DGM_ENV_FILE"
+
+  local editor="${EDITOR:-vi}"
+  "$editor" "$DGM_ENV_FILE"
+}
+
+cmd_repos()
+{
+  mkdir -p "$DGM_BASE_DIR"
+
+  if [ ! -f "$DGM_REPOS_FILE" ]; then
+    cat > "$DGM_REPOS_FILE" <<EOF
+# dom-git-mirror known repos, one per line -- edit this list to change
+# what "mirror" fetches and what "pull"/"clone" accept by name. Two forms:
+#
+# org/repo    -- GitHub shorthand, expands to https://github.com/org/repo.git;
+#                local name is just "repo" (the part after the last "/").
+# name|url    -- explicit, for any other git host, or a local name that
+#                doesn't match the upstream repo name.
+#
+$DGM_REPOS
+EOF
+  fi
+
+  header "Editing Known Repos: $DGM_REPOS_FILE"
+
+  local editor="${EDITOR:-vi}"
+  "$editor" "$DGM_REPOS_FILE"
+}
+
+# This host's default-route IP(s) (v4 and v6), so the cert validates
+# correctly if a client connects via the server's real LAN address
+# instead of a hostname -- deliberately not every IP on every interface,
+# just the one actually used for outbound traffic. Avoids picking up
+# noise like Docker's own bridge networks (e.g. 172.17.0.1), which
+# "hostname -I" would otherwise include. "ip route get" only consults the
+# routing table, no packets sent, so this works even with no real
+# internet route as long as a default route exists (the normal case even
+# on an air-gapped network). Falls back to nothing (not an error) if "ip"
+# isn't available or there's no default route at all -- the cert still
+# works via DGM_HOST/localhost/127.0.0.1, just without the extra IP.
+local_ips()
+{
+  ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) if ($i=="src") print $(i+1)}'
+  ip -6 route get 2606:4700:4700::1111 2>/dev/null | awk '{for(i=1;i<=NF;i++) if ($i=="src") print $(i+1)}'
+}
+
+# Populated by "cert -ip"/"start -ip" so the resolved address is a real,
+# reusable variable instead of an anonymous "local_ips | head -1"
+# scattered wherever it's needed. Empty until resolve_primary_ip runs.
+DGM_PRIMARY_IP=""
+
+resolve_primary_ip()
+{
+  DGM_PRIMARY_IP="$(local_ips | head -1)"
+}
+
+# True if $1 looks like an IP address (v4 dotted-quad, or contains a
+# colon for v6) rather than a hostname -- used to tag SAN entries with
+# the correct type ("IP:" vs "DNS:"), since a DNS-type SAN entry
+# containing an IP string wouldn't actually match a client connecting by
+# that IP.
+is_ip_address()
+{
+  case "$1" in
+    *:*)                        return 0 ;;
+    [0-9]*.[0-9]*.[0-9]*.[0-9]*) return 0 ;;
+    *)                          return 1 ;;
+  esac
+}
+
 cmd_cert()
 {
   header "Generating TLS Certificate"
@@ -224,6 +592,7 @@ cmd_cert()
   # cert's CN/SAN is actually reachable by clients outside this host's own
   # local view of itself. Bounded with timeout since "-f" does a DNS
   # lookup that can otherwise hang on a misconfigured resolver.
+
   DGM_HOST="${DGM_HOST:-$(timeout 2 hostname -f 2>/dev/null || echo "$HOSTNAME")}"
 
   local out_dir="$DGM_TLS_DIR"
@@ -254,10 +623,20 @@ cmd_cert()
   log "Generating leaf cert ($leaf_days days), signed by the CA -- $leaf_cert"
   openssl ecparam -name prime256v1 -genkey -noout -out "$leaf_key"
 
-  local san="DNS:$DGM_HOST"
+  local san
+  if is_ip_address "$DGM_HOST"; then
+    san="IP:$DGM_HOST"
+  else
+    san="DNS:$DGM_HOST"
+  fi
   [ "$DGM_HOST" != "localhost" ]  && san="$san,DNS:localhost"
-  [ "$DGM_HOST" != "127.0.0.1" ]  && san="$san,IP:127.0.0.1"
   [ "$DGM_HOST" != "::1" ]        && san="$san,IP:::1"
+  [ "$DGM_HOST" != "127.0.0.1" ]  && san="$san,IP:127.0.0.1"
+
+  local ip
+  for ip in $(local_ips); do
+    san="$san,IP:$ip"
+  done
 
   openssl req -new \
     -key "$leaf_key" \
@@ -291,6 +670,7 @@ cmd_cert()
 }
 
 # ---- server: config generation (docker-compose.yml + nginx.conf) ----
+
 # Generated into $DGM_BASE_DIR at runtime so this script is the only file
 # that needs to be deployed -- nothing else to ship or lose track of.
 
@@ -372,6 +752,9 @@ cmd_start()
 
   header "Starting Mirror Server"
 
+  local use_ip=0
+  [ "$1" = "-ip" ] && use_ip=1
+
   cmd_cert
   write_config_files
   mkdir -p "$DGM_REPOS_DIR"
@@ -382,24 +765,43 @@ cmd_start()
   fi
 
   # Serve the currently running copy at /setup.sh so clients have a single
-  # file to bootstrap from (e.g. "curl .../setup.sh | DGM_HOST=<host> bash
+  # file to bootstrap from (e.g. "curl .../setup.sh | DGM_URL=<url> bash
   # -s -- pull"). Intentionally left byte-identical to the source, not
   # baked with this host's identity.
+
   cp "$SCRIPT_DIR/dom-git-mirror.sh" "$DGM_REPOS_DIR/dom-git-mirror.sh"
 
   # Plain-text version endpoint, so anyone (or "update") can check what
   # the mirror is currently serving without downloading the whole script.
+
   echo "$DGM_VERSION" > "$DGM_REPOS_DIR/version"
 
   # Force a fresh container so nginx re-reads its config -- "up -d" on an
   # already-running container with the same compose service definition
   # won't pick up nginx.conf edits on its own, since nginx only loads it
   # once at process start.
+
   ( cd "$DGM_BASE_DIR" && docker compose down )
   ( cd "$DGM_BASE_DIR" && docker compose up -d )
   sleep 2
   echo
   ( cd "$DGM_BASE_DIR" && docker compose logs )
+  echo
+
+  local install_host="$DGM_HOST"
+  if [ "$use_ip" = "1" ]; then
+    resolve_primary_ip
+    if [ -n "$DGM_PRIMARY_IP" ]; then
+      install_host="$DGM_PRIMARY_IP"
+    else
+      log_err "Could not detect a primary IP (no default route?) -- using hostname instead."
+    fi
+  fi
+
+  header "Mirror Ready (v$DGM_VERSION)"
+  echo "Install on a new client:"
+  echo
+  echo "  export DGM_URL=$(build_url https "$install_host" "$DGM_HTTPS_PORT"); curl -fsSLk \"\$DGM_URL/setup.sh\" | bash -s -- pull"
   echo
 }
 
@@ -419,17 +821,11 @@ cmd_restart()
   cmd_start
 }
 
-cmd_status()
-{
-  require_docker
-
-  write_config_files
-  ( cd "$DGM_BASE_DIR" && docker compose ps )
-}
-
 cmd_logs()
 {
   require_docker
+
+  header "Container Logs"
 
   write_config_files
   ( cd "$DGM_BASE_DIR" && docker compose logs -f )
@@ -460,12 +856,13 @@ commit_hash()
 # Prints nothing if no repo in that location actually exists (caller
 # decides whether that means "skip this section" or "nothing at all").
 # Aligned columns -- for human eyes ("ls"), not for parsing.
+
 build_status_text()
 {
-  local base_dir="$1" suffix="$2"
+  local base_dir="$1" suffix="$2" names="$3"
   local name repo hash any=0
 
-  for name in $(repo_names); do
+  for name in $names; do
     repo="$base_dir/$name$suffix"
     if [ -d "$repo" ]; then
       if [ "$any" = "0" ]; then
@@ -482,6 +879,7 @@ build_status_text()
 # Same idea, but pipe-delimited (name|branch|last_commit|hash) -- for
 # parsing (served at /status), not for eyes. Full hash (not abbreviated) --
 # "check" needs an exact match, not just enough to look right in a table.
+
 build_status_pipe()
 {
   local base_dir="$1" suffix="$2"
@@ -497,11 +895,11 @@ build_status_pipe()
 
 cmd_ls()
 {
-  header "Known Repositories"
+  header "Known Repositories (v$DGM_VERSION)"
 
   local text found=0
 
-  text="$(build_status_text "$DGM_REPOS_DIR" ".git")"
+  text="$(build_status_text "$DGM_REPOS_DIR" ".git" "$(repo_names)")"
   if [ -n "$text" ]; then
     echo "Server mirrors ($DGM_REPOS_DIR):"
     echo
@@ -510,7 +908,7 @@ cmd_ls()
     found=1
   fi
 
-  text="$(build_status_text "$DGM_CLONE_DIR" "")"
+  text="$(build_status_text "$DGM_CLONE_DIR" "" "$(client_repo_names)")"
   if [ -n "$text" ]; then
     echo "Local checkouts ($DGM_CLONE_DIR):"
     echo
@@ -524,29 +922,30 @@ cmd_ls()
   fi
 }
 
-# Compares local checkouts against the mirror's own /status (fetched live,
-# plain HTTP -- it's a static file, no CA needed) by commit hash -- exact
-# match or not, no timestamp normalization involved. Only makes sense
-# client-side: the server has no visibility into what any given client has
-# checked out, so this can't live in "ls"/"status" on that side. Shows both
-# date and hash per side, so the SYNCED verdict is visually backed by the
-# actual values it's computed from, not just asserted.
+# Compares local checkouts against the mirror's own /status (fetched live
+# and verified against the trusted CA) by commit hash -- exact match or
+# not, no timestamp normalization involved. Only makes sense client-side:
+# the server has no visibility into what any given client has checked
+# out, so this can't live in "ls" on that side. Shows both date and hash
+# per side, so the SYNCED verdict is visually backed by the actual values
+# it's computed from, not just asserted.
+
 cmd_check()
 {
-  require_dgm_host check
+  require_dgm_url check
 
-  header "Checking Local Repos Against Mirror"
+  header "Checking Local Repos Against Mirror (v$DGM_VERSION)"
 
   local remote
-  remote="$(curl -fsSL "http://$DGM_HOST:$DGM_HTTP_PORT/status" </dev/null 2>/dev/null)"
+  remote="$(curl_mirror "/status")"
 
   if [ -z "$remote" ]; then
-    log_err "Could not fetch status from $DGM_HOST:$DGM_HTTP_PORT/status"
+    log_err "Could not fetch status from $DGM_URL/status"
     exit 1
   fi
 
   local name any=0
-  for name in $(repo_names); do
+  for name in $(client_repo_names); do
     local dir="$DGM_CLONE_DIR/$name"
     if [ -d "$dir" ]; then
       if [ "$any" = "0" ]; then
@@ -575,6 +974,35 @@ cmd_check()
   if [ "$any" = "0" ]; then
     log "No local checkouts found under $DGM_CLONE_DIR -- nothing to check."
   fi
+
+  echo
+}
+
+# Shows what the mirror actually has, fetched live from its own /status --
+# no local disk access needed, so this works from any client, not just on
+# the mirror host itself (where "ls" already shows the same thing locally).
+
+cmd_server()
+{
+  require_dgm_url server
+
+  header "Repositories on the Mirror (v$DGM_VERSION)"
+
+  local remote
+  remote="$(curl_mirror "/status")"
+
+  if [ -z "$remote" ]; then
+    log_err "Could not fetch status from $DGM_URL/status"
+    exit 1
+  fi
+
+  printf "%-24s%-14s%-27s%s\n" "NAME" "BRANCH" "LAST COMMIT" "HASH"
+  echo
+  local name branch last_commit hash
+  while IFS='|' read -r name branch last_commit hash; do
+    [ -z "$name" ] && continue
+    printf "%-24s%-14s%-27s%s\n" "$name" "$branch" "$last_commit" "${hash:0:10}"
+  done <<< "$remote"
 
   echo
 }
@@ -634,6 +1062,7 @@ cmd_mirror()
 # Regenerates the full inventory (all known repos, not just whichever
 # subset was just mirrored) so it's always complete and current -- served
 # at /status.json the same way "version" is served at /version.
+
 build_status_json()
 {
   local base_dir="$1" suffix="$2"
@@ -679,21 +1108,13 @@ This command manages the nginx mirror container and only makes sense on the mirr
 
 # ---- client: ca ----
 
-require_dgm_host()
-{
-  if [ -z "$DGM_HOST" ]; then
-    local msg
-    msg="$(printf 'DGM_HOST is not set.\nThere is no default for a client -- your own hostname is never the mirror address.\nSet it explicitly, e.g.: DGM_HOST=<mirror-host> %s %s\nOnce set, running "ca" will remember it in %s for future runs.' "$0" "$*" "$DGM_CONFIG_FILE")"
-    log_err "$msg"
-    exit 1
-  fi
-}
-
 fetch_ca_openssl()
 {
-  local tmp
+  local host port tmp
+  host="$(url_host "$DGM_URL")"
+  port="$(url_port "$DGM_URL")"
   tmp="$(mktemp)"
-  if ! openssl s_client -connect "$DGM_HOST:$DGM_HTTPS_PORT" -servername "$DGM_HOST" -showcerts </dev/null 2>/dev/null > "$tmp"; then
+  if ! openssl s_client -connect "$host:$port" -servername "$host" -showcerts </dev/null 2>/dev/null > "$tmp"; then
     rm -f "$tmp"
     return 1
   fi
@@ -731,11 +1152,8 @@ write_client_config()
 {
   mkdir -p "$DGM_HOME"
   {
-    echo "DGM_HOST=$DGM_HOST"
-    echo "DGM_HTTP_PORT=$DGM_HTTP_PORT"
-    echo "DGM_HTTPS_PORT=$DGM_HTTPS_PORT"
+    echo "DGM_URL=$DGM_URL"
     echo "DGM_CLONE_DIR=$DGM_CLONE_DIR"
-    echo "DGM_CA_NAME=$DGM_CA_NAME"
   } > "$DGM_CONFIG_FILE"
   log "Saved current config to $DGM_CONFIG_FILE"
 }
@@ -753,6 +1171,7 @@ write_client_config()
 # command (may hit any of the three cases above), or automatically from
 # ensure_ca() when NO CA is cached yet (the first case only) -- so a
 # "pull"/"clone" can never silently walk into a mismatch on its own.
+
 cmd_ca()
 {
   local auto_yes=0
@@ -760,7 +1179,13 @@ cmd_ca()
     -y|--yes) auto_yes=1 ;;
   esac
 
-  require_dgm_host ca
+  require_dgm_url ca
+
+  if ! dgm_is_https; then
+    header "CA Trust"
+    log "DGM_URL is http:// -- no CA needed for this mode."
+    return 0
+  fi
 
   header "Fetching Mirror CA Certificate"
 
@@ -771,14 +1196,16 @@ cmd_ca()
   cert="$(fetch_ca_openssl || true)"
 
   if [ -z "$cert" ]; then
-    log_err "Failed to retrieve CA certificate from $DGM_HOST:$DGM_HTTPS_PORT via openssl"
+    log_err "Failed to retrieve CA certificate from $DGM_URL via openssl"
     exit 1
   fi
 
   if [ -f "$out" ]; then
+
     # show_cert reads its argument multiple times (SAN, subject, issuer,
     # etc. are each a separate "openssl x509 -in ..." call), so comparing
     # against the newly presented cert needs a real file, not a pipe/fd.
+
     local presented_file existing_fp new_fp
     presented_file="$(mktemp "${TMPDIR:-/tmp}/dom-git-mirror-ca.XXXXXX")"
     echo "$cert" > "$presented_file"
@@ -787,7 +1214,7 @@ cmd_ca()
     new_fp="$(openssl x509 -noout -fingerprint -in "$presented_file" 2>/dev/null)"
 
     if [ "$existing_fp" = "$new_fp" ]; then
-      log "CA presented by $DGM_HOST:$DGM_HTTPS_PORT matches the already-cached CA -- no change."
+      log "CA presented by $DGM_URL matches the already-cached CA -- no change."
       header "Cached CA Certificate (unchanged)"
       show_cert "$out"
       rm -f "$presented_file"
@@ -795,7 +1222,7 @@ cmd_ca()
     fi
 
     local msg
-    msg="$(printf 'The CA presented by %s:%s does NOT match the cached CA at %s.\nThis means either the CA was legitimately rotated on the mirror, or this connection is being intercepted.\nCached CA fingerprint:\n  %s' "$DGM_HOST" "$DGM_HTTPS_PORT" "$out" "$existing_fp")"
+    msg="$(printf 'The CA presented by %s does NOT match the cached CA at %s.\nThis means either the CA was legitimately rotated on the mirror, or this connection is being intercepted.\nCached CA fingerprint:\n  %s' "$DGM_URL" "$out" "$existing_fp")"
     log_err "$msg"
     header "Presented CA Certificate (MISMATCH -- not yet trusted)" >&2
     show_cert "$presented_file" >&2
@@ -823,12 +1250,14 @@ cmd_ca()
       exit 1
     fi
   else
+
     # First trust: TOFU. Save it directly, show it, then give anyone
     # watching a brief window to Ctrl+C before moving on -- there's
     # usually no TTY to prompt on ("curl | bash -s -- pull"), but a timed
     # pause still gives a real chance to notice and react. This is a
     # friendly heads-up, not a hard transactional gate (that's what the
     # mismatch case above is for) -- skipped entirely with -y.
+
     if ! echo "$cert" > "$out"; then
       log_err "Failed to save CA certificate to $out"
       exit 1
@@ -850,16 +1279,23 @@ ensure_ca()
 {
   local ca_file="$DGM_HOME/ca.crt"
   if [ ! -f "$ca_file" ]; then
+
     # This only ever hits cmd_ca's first-trust (TOFU) path -- there's no
     # existing CA yet for it to compare against, so it just shows it and
     # pauses briefly (Ctrl+C to abort) rather than blocking on a typed
     # prompt, since there's usually no TTY here to prompt on anyway.
+
     cmd_ca >&2
-  elif [ ! -f "$DGM_CONFIG_FILE" ]; then
-    # CA is already trusted -- just regenerate the persisted config,
-    # never re-fetch/re-check the CA itself as a side effect of this.
-    write_client_config >&2
   fi
+
+  # Deliberately does NOT auto-regenerate a missing config file just
+  # because the CA happens to be cached: the same trusted CA can be
+  # legitimately reached via more than one address (real hostname,
+  # 127.0.0.1, localhost -- all in the cert's SAN), so silently persisting
+  # "whatever DGM_URL happened to be this run" would overwrite a real
+  # saved mirror address with a one-off/loopback value. Config is only
+  # ever written by a deliberate "ca" run or "cfg".
+
   echo "$ca_file"
 }
 
@@ -873,12 +1309,17 @@ ensure_local_script()
   fi
 
   mkdir -p "$DGM_CLONE_DIR"
-  # </dev/null: don't let curl inherit our stdin. When this whole script is
-  # itself running via "curl ... | bash -s -- pull", stdin is the *same
-  # pipe* bash is still reading the rest of this script from -- without
-  # this, curl can consume bytes meant for later commands and silently
-  # truncate execution right here.
-  if curl -fsSL "http://$DGM_HOST:$DGM_HTTP_PORT/setup.sh" -o "$dest" </dev/null 2>/dev/null; then
+
+  # curl_mirror establishes/verifies the CA itself (see its own comment)
+  # -- by the time this fetch happens, trust is already real, not "-k".
+  # It also already redirects stdin from /dev/null (needed here for the
+  # same reason it always is: when this whole script is itself running
+  # via "curl ... | bash -s -- pull", stdin is the *same pipe* bash is
+  # still reading the rest of this script from -- without that, curl can
+  # consume bytes meant for later commands and silently truncate
+  # execution right here).
+
+  if curl_mirror "/setup.sh" "$dest"; then
     chmod 755 "$dest"
     log "Saved a local copy of dom-git-mirror.sh to $dest"
   else
@@ -890,9 +1331,10 @@ ensure_local_script()
 # serving: download to a temp file first, then move it over the target --
 # "mv" onto an existing file is an atomic rename, so there's never a
 # moment where $dest is missing or half-written.
+
 cmd_update()
 {
-  require_dgm_host update
+  require_dgm_url update
 
   header "Updating dom-git-mirror.sh"
 
@@ -900,8 +1342,8 @@ cmd_update()
   local tmp
   tmp="$(mktemp "${TMPDIR:-/tmp}/dom-git-mirror-update.XXXXXX")"
 
-  if ! curl -fsSL "http://$DGM_HOST:$DGM_HTTP_PORT/setup.sh" -o "$tmp" </dev/null 2>/dev/null; then
-    log_err "Failed to download the latest script from $DGM_HOST:$DGM_HTTP_PORT"
+  if ! curl_mirror "/setup.sh" "$tmp"; then
+    log_err "Failed to download the latest script from $DGM_URL"
     rm -f "$tmp"
     exit 1
   fi
@@ -941,7 +1383,8 @@ clone_one()
   # </dev/null: same reasoning as ensure_local_script's curl call -- don't
   # let git inherit stdin that may still be feeding the rest of this
   # script when run via "curl ... | bash -s -- pull".
-  if [ "$use_ca" = "1" ] && [ "$USE_HTTP" != "1" ]; then
+
+  if [ "$use_ca" = "1" ]; then
     local ca_file
     ca_file="$(ensure_ca)"
     GIT_SSL_CAINFO="$ca_file" git clone --progress "$url" "$dest" </dev/null
@@ -954,26 +1397,29 @@ clone_one()
 
 cmd_clone()
 {
-  require_dgm_host clone
+  require_dgm_url clone
 
-  USE_HTTP=0
-  local dest="" args=()
+  local dest="" all=0 args=()
   while [ "$#" -gt 0 ]; do
     case "$1" in
-      --http) USE_HTTP=1 ;;
       --dest) dest="$2"; shift ;;
+      --all) all=1 ;;
       *) args+=("$1") ;;
     esac
     shift
   done
 
+  local use_ca_default=0
+  dgm_is_https && use_ca_default=1
+
   # Establish CA trust once, up front -- before any cloning starts -- so
   # it doesn't appear awkwardly nested inside the first repo's "Cloning:"
-  # block. Only if we'll actually need it: --http never does, and a
+  # block. Only if we'll actually need it: http:// never does, and a
   # clone of only raw URLs (no known repo names) doesn't either.
-  if [ "$USE_HTTP" != "1" ]; then
+
+  if dgm_is_https; then
     local needs_ca=0
-    if [ "${#args[@]}" -eq 0 ]; then
+    if [ "$all" = "1" ] || [ "${#args[@]}" -eq 0 ]; then
       needs_ca=1
     else
       local a
@@ -984,17 +1430,32 @@ cmd_clone()
     [ "$needs_ca" = "1" ] && ensure_ca >/dev/null
   fi
 
-  if [ "${#args[@]}" -eq 0 ]; then
+  if [ "$all" = "1" ]; then
+    local names
+    names="$(remote_repo_names)"
+    if [ -z "$names" ]; then
+      log_err "Could not fetch repo list from $DGM_URL/status"
+      exit 1
+    fi
+    mkdir -p "$DGM_HOME"
+    echo "$names" > "$DGM_CLIENT_REPOS_FILE"
     local name
-    for name in $(repo_names); do
-      clone_one "$(build_repo_url "$name")" "$dest" 1
+    for name in $names; do
+      clone_one "$(build_repo_url "$name")" "$dest" "$use_ca_default"
     done
+
+  elif [ "${#args[@]}" -eq 0 ]; then
+    local name
+    for name in $(client_repo_names); do
+      clone_one "$(build_repo_url "$name")" "$dest" "$use_ca_default"
+    done
+
   else
     local arg url use_ca
     for arg in "${args[@]}"; do
       if [ -n "$(repo_url "$arg")" ]; then
         url="$(build_repo_url "$arg")"
-        use_ca=1
+        use_ca="$use_ca_default"
       else
         url="$arg"
         use_ca=0
@@ -1012,7 +1473,9 @@ pull_one()
   local dir="$DGM_CLONE_DIR/$name"
 
   if [ ! -d "$dir" ]; then
-    clone_one "$(build_repo_url "$name")" "$dir" 1
+    local use_ca_default=0
+    dgm_is_https && use_ca_default=1
+    clone_one "$(build_repo_url "$name")" "$dir" "$use_ca_default"
     return
   fi
 
@@ -1021,7 +1484,7 @@ pull_one()
 
   header "Pulling: $dir"
 
-  if [ "$USE_HTTP" != "1" ]; then
+  if dgm_is_https; then
     local ca_file
     ca_file="$(ensure_ca)"
     ( cd "$dir" && GIT_SSL_CAINFO="$ca_file" git pull --progress "$url" </dev/null )
@@ -1040,15 +1503,15 @@ cmd_pull()
     header "Installing dom-git-mirror"
   fi
 
-  require_dgm_host pull
+  require_dgm_url pull
 
   ensure_local_script
 
-  USE_HTTP=0
+  local all=0
   local args=()
   while [ "$#" -gt 0 ]; do
     case "$1" in
-      --http) USE_HTTP=1 ;;
+      --all) all=1 ;;
       *) args+=("$1") ;;
     esac
     shift
@@ -1057,11 +1520,25 @@ cmd_pull()
   # Establish CA trust once, up front -- before any pulling/cloning
   # starts -- so it doesn't appear awkwardly nested inside the first
   # repo's own header.
-  [ "$USE_HTTP" != "1" ] && ensure_ca >/dev/null
 
-  if [ "${#args[@]}" -eq 0 ]; then
+  dgm_is_https && ensure_ca >/dev/null
+
+  if [ "$all" = "1" ]; then
+    local names
+    names="$(remote_repo_names)"
+    if [ -z "$names" ]; then
+      log_err "Could not fetch repo list from $DGM_URL/status"
+      exit 1
+    fi
+    mkdir -p "$DGM_HOME"
+    echo "$names" > "$DGM_CLIENT_REPOS_FILE"
     local name
-    for name in $(repo_names); do
+    for name in $names; do
+      pull_one "$name"
+    done
+  elif [ "${#args[@]}" -eq 0 ]; then
+    local name
+    for name in $(client_repo_names); do
       pull_one "$name"
     done
   else
@@ -1086,7 +1563,6 @@ main()
     start)   cmd_start "$@" ;;
     stop)    cmd_stop "$@" ;;
     restart) cmd_restart "$@" ;;
-    status)  cmd_status "$@" ;;
     logs)    cmd_logs "$@" ;;
     mirror)  cmd_mirror "$@" ;;
     ca)      cmd_ca "$@" ;;
@@ -1095,6 +1571,10 @@ main()
     update)  cmd_update "$@" ;;
     ls)      cmd_ls "$@" ;;
     check)   cmd_check "$@" ;;
+    server)  cmd_server "$@" ;;
+    cfg)     cmd_cfg "$@" ;;
+    env)     cmd_env "$@" ;;
+    repos)   cmd_repos "$@" ;;
     version|--version|-v) echo "dom-git-mirror.sh v$DGM_VERSION" ;;
     help|--help|-h|"") usage ;;
     *)
@@ -1106,4 +1586,3 @@ main()
 }
 
 main "$@"
-
