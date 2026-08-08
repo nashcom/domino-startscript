@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Fail2Ban for Domino 
-nav_order: 10
+nav_order: 11
 description: "Fail2Ban for Domino"
 has_children: false
 ---
