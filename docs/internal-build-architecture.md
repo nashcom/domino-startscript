@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Containers Without Internet Access
+title: Containers Without Internet
 nav_order: 10
 description: "Corporate architecture for building and running containers without direct Internet access"
 has_children: false
