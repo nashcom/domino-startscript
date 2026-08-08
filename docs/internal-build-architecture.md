@@ -384,6 +384,12 @@ The download server does not replace the customer's HCL software entitlement.
 It provides a controlled mechanism for transferring software the organization is entitled to use into the internal build environment.
 The customer still obtains and uses Domino according to their HCL entitlement — the internal download infrastructure only changes how the installation media reaches the build environment.
 
+### Domino Download Server
+
+For HCL Domino specifically, [Domino Download Server](https://github.com/nashcom/domino-startscript/tree/main/domdownload-server) (`domdownload`) is a self-contained NashCom container that implements this role directly.
+It serves plain filename-based downloads over HTTPS, and also exposes MyHCLSoftware-compatible endpoints (`product.jwt`, `software.jwt`, token exchange, file listing) so Domino AutoUpdate can be pointed at the internal server using the usual `api.hcltechsw.com` / `ds-infolib.hcltechsw.com` DNS names, with no changes required on the Domino side.
+It ships its own MicroCA if no corporate certificate is supplied, and needs nothing beyond a data mount to run.
+
 ## Three Container Deployment Cases
 
 It is useful to distinguish three fundamentally different situations.
@@ -829,4 +835,5 @@ For HCL Domino specifically, that means Git, Harbor, the Ubuntu mirror and MHS d
 * [MyHCL Software (MHS)](https://my.hcltechsw.com/) — HCL's licensed software download portal
 * [Domino Start Script](https://nashcom.github.io/domino-startscript/) — documentation ([repository](https://github.com/nashcom/domino-startscript/))
 * [Domino Container Project](https://opensource.hcltechsw.com/domino-container/) — documentation ([repository](https://github.com/HCL-TECH-SOFTWARE/domino-container))
+* [Domino Download Server](https://github.com/nashcom/domino-startscript/tree/main/domdownload-server) (`domdownload`) — self-contained internal download server with MyHCLSoftware/AutoUpdate-compatible endpoints
 
