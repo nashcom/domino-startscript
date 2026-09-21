@@ -82,9 +82,9 @@ yum -y install sysstat bind-utils net-tools
 yum -y install jq git ncdu
 ```
 
-## Create notes appliction user
+## Create notes application user
 
-Domino installation requires the **root** user and all Dominio binaries are owned by the root to ensure the integrity of the Domino software.  
+Domino installation requires the **root** user and all Domino binaries are owned by the root to ensure the integrity of the Domino software.  
 At run-time Domino uses an unprivileged user, which owns all data files.  
 
 On Linux each other has a primary group it belongs to. So you should create a corresponding group along with the user.
@@ -261,7 +261,7 @@ Check your current configuration
 firewall-cmd --list-services
 ```
 
-### Updating Dominio
+### Updating Domino
 
 The install script is mainly intended to setup a new server. It is built based on the Domino Container image installer.
 In a container software is installed from scratch. In a native installation the installation can be updated by removing the binary directory `/opt/hcl/domino`.
